@@ -201,7 +201,8 @@ exports.getEventList = async (req, res) => {
         v.organizer_name,
         v.target_college_name,
         v.signed_up,
-        COALESCE(a.cover_image, '') AS cover_url
+        COALESCE(a.cover_image, '') AS cover_url,
+        COALESCE(a.points, 0) AS points
       FROM v_activity_overview v
       INNER JOIN activities a ON v.id = a.activity_id
       ${whereClause}
@@ -256,7 +257,8 @@ exports.getEventDetail = async (req, res) => {
         v.organizer_name,
         v.target_college_name,
         v.signed_up,
-        COALESCE(a.cover_image, '') AS cover_url
+        COALESCE(a.cover_image, '') AS cover_url,
+        COALESCE(a.points, 0) AS points
       FROM v_activity_overview v
       INNER JOIN activities a ON v.id = a.activity_id
       WHERE v.id = ?

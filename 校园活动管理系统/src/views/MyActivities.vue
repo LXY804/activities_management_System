@@ -1,6 +1,12 @@
 <template>
   <div class="my-activities">
-    <h2 class="page-title">我的活动</h2>
+    <div class="page-header">
+      <h2 class="page-title">我的活动</h2>
+      <div class="points-box">
+        <span class="points-label">积分</span>
+        <span class="points-value">{{ points }}</span>
+      </div>
+    </div>
     
     <!-- 标签页 -->
     <div class="tabs">
@@ -47,13 +53,17 @@
               <img :src="buildImageUrl(activity.image)" alt="活动图片" @error="handleImageError($event)" />
             </div>
             <div class="activity-details">
-              <h3 class="activity-name">{{ activity.name }}</h3>
+              <h3 class="activity-name">
+                {{ activity.name }}
+                <span v-if="activity.points !== undefined">（积分：{{ activity.points }}）</span>
+              </h3>
               <div class="activity-meta">
                 <span class="meta-item">参与人数: {{ activity.participants }}</span>
                 <span class="meta-item">活动状态: {{ activity.status }}</span>
                 <span class="meta-item">
                   报名状态: {{ registrationStatusLabelMap[activity.registrationStatus] || '未知' }}
                 </span>
+                <span class="meta-item">积分: {{ activity.points }}</span>
               </div>
               <div class="activity-info-text">
                 <span>学院: {{ activity.college }}</span>
@@ -156,6 +166,7 @@ const loading = ref(false)
 const errorMsg = ref('')
 const activityTypes = ref([])
 const selectedTypeId = ref('')
+const points = ref(Number(localStorage.getItem('points') || 0))
 
 // 报名状态文案映射：pending/approved/rejected/cancelled -> 待审核/已通过/已拒绝/已取消
 const registrationStatusLabelMap = {
@@ -178,6 +189,8 @@ const requireLogin = () => {
 const statusToTab = (eventStatus, registrationStatus, hasComment) => {
   // 报名还在待审核：只放在“全部”里，不进其他分类
   if (registrationStatus === 'pending') return 'all'
+  // 已取消报名：不进入“已结束/待评价”，仅在“全部”显示
+  if (registrationStatus === 'cancelled') return 'all'
 
   if (['open', 'ongoing'].includes(eventStatus)) return 'in-progress'
   if (['upcoming'].includes(eventStatus)) return 'not-started'
@@ -207,7 +220,7 @@ const loadActivities = async () => {
   errorMsg.value = ''
   try {
     const data = await fetchMyRegistrations()
-    activities.value =
+    const mapped =
       data?.list?.map((item) => ({
         id: item.registration_id,
         eventId: item.event_id,
@@ -218,6 +231,7 @@ const loadActivities = async () => {
         eventStatus: item.event_status, // 保存原始状态用于判断
         registrationStatus: item.registration_status,
         college: item.organizer_name || '',
+        points: item.points || 0,
         keywords: '',
         location: item.location,
         time: item.start_time ? new Date(item.start_time).toLocaleString() : '',
@@ -230,6 +244,18 @@ const loadActivities = async () => {
           !item.has_comment,
         tab: statusToTab(item.event_status, item.registration_status, item.has_comment)
       })) || []
+    activities.value = mapped
+
+    // 计算已获得积分：活动已结束且报名通过/已签到
+    const totalPoints = mapped
+      .filter(
+        (it) =>
+          ['finished', 'ended'].includes(it.eventStatus) &&
+          ['approved', 'checked_in'].includes(it.registrationStatus)
+      )
+      .reduce((sum, it) => sum + (it.points || 0), 0)
+    points.value = totalPoints
+    localStorage.setItem('points', String(totalPoints))
   } catch (err) {
     console.error(err)
     errorMsg.value = err?.message || '加载报名列表失败'
@@ -262,6 +288,10 @@ const filteredActivities = computed(() => {
   // 按状态标签筛选
   if (activeTab.value !== 'all') {
     result = result.filter((activity) => activity.tab === activeTab.value)
+  }
+  // “已结束”页不展示已取消报名的活动
+  if (activeTab.value === 'completed') {
+    result = result.filter((activity) => activity.registrationStatus !== 'cancelled')
   }
   
   // 按活动类型筛选
@@ -316,11 +346,44 @@ const handleImageError = (event) => {
   min-height: 100%;
 }
 
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
 .page-title {
   font-size: 24px;
   font-weight: 700;
   color: #333;
-  margin-bottom: 24px;
+  margin: 0;
+}
+
+.points-box {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  color: #333;
+  padding: 4px 70px;
+  border-radius: 6px;
+  font-weight: 700;
+  background: transparent;
+}
+
+.points-label {
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+}
+
+.points-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+  padding-top: 4px;
 }
 
 .tabs {

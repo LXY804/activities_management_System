@@ -58,6 +58,7 @@ exports.getMyRegistrations = async (req, res) => {
         a.type_id,
         ${eventStatusExpr} AS event_status,
         COALESCE(a.cover_image, '') AS cover_url,
+        COALESCE(a.points, 0) AS points,
         -- 是否已评论：1 表示已评论，0 表示未评论
         CASE 
           WHEN EXISTS (

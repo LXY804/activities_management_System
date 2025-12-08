@@ -20,6 +20,7 @@
       </div>
       <div class="content-section">
         <h2>{{ currentHero.title }}</h2>
+        <p class="hero-points" v-if="currentHero.points">积分：{{ currentHero.points }}</p>
         <div
           v-if="currentHero.description"
           v-html="formatDescription(currentHero.description)"
@@ -156,6 +157,7 @@ const mapToHero = (item) => ({
   description: item.description || item.Activity_description || '',
   image: buildImageUrl(item.cover_url || item.cover_image),
   location: item.location || '',
+  points: item.points || 0,
   start_time: item.start_time,
   end_time: item.end_time
 })
@@ -325,6 +327,12 @@ onUnmounted(() => {
   flex: 1;
   color: #fff;
   padding: 24px 30px;
+}
+
+.hero-points {
+  font-weight: 700;
+  margin: 0 0 10px 0;
+  color: #ffeb3b;
 }
 
 .content-section h2 {

@@ -54,12 +54,16 @@
               </div>
 
               <div class="center" @click="open(ev.id)">
-                <h3 class="title">{{ ev.title }}</h3>
+            <h3 class="title">
+              {{ ev.title }}
+              <span v-if="ev.points !== undefined">（积分：{{ ev.points }}）</span>
+            </h3>
                 <p class="meta">参与人数：{{ ev.signed_up }} </p>
 
                 <div class="bottom-meta">
                   <span>学院：{{ ev.college }}</span>
                   <span>关键字：{{ ev.keywords }}</span>
+                <span>积分：{{ ev.points }}</span>
                   <span>地点：{{ ev.location }}</span>
                   <span>时间：{{ ev.time }}</span>
                 </div>
@@ -74,6 +78,13 @@
         <div v-else-if="loading" class="loading">加载中...</div>
         <div v-else-if="errorMsg" class="error">{{ errorMsg }}</div>
         <div v-else class="loading">暂无活动数据</div>
+
+        <!-- 分页 -->
+        <div class="pagination" v-if="totalPages > 1 && !loading">
+          <button class="pager-btn" :disabled="page === 1" @click="changePage(page - 1)">上一页</button>
+          <span class="pager-info">第 {{ page }} / {{ totalPages }} 页，共 {{ total }} 条</span>
+          <button class="pager-btn" :disabled="page === totalPages" @click="changePage(page + 1)">下一页</button>
+        </div>
       </div>
     </div>
   </div>
@@ -133,6 +144,14 @@ const loading = ref(false)
 const errorMsg = ref('')
 const activityTypes = ref([])
 const selectedTypeId = ref('')
+const page = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
+
+const totalPages = computed(() => {
+  if (!pageSize.value) return 1
+  return Math.max(1, Math.ceil(total.value / pageSize.value))
+})
 
 const statusLabelMap = {
   open: '进行中',
@@ -172,10 +191,19 @@ const loadEvents = async () => {
   loading.value = true
   errorMsg.value = ''
   try {
-    const params = {}
+    const params = {
+      page: page.value,
+      pageSize: pageSize.value
+    }
     if (selectedTypeId.value) {
       params.category_id = selectedTypeId.value
     }
+    if (activeTab.value !== 0) {
+      const key = tabs[activeTab.value]
+      const status = statusMap[key]
+      if (status) params.status = status
+    }
+
     const data = await fetchEvents(params)
     events.value =
       data?.list?.map((item) => ({
@@ -191,8 +219,10 @@ const loadEvents = async () => {
         status: item.status,
         statusText: statusLabelMap[item.status] || '进行中',
         cta: ctaMap[item.status] || '查看详情',
-        type_id: item.type_id
+        type_id: item.type_id,
+        points: item.points || 0
       })) || []
+    total.value = data?.total || 0
   } catch (err) {
     console.error(err)
     errorMsg.value = err?.message || '加载活动失败'
@@ -211,6 +241,8 @@ const loadActivityTypes = async () => {
 }
 
 const handleTypeChange = () => {
+  page.value = 1
+  scrollTop()
   loadEvents()
 }
 
@@ -234,6 +266,9 @@ function cta(ev) {
 
 function setTab(idx) {
   activeTab.value = idx
+  page.value = 1
+  scrollTop()
+  loadEvents()
 }
 
 // 图片加载错误处理
@@ -251,18 +286,18 @@ const statusMap = {
   '已结束': 'ended'
 }
 
-const filteredEvents = computed(() => {
-  let result = events.value
-  // 按状态筛选
-  if (activeTab.value !== 0) {
-    const key = tabs[activeTab.value]
-    const status = statusMap[key]
-    if (status) {
-      result = result.filter(e => e.status === status)
-    }
-  }
-  return result
-})
+const filteredEvents = computed(() => events.value)
+
+const scrollTop = () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+const changePage = (p) => {
+  if (p < 1 || p > totalPages.value) return
+  page.value = p
+  scrollTop()
+  loadEvents()
+}
 
 // 卡片背景样式（共用图）
 const cardBgStyle = {
@@ -303,6 +338,11 @@ const cardBgStyle = {
 .page.events-list{position:relative}
 .bg-overlay{position:absolute;inset:0;background:rgba(255,255,255,0.6);pointer-events:none}
 .content{position:relative;z-index:2}
+
+.pagination{display:flex;align-items:center;gap:16px;justify-content:center;margin:16px 0}
+.pager-btn{padding:8px 12px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;min-width:80px}
+.pager-btn:disabled{cursor:not-allowed;opacity:0.6}
+.pager-info{color:#333}
 
 @media(max-width:800px){
   .card-body{flex-direction:column;align-items:flex-start}
