@@ -35,6 +35,7 @@ app.use('/api/organizer', require('./routes/organizer'))
 app.use('/api/registrations', require('./routes/registrations'))
 app.use('/api/comments', require('./routes/comments'))
 app.use('/api/users', require('./routes/users'))
+app.use('/api', require('./routes/recommendations'))
 
 // 健康检查
 app.get('/api/health', (req, res) => {

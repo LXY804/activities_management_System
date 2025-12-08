@@ -1,20 +1,40 @@
 @echo off
+cd /d "%~dp0"
 title Campus Activity Dev
 
-set "PROJECT_ROOT=%~dp0"
-set "BACKEND_DIR=%PROJECT_ROOT%backend"
-set "FRONTEND_DIR=%PROJECT_ROOT%校园活动管理系统"
+echo.
+echo ========================================
+echo Starting Development Environment
+echo ========================================
+echo.
+
+if not exist "backend" (
+    echo ERROR: Backend directory not found
+    pause
+    exit /b 1
+)
+
+if not exist "校园活动管理系统" (
+    echo ERROR: Frontend directory not found
+    pause
+    exit /b 1
+)
+
+echo Starting Backend Server...
+start "Backend Server" cmd /k "cd /d %~dp0backend && npm run dev"
+
+ping 127.0.0.1 -n 3 >nul
+
+echo Starting Frontend Server...
+start "Frontend Server" cmd /k "cd /d %~dp0校园活动管理系统 && npm run dev"
 
 echo.
-echo ===== 启动后端 =====
-start "backend" cmd /k "cd /d %BACKEND_DIR% && npm run dev"
-
+echo ========================================
+echo Both servers are starting in separate windows
+echo Please do not close these windows
+echo ========================================
 echo.
-echo ===== 启动前端 =====
-start "frontend" cmd /k "cd /d %FRONTEND_DIR% && npm run dev"
-
+echo Backend:  http://localhost:3000
+echo Frontend: http://localhost:5173
 echo.
-echo 已在两个窗口中启动前端和后端，请不要关闭这些窗口。
 pause
-
-

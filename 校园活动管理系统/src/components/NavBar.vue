@@ -8,7 +8,7 @@
           <router-link class="nav__link" :class="{ active: $route.path === '/' || $route.path === '/home' }" to="/">首页</router-link>
           <router-link class="nav__link" :class="{ active: $route.path === '/promotion' }" to="/promotion">活动宣传</router-link>
           <a class="nav__link" href="#">论坛交流</a>
-          <a class="nav__link" href="#">积分礼品</a>
+          <router-link class="nav__link" :class="{ active: $route.path === '/exchange' }" to="/exchange">积分礼品</router-link>
           <router-link class="nav__link" :class="{ active: $route.path.startsWith('/event') }" to="/events">活动信息</router-link>
           <router-link class="nav__link" :class="{ active: $route.path === '/news' }" to="/news">校园资讯</router-link>
         </nav>

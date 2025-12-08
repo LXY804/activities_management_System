@@ -87,7 +87,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import NavBar from '../components/NavBar.vue'
-import { fetchEvents, fetchEventDetail } from '@/api/event'
+import { fetchEvents, fetchRecommendations } from '@/api/event'
 
 const router = useRouter()
 
@@ -98,7 +98,7 @@ const API_ORIGIN = (
 
 const DEFAULT_COVER = `${API_ORIGIN}/uploads/3b72bdb5a6ca17d85131e816c9fdd0b1.jpg`
 
-// 轮播 Hero 区：前 3 个活动
+// 轮播 Hero 区：推荐/热门前 3 个活动
 const heroEvents = ref([])
 const currentHeroIndex = ref(0)
 const loadingHero = ref(false)
@@ -149,23 +149,55 @@ const formatDescription = (description) => {
     .join('')
 }
 
-// 加载 Hero 活动（前 3 个活动）
+// 将返回的记录统一映射为 Hero 需要的结构
+const mapToHero = (item) => ({
+  id: item.activity_id || item.id,
+  title: item.title || item.activity_name || '活动标题',
+  description: item.description || item.Activity_description || '',
+  image: buildImageUrl(item.cover_url || item.cover_image),
+  location: item.location || '',
+  start_time: item.start_time,
+  end_time: item.end_time
+})
+
+// 加载 Hero 活动：优先推荐（最多 3 个），不足用热门补齐
 const loadHeroEvents = async () => {
   loadingHero.value = true
   try {
-    const data = await fetchEvents({ page: 1, pageSize: 3 })
-    const eventList = data?.list || []
+    const userId = localStorage.getItem('userId') || ''
+    let recList = []
 
-    heroEvents.value = eventList.map((item) => ({
-      id: item.id,
-      title: item.title || '活动标题',
-      description: item.description || '',
-      image: buildImageUrl(item.cover_url),
-      location: item.location || '',
-      start_time: item.start_time,
-      end_time: item.end_time
-    }))
+    // 1) 优先取推荐
+    try {
+      const recData = await fetchRecommendations(userId ? { user_id: userId } : {})
+      recList = Array.isArray(recData) ? recData : []
+    } catch (e) {
+      console.warn('推荐接口失败，使用热门兜底', e)
+    }
 
+    const heroes = []
+    const usedIds = new Set()
+    const pushIfNew = (item) => {
+      const mapped = mapToHero(item)
+      if (!mapped.id || usedIds.has(mapped.id)) return
+      usedIds.add(mapped.id)
+      heroes.push(mapped)
+    }
+
+    // 取推荐前 3 个
+    recList.slice(0, 3).forEach(pushIfNew)
+
+    // 若不足 3 个，用热门补齐
+    if (heroes.length < 3) {
+      const fallback = await fetchEvents({ page: 1, pageSize: 5 })
+      const list = fallback?.list || []
+      for (const item of list) {
+        if (heroes.length >= 3) break
+        pushIfNew(item)
+      }
+    }
+
+    heroEvents.value = heroes
     if (heroEvents.value.length > 1) {
       startHeroCarousel()
     }

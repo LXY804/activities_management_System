@@ -7,6 +7,14 @@ export const fetchEvents = (params) =>
 export const fetchEventDetail = (id) =>
   request.get(`/events/${id}`)
 
+// 推荐列表（按用户）
+export const fetchRecommendations = (params) =>
+  request.get('/recommendations', { params })
+
+// 相似活动（按活动）
+export const fetchSimilarActivities = (activityId) =>
+  request.get('/recommendations/similar', { params: { activity_id: activityId } })
+
 // 获取活动类型列表
 export const fetchActivityTypes = () =>
   request.get('/events/types')

@@ -15,6 +15,7 @@ const MyComments = () => import('../views/MyComments.vue')
 const Statistics = () => import('../views/Statistics.vue')
 const OrganizerManage = () => import('../views/OrganizerManage.vue')
 const AdminDashboard = () => import('../views/AdminDashboard.vue')
+const Exchange = () =>import('../views/Exchange.vue')
 
 const routes = [
   { path: '/', name: 'Home', component: Home },
@@ -29,6 +30,7 @@ const routes = [
   { path: '/login', name: 'Login', component: Login },
   { path: '/organizer/manage', name: 'OrganizerManage', component: OrganizerManage },
   { path: '/admin/dashboard', name: 'AdminDashboard', component: AdminDashboard },
+  {path: '/exchange', name: 'Exchange', component:Exchange},
   { 
     path: '/personal', 
     component: PersonalCenter,
