@@ -36,7 +36,7 @@ app.use('/api/registrations', require('./routes/registrations'))
 app.use('/api/comments', require('./routes/comments'))
 app.use('/api/users', require('./routes/users'))
 app.use('/api', require('./routes/recommendations'))
-
+app.use('/api', require('./routes/chat'))
 // 健康检查
 app.get('/api/health', (req, res) => {
   res.json({ code: 200, message: '服务运行正常' })
