@@ -36,7 +36,11 @@ app.use('/api/registrations', require('./routes/registrations'))
 app.use('/api/comments', require('./routes/comments'))
 app.use('/api/users', require('./routes/users'))
 app.use('/api', require('./routes/recommendations'))
+app.use('/api/admin', require('./routes/admin'))
 app.use('/api', require('./routes/chat'))
+app.use('/api/forum', require('./routes/forum'))
+app.use('/api/announcements', require('./routes/announcements'))
+app.use('/api/news', require('./routes/news'))
 // 健康检查
 app.get('/api/health', (req, res) => {
   res.json({ code: 200, message: '服务运行正常' })

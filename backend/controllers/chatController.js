@@ -2,7 +2,7 @@
 const { Op, fn, col, literal } = require('sequelize')
 const sequelize = require('../config/database')
 const { success, error } = require('../utils/response')
-const { callSpark } = require('../utils/sparkClient')
+const { callDeepseek } = require('../utils/deepseekClient')
 const Message = require('../models/Message')
 const Activity = require('../models/Activity')
 const UserActivityApply = require('../models/UserActivityApply')
@@ -35,7 +35,7 @@ async function detectIntent(userMessage) {
     { role: 'user', content: userMessage },
   ]
 
-  const raw = await callSpark(messages)
+  const raw = await callDeepseek(messages)
 
   try {
     const start = raw.indexOf('{')
@@ -289,8 +289,8 @@ exports.chatAsk = async (req, res) => {
     })
     messages.push({ role: 'user', content: userMessage })
 
-    // 6) 调用星火生成回答
-    const botReply = await callSpark(messages)
+    // 6) 调用 DeepSeek 生成回答
+    const botReply = await callDeepseek(messages)
 
     // 7) 保存机器人回复
     await Message.create({ sessionId, sender: 'bot', content: botReply })

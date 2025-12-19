@@ -1,7 +1,10 @@
 const sequelize = require('../config/database')
 const { QueryTypes } = require('sequelize')
+const bcrypt = require('bcrypt')
 const { generateToken } = require('../utils/jwt')
 const { success, error } = require('../utils/response')
+
+const SALT_ROUNDS = 10
 
 exports.login = async (req, res) => {
   try {
@@ -38,8 +41,30 @@ exports.login = async (req, res) => {
       return error(res, '身份验证失败，请选择正确的身份', 403)
     }
 
-    // 密码错误
-    if (password !== user.password) {
+    // 密码校验（优先校验哈希；兼容旧的明文密码，验证通过后自动升级为哈希）
+    let isMatch = false
+    try {
+      isMatch = await bcrypt.compare(password, user.password)
+    } catch (e) {
+      isMatch = false
+    }
+
+    // 兼容旧数据：如果数据库里是明文且与输入相同，则视为通过，并自动升级为哈希
+    if (!isMatch && password === user.password) {
+      isMatch = true
+      try {
+        const newHash = await bcrypt.hash(password, SALT_ROUNDS)
+        await sequelize.query('UPDATE users SET password = ? WHERE user_id = ?', {
+          replacements: [newHash, user.id],
+          type: QueryTypes.UPDATE
+        })
+      } catch (e) {
+        // 升级失败不影响本次登录
+        console.warn('明文密码升级为哈希时出错:', e)
+      }
+    }
+
+    if (!isMatch) {
       return error(res, '账号或密码错误', 401)
     }
 
@@ -91,12 +116,15 @@ exports.register = async (req, res) => {
     const allowedRoles = ['student', 'organizer', 'admin']
     const userRole = allowedRoles.includes(role) ? role : 'student'
 
+    // 哈希密码
+    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS)
+
     const insertUserSql = `
       INSERT INTO users (username, phone, email, college_id, password, role, created_at)
       VALUES (?, ?, ?, ?, ?, ?, NOW())
     `
     const [userId] = await sequelize.query(insertUserSql, {
-      replacements: [username, phone, email || null, collegeId || null, password, userRole],
+      replacements: [username, phone, email || null, collegeId || null, hashedPassword, userRole],
       type: QueryTypes.INSERT
     })
 

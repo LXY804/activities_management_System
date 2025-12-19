@@ -7,7 +7,7 @@
         <nav class="nav">
           <router-link class="nav__link" :class="{ active: $route.path === '/' || $route.path === '/home' }" to="/">首页</router-link>
           <router-link class="nav__link" :class="{ active: $route.path === '/promotion' }" to="/promotion">活动宣传</router-link>
-          <a class="nav__link" href="#">论坛交流</a>
+          <router-link class="nav__link" :class="{ active: $route.path.startsWith('/forum') }" to="/forum">论坛交流</router-link>
           <router-link class="nav__link" :class="{ active: $route.path === '/exchange' }" to="/exchange">积分礼品</router-link>
           <router-link class="nav__link" :class="{ active: $route.path.startsWith('/event') }" to="/events">活动信息</router-link>
           <router-link class="nav__link" :class="{ active: $route.path === '/news' }" to="/news">校园资讯</router-link>
@@ -23,7 +23,12 @@
           <router-link v-if="isLoggedIn" to="/personal/activities" class="btn ghost" title="个人中心">个人中心</router-link>
           <!-- 未登录时显示登录按钮 -->
           <router-link v-else to="/login" class="btn ghost" title="登录">登录</router-link>
-          <button class="icon-btn" title="系统公告">系统公告</button>
+          <router-link 
+            to="/announcements" 
+            class="icon-btn" 
+            title="系统公告"
+            style="text-decoration: none; display: flex; align-items: center; justify-content: center;"
+          >系统公告</router-link>
           <router-link
             v-if="isOrganizer"
             to="/organizer/manage"

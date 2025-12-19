@@ -16,6 +16,11 @@
         >用户管理</a>
         <a 
           class="sidebar__item"
+          :class="{ active: activeMenu === 'forum' }"
+          @click="activeMenu = 'forum'"
+        >论坛管理</a>
+        <a 
+          class="sidebar__item"
           :class="{ active: activeMenu === 'config' }"
           @click.prevent="switchToConfig"
         >系统配置</a>
@@ -24,11 +29,21 @@
           :class="{ active: activeMenu === 'stats' }"
           @click.prevent="switchToStats"
         >数据统计</a>
+        <a 
+          class="sidebar__item"
+          :class="{ active: activeMenu === 'news' }"
+          @click="activeMenu = 'news'"
+        >发布资讯</a>
+        <a 
+          class="sidebar__item"
+          :class="{ active: activeMenu === 'announcements' }"
+          @click="activeMenu = 'announcements'"
+        >系统公告</a>
       </nav>
     </aside>
 
     <main class="admin-content">
-      <header class="admin-header">
+      <header class="admin-header" v-if="activeMenu !== 'announcements'">
         <div>
           <h1>管理后台</h1>
           <p>系统审核、用户管理与平台统计</p>
@@ -38,7 +53,7 @@
         </div>
       </header>
 
-      <section class="admin-grid">
+      <section class="admin-grid" v-if="activeMenu !== 'announcements'">
         <article class="admin-card">
           <h3>待审核活动</h3>
           <p class="admin-card__value">{{ reviewList.length }}</p>
@@ -119,9 +134,14 @@
 
         <!-- 用户管理面板 -->
         <article class="panel" v-if="activeMenu === 'users'">
-          <header>
+          <header class="panel-header-actions">
             <h2>用户管理</h2>
-            <button>导出用户数据</button>
+            <div class="header-actions">
+              <button>导出用户数据</button>
+              <button class="secondary-btn" @click="onBackup" :disabled="backingUp">
+                {{ backingUp ? '备份中...' : '手动备份数据库' }}
+              </button>
+            </div>
           </header>
           <div class="user-management">
             <div class="user-stat">
@@ -182,6 +202,9 @@
                 </div>
                 <div class="user-meta">
                   <span>{{ user.joinDate }}</span>
+                  <button class="danger-btn" @click="onDeleteUser(user)" :disabled="deletingUserId === user.id">
+                    {{ deletingUserId === user.id ? '删除中...' : '删除' }}
+                  </button>
                 </div>
               </li>
               <li v-if="!loadingUsers && filteredUsers.length === 0" class="no-result">
@@ -277,13 +300,165 @@
             </div>
           </div>
         </article>
+
+        <!-- 发布资讯面板 -->
+        <div v-if="activeMenu === 'news'" class="news-container">
+          <article class="panel">
+            <header>
+              <h2>发布资讯</h2>
+            </header>
+            <div class="news-form">
+              <input 
+                v-model="newsForm.title" 
+                type="text" 
+                placeholder="请输入资讯标题" 
+                class="form-input"
+              />
+              <textarea 
+                v-model="newsForm.content" 
+                placeholder="请输入资讯内容" 
+                class="form-textarea"
+              ></textarea>
+              <div class="form-actions">
+                <button class="btn btn-primary" @click="handleCreateNews">发布资讯</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel">
+            <header>
+              <h2>已发布资讯列表</h2>
+            </header>
+            <div v-if="newsList.length" class="news-list">
+              <div v-for="item in newsList" :key="item.id" class="news-item">
+                <div>
+                  <h3>{{ item.title }}</h3>
+                  <p class="news-meta">{{ formatTime(item.created_at) }}</p>
+                  <p class="news-content">{{ item.content }}</p>
+                </div>
+                <div class="news-actions">
+                  <button class="btn btn-edit" @click="handleEditNews(item)">编辑</button>
+                  <button class="btn btn-delete" @click="handleDeleteNews(item.id)">删除</button>
+                </div>
+              </div>
+            </div>
+            <p v-else class="empty-text">暂无资讯</p>
+          </article>
+        </div>
+
+        <!-- 系统公告管理面板 -->
+        <div v-if="activeMenu === 'announcements'" class="announcement-container">
+          <article class="panel">
+            <header>
+              <h2>发布系统公告</h2>
+            </header>
+            <div class="announcement-form">
+              <input 
+                v-model="announcementForm.title" 
+                type="text" 
+                placeholder="请输入公告标题" 
+                class="form-input"
+              />
+              <textarea 
+                v-model="announcementForm.content" 
+                placeholder="请输入公告内容" 
+                class="form-textarea"
+              ></textarea>
+              <button class="btn btn-primary" @click="handleCreateAnnouncement">发布公告</button>
+            </div>
+          </article>
+
+          <article class="panel">
+            <header>
+              <h2>待审核公告</h2>
+              <p class="panel-desc">仅显示组织者申请的公告，管理员发布的公告无需审核</p>
+            </header>
+            <ul v-if="pendingAnnouncements.length">
+              <li v-for="item in pendingAnnouncements" :key="item.id">
+                <div>
+                  <h3>{{ item.title }}</h3>
+                  <p>{{ item.publisher_name }} · {{ formatTime(item.created_at) }}</p>
+                  <p class="announcement-content">{{ item.content }}</p>
+                </div>
+                <div class="review-actions">
+                  <button 
+                    class="btn btn-approve" 
+                    @click="handleApproveAnnouncement(item.id)"
+                  >✓ 通过</button>
+                  <button 
+                    class="btn btn-reject" 
+                    @click="handleRejectAnnouncement(item.id)"
+                  >✗ 驳回</button>
+                </div>
+              </li>
+            </ul>
+            <p v-else class="empty-text">暂无待审核公告</p>
+          </article>
+
+          <article class="panel">
+            <header>
+              <h2>公告确认统计</h2>
+            </header>
+            <table class="stats-table">
+              <thead>
+                <tr>
+                  <th>公告标题</th>
+                  <th>发布者</th>
+                  <th>发布时间</th>
+                  <th>确认数</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in announcementStats" :key="item.id">
+                  <td>{{ item.title }}</td>
+                  <td>{{ item.publisher_name }}</td>
+                  <td>{{ formatTime(item.published_at) }}</td>
+                  <td>{{ item.confirmation_count }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p v-if="!announcementStats.length" class="empty-text">暂无公告数据</p>
+          </article>
+        </div>
+
+        <!-- 论坛管理面板 -->
+        <div v-if="activeMenu === 'forum'" class="forum-management-container">
+          <article class="panel">
+            <header>
+              <h2>待审核帖子</h2>
+            </header>
+            <ul v-if="pendingPosts.length">
+              <li v-for="item in pendingPosts" :key="item.id">
+                <div>
+                  <h3>{{ item.title }}</h3>
+                  <p>{{ item.author }} · {{ formatTime(item.created_at) }}</p>
+                  <p class="post-content">{{ item.content }}</p>
+                  <div v-if="item.image_url" class="post-image-preview">
+                    <img :src="buildImageUrl(item.image_url)" alt="帖子图片" />
+                  </div>
+                </div>
+                <div class="review-actions">
+                  <button 
+                    class="btn btn-approve" 
+                    @click="handleApprovePost(item.id)"
+                  >✓ 通过</button>
+                  <button 
+                    class="btn btn-reject" 
+                    @click="handleRejectPost(item.id)"
+                  >✗ 驳回</button>
+                </div>
+              </li>
+            </ul>
+            <p v-else class="empty-text">暂无待审核帖子</p>
+          </article>
+        </div>
       </section>
     </main>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import NavBar from '../components/NavBar.vue'
 import { fetchPendingEvents, approveEvent, rejectEvent } from '@/api/event'
 import { 
@@ -292,11 +467,65 @@ import {
   fetchNewUsersThisMonth,
   fetchSystemConfig,
   saveSystemConfig as saveSystemConfigApi,
-  fetchActivityStats
+  fetchActivityStats,
+  deleteUser as fetchDeleteUser
 } from '@/api/user'
+import { manualBackup } from '@/api/admin'
+import {
+  createAnnouncement,
+  fetchPendingAnnouncements,
+  approveAnnouncement,
+  rejectAnnouncement,
+  fetchAdminConfirmationStats
+} from '@/api/announcement'
+import {
+  fetchPendingPosts,
+  approvePost,
+  rejectPost
+} from '@/api/forum'
+import {
+  createNews,
+  fetchAllNews,
+  updateNews,
+  deleteNews
+} from '@/api/news'
 
 // 当前活动菜单
 const activeMenu = ref('review')
+
+// 公告相关
+const announcementForm = ref({
+  title: '',
+  content: ''
+})
+const pendingAnnouncements = ref([])
+const announcementStats = ref([])
+
+// 论坛管理相关
+const pendingPosts = ref([])
+
+// 资讯管理相关
+const newsForm = ref({
+  title: '',
+  content: ''
+})
+const newsList = ref([])
+
+const API_ORIGIN = (
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+).replace(/\/api\/?$/, '')
+
+const buildImageUrl = (imageUrl) => {
+  if (!imageUrl) return ''
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl
+  }
+  let normalized = imageUrl.replace(/\\/g, '/')
+  if (!normalized.startsWith('/')) {
+    normalized = '/' + normalized
+  }
+  return API_ORIGIN + normalized
+}
 
 // 审核队列（从后端获取）
 const reviewList = ref([])
@@ -422,6 +651,7 @@ const userStats = ref({
   admins: 0
 })
 const loadingUsers = ref(false)
+const backingUp = ref(false)
 
 // 加载用户列表
 const loadUsers = async () => {
@@ -510,9 +740,48 @@ const loadNewUsersThisMonth = async () => {
 }
 
 // 计算过滤后的用户列表（现在后端已经过滤，这里直接返回）
+const deletingUserId = ref(null)
+
 const filteredUsers = computed(() => {
   return userList.value
 })
+
+const onDeleteUser = async (user) => {
+  if (!user?.id) {
+    showNotification('用户 ID 缺失，无法删除', 'warning')
+    return
+  }
+  if (!confirm(`确认删除用户「${user.name}」吗？该操作不可恢复。`)) return
+  deletingUserId.value = user.id
+  try {
+    await fetchDeleteUser(user.id)
+    showNotification('删除成功', 'success')
+    userList.value = userList.value.filter(u => u.id !== user.id)
+    loadUserStats()
+  } catch (e) {
+    console.error('删除用户失败:', e)
+    const msg = e.response?.data?.message || e.message || '删除失败'
+    showNotification(msg, 'error')
+  } finally {
+    deletingUserId.value = null
+  }
+}
+
+const onBackup = async () => {
+  if (!confirm('确认手动备份数据库吗？可能需要几秒钟时间。')) return
+  backingUp.value = true
+  try {
+    const res = await manualBackup()
+    const file = res?.file || res?.data?.file
+    showNotification(file ? `备份成功：${file}` : '备份成功', 'success')
+  } catch (e) {
+    console.error('备份失败:', e)
+    const msg = e.response?.data?.message || e.message || '备份失败'
+    showNotification(msg, 'error')
+  } finally {
+    backingUp.value = false
+  }
+}
 
 // 防抖函数，用于搜索
 let searchTimer = null
@@ -631,6 +900,176 @@ const showAllData = () => {
   loadActivityStats() // 不传月份参数，获取全部数据
   showNotification('已显示全部数据统计', 'success')
 }
+
+// 公告管理功能
+const loadPendingAnnouncements = async () => {
+  try {
+    const list = await fetchPendingAnnouncements()
+    pendingAnnouncements.value = list
+  } catch (err) {
+    console.error('获取待审核公告失败:', err)
+    showNotification('获取待审核公告失败', 'error')
+  }
+}
+
+const loadAnnouncementStats = async () => {
+  try {
+    const list = await fetchAdminConfirmationStats()
+    announcementStats.value = list
+  } catch (err) {
+    console.error('获取公告统计失败:', err)
+  }
+}
+
+const handleCreateAnnouncement = async () => {
+  if (!announcementForm.value.title || !announcementForm.value.content) {
+    showNotification('请填写标题和内容', 'warning')
+    return
+  }
+  try {
+    await createAnnouncement(announcementForm.value)
+    showNotification('公告发布成功', 'success')
+    announcementForm.value = { title: '', content: '' }
+    loadAnnouncementStats()
+  } catch (err) {
+    showNotification(err?.message || '发布失败', 'error')
+  }
+}
+
+const handleApproveAnnouncement = async (id) => {
+  try {
+    await approveAnnouncement(id)
+    showNotification('审核通过', 'success')
+    loadPendingAnnouncements()
+    loadAnnouncementStats()
+  } catch (err) {
+    showNotification(err?.message || '操作失败', 'error')
+  }
+}
+
+const handleRejectAnnouncement = async (id) => {
+  const remark = prompt('请输入驳回原因（可选）')
+  try {
+    await rejectAnnouncement(id, remark)
+    showNotification('已驳回', 'success')
+    loadPendingAnnouncements()
+  } catch (err) {
+    showNotification(err?.message || '操作失败', 'error')
+  }
+}
+
+// 格式化时间
+const formatTime = (timeStr) => {
+  if (!timeStr) return ''
+  const date = new Date(timeStr)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+// 论坛管理功能
+const loadPendingPosts = async () => {
+  try {
+    const list = await fetchPendingPosts()
+    pendingPosts.value = list
+  } catch (err) {
+    console.error('获取待审核帖子失败:', err)
+    showNotification('获取待审核帖子失败', 'error')
+  }
+}
+
+const handleApprovePost = async (id) => {
+  try {
+    await approvePost(id)
+    showNotification('审核通过', 'success')
+    loadPendingPosts()
+  } catch (err) {
+    showNotification(err?.message || '操作失败', 'error')
+  }
+}
+
+const handleRejectPost = async (id) => {
+  const remark = prompt('请输入驳回原因（可选）')
+  try {
+    await rejectPost(id, remark)
+    showNotification('已驳回', 'success')
+    loadPendingPosts()
+  } catch (err) {
+    showNotification(err?.message || '操作失败', 'error')
+  }
+}
+
+// 资讯管理功能
+const loadNewsList = async () => {
+  try {
+    const data = await fetchAllNews()
+    newsList.value = data?.list || []
+  } catch (err) {
+    console.error('加载资讯列表失败:', err)
+    showNotification('加载资讯列表失败', 'error')
+  }
+}
+
+const handleCreateNews = async () => {
+  if (!newsForm.value.title || !newsForm.value.content) {
+    showNotification('请填写标题和内容', 'warning')
+    return
+  }
+  try {
+    await createNews(newsForm.value)
+    showNotification('资讯发布成功', 'success')
+    newsForm.value = { title: '', content: '' }
+    loadNewsList()
+  } catch (err) {
+    showNotification(err?.message || '发布失败', 'error')
+  }
+}
+
+const handleEditNews = async (item) => {
+  const newTitle = prompt('请输入新标题', item.title)
+  if (!newTitle) return
+  
+  const newContent = prompt('请输入新内容', item.content)
+  if (!newContent) return
+
+  try {
+    await updateNews(item.id, {
+      title: newTitle,
+      content: newContent
+    })
+    showNotification('更新成功', 'success')
+    loadNewsList()
+  } catch (err) {
+    showNotification(err?.message || '更新失败', 'error')
+  }
+}
+
+const handleDeleteNews = async (id) => {
+  if (!confirm('确认删除此资讯吗？')) return
+  try {
+    await deleteNews(id)
+    showNotification('删除成功', 'success')
+    loadNewsList()
+  } catch (err) {
+    showNotification(err?.message || '删除失败', 'error')
+  }
+}
+
+// 监听菜单切换，加载对应数据
+watch(() => activeMenu.value, (newMenu) => {
+  if (newMenu === 'announcements') {
+    loadPendingAnnouncements()
+    loadAnnouncementStats()
+  } else if (newMenu === 'forum') {
+    loadPendingPosts()
+  } else if (newMenu === 'news') {
+    loadNewsList()
+  }
+})
 
 </script>
 
@@ -853,6 +1292,22 @@ const showAllData = () => {
 .status-tag.info{
   background:#eef2ff;
   color:#5b62f4;
+}
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.secondary-btn {
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background: #f5f5f5;
+  cursor: pointer;
+}
+.secondary-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 .user-summary{
   display:flex;
@@ -1362,6 +1817,194 @@ const showAllData = () => {
   .review-container{
     grid-template-columns:1fr;
   }
+}
+
+.announcement-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.announcement-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.announcement-form .form-input {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.announcement-form .form-textarea {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  min-height: 200px;
+  resize: vertical;
+}
+
+.announcement-content {
+  color: #666;
+  margin-top: 8px;
+  line-height: 1.6;
+}
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+.stats-table th,
+.stats-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.stats-table th {
+  background: #f5f5f5;
+  font-weight: 600;
+  color: #333;
+}
+
+.empty-text {
+  text-align: center;
+  color: #999;
+  padding: 20px;
+}
+
+.panel-desc {
+  font-size: 13px;
+  color: #999;
+  margin-top: 4px;
+  font-weight: normal;
+}
+
+.forum-management-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.post-content {
+  color: #666;
+  margin-top: 8px;
+  line-height: 1.6;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.post-image-preview {
+  margin-top: 12px;
+}
+
+.post-image-preview img {
+  max-width: 300px;
+  max-height: 200px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+}
+
+.news-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.news-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.news-form .form-input {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.news-form .form-textarea {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  min-height: 200px;
+  resize: vertical;
+}
+
+.news-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.news-item {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.news-item h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.news-meta {
+  font-size: 14px;
+  color: #999;
+  margin-bottom: 8px;
+}
+
+.news-content {
+  color: #666;
+  line-height: 1.6;
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.news-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-edit {
+  padding: 6px 12px;
+  background: #0b4ea2;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.btn-edit:hover {
+  opacity: 0.9;
+}
+
+.btn-delete {
+  padding: 6px 12px;
+  background: #f44336;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.btn-delete:hover {
+  opacity: 0.9;
 }
 </style>
 

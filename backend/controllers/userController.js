@@ -3,6 +3,32 @@ const { QueryTypes } = require('sequelize')
 const { success, error } = require('../utils/response')
 const path = require('path')
 
+// 管理员删除用户（物理删除，依赖触发器级联清理报名/评论）
+exports.deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params
+    if (!id) return error(res, '缺少用户ID', 400)
+
+    // 检查是否存在
+    const checkSql = 'SELECT user_id FROM users WHERE user_id = ?'
+    const [user] = await sequelize.query(checkSql, {
+      replacements: [id],
+      type: QueryTypes.SELECT
+    })
+    if (!user) return error(res, '用户不存在', 404)
+
+    await sequelize.query('DELETE FROM users WHERE user_id = ?', {
+      replacements: [id],
+      type: QueryTypes.DELETE
+    })
+
+    success(res, null, '删除成功')
+  } catch (err) {
+    console.error('删除用户失败:', err)
+    error(res, '服务器错误', 500)
+  }
+}
+
 exports.getProfile = async (req, res) => {
   try {
     const userId = req.user.id
@@ -80,76 +106,63 @@ exports.updateProfile = async (req, res) => {
       gender,
       idType,
       idNumber,
-      className
+      className,
+      image
     } = req.body
 
-    const fields = []
-    const replacements = []
-
-    if (typeof studentId !== 'undefined') {
-      fields.push('student_id = ?')
-      replacements.push(studentId || null)
-    }
-    if (typeof realName !== 'undefined') {
-      fields.push('real_name = ?')
-      replacements.push(realName || null)
-    }
-    if (typeof gender !== 'undefined') {
-      fields.push('gender = ?')
-      replacements.push(gender || null)
-    }
-    if (typeof idType !== 'undefined') {
-      fields.push('id_type = ?')
-      replacements.push(idType || null)
-    }
-    if (typeof idNumber !== 'undefined') {
-      fields.push('id_number = ?')
-      replacements.push(idNumber || null)
-    }
-    if (typeof className !== 'undefined') {
-      fields.push('class_name = ?')
-      replacements.push(className || null)
-    }
-
-    if (typeof phone !== 'undefined') {
-      fields.push('phone = ?')
-      replacements.push(phone || null)
-    }
-    if (typeof email !== 'undefined') {
-      fields.push('email = ?')
-      replacements.push(email || null)
-    }
-    if (typeof collegeId !== 'undefined') {
-      fields.push('college_id = ?')
-      replacements.push(collegeId || null)
-    }
-
-    if (role && req.user.role === 'admin') {
-      fields.push('role = ?')
-      replacements.push(role)
-    }
-
-    if (!fields.length) {
+    // 如果没有任何可更新字段，直接返回
+    if (
+      typeof phone === 'undefined' &&
+      typeof email === 'undefined' &&
+      typeof collegeId === 'undefined' &&
+      typeof studentId === 'undefined' &&
+      typeof realName === 'undefined' &&
+      typeof gender === 'undefined' &&
+      typeof idType === 'undefined' &&
+      typeof idNumber === 'undefined' &&
+      typeof className === 'undefined' &&
+      typeof image === 'undefined' &&
+      typeof role === 'undefined'
+    ) {
       return success(res, null, '无需更新')
     }
 
-    replacements.push(userId)
+    // 调用存储过程 sp_update_user_profile 统一更新个人信息
+    // 传入 NULL 的字段由存储过程中的 COALESCE 保留原值
+    const sql = 'CALL sp_update_user_profile(?,?,?,?,?,?,?,?,?,?,?)'
+    const params = [
+      userId,               // p_user_id
+      phone ?? null,        // p_phone
+      email ?? null,        // p_email
+      collegeId ?? null,    // p_college_id
+      studentId ?? null,    // p_student_id
+      realName ?? null,     // p_real_name
+      gender ?? null,       // p_gender
+      idType ?? null,       // p_id_type
+      idNumber ?? null,     // p_id_number
+      className ?? null,    // p_class_name
+      image ?? null         // p_image
+    ]
 
-    await sequelize.query(
-      `
-        UPDATE users
-        SET ${fields.join(', ')}
-        WHERE user_id = ?
-      `,
-      {
-        replacements,
-        type: QueryTypes.UPDATE
-      }
-    )
+    await sequelize.query(sql, {
+      replacements: params,
+      type: QueryTypes.RAW
+    })
+
+    // 角色仍按原逻辑单独处理，只允许管理员修改
+    if (role && req.user.role === 'admin') {
+      await sequelize.query(
+        'UPDATE users SET role = ? WHERE user_id = ?',
+        {
+          replacements: [role, userId],
+          type: QueryTypes.UPDATE
+        }
+      )
+    }
 
     success(res, null, '更新成功')
   } catch (err) {
-    console.error('更新个人资料失败:', err)
+    console.error('更新个人资料失败(存储过程):', err)
     error(res, '服务器错误', 500)
   }
 }

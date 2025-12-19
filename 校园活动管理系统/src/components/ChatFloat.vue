@@ -7,7 +7,8 @@
         @mousedown.prevent="startButtonDrag"
         @click="handleButtonClick"
       >
-        💬
+        <!-- 自定义图标：使用项目中的 header-logo.png，你可以换成自己的图片路径 -->
+        <img src="@/assets/AI_bot.jpg" alt="智能助手" class="chat-float-icon" />
       </div>
   
       <!-- 悬浮聊天窗口 -->
@@ -212,8 +213,16 @@
     justify-content: center;
     cursor: move;  /* 改为 move 光标，提示可以拖动 */
     z-index: 9999;
-    font-size: 24px;
     user-select: none;  /* 防止拖动时选中文本 */
+  }
+
+  /* 悬浮按钮中的图标图片，铺满圆形按钮 */
+  .chat-float-icon {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    pointer-events: none; /* 避免阻塞拖拽事件 */
   }
   
   /* 悬浮窗口 */

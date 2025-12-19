@@ -43,6 +43,14 @@ const uploadCover = multer({
 // 注意：具体路径必须放在参数路径（/:id）之前，否则会被参数路由捕获
 router.get('/types', eventController.getActivityTypes) // 获取活动类型列表
 
+// 组织者/管理员：AI 生成活动文案
+router.post(
+  '/generate-copy',
+  authenticate,
+  authorize('organizer', 'admin'),
+  eventController.generateEventCopy
+)
+
 // 组织者：获取自己提交的活动及审核状态（必须在 /:id 之前）
 router.get(
   '/organizer/mine',

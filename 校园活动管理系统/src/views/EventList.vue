@@ -22,6 +22,18 @@
           </div>
           <!-- 活动分类筛选 -->
           <div class="filter-section">
+            <div class="search-box">
+              <input 
+                v-model="searchKeyword" 
+                type="text" 
+                placeholder="搜索活动标题..." 
+                class="search-input"
+                @keyup.enter="handleSearch"
+              />
+              <button class="search-btn" @click="handleSearch">
+                搜索
+              </button>
+            </div>
 
             <select 
               v-model="selectedTypeId" 
@@ -144,6 +156,7 @@ const loading = ref(false)
 const errorMsg = ref('')
 const activityTypes = ref([])
 const selectedTypeId = ref('')
+const searchKeyword = ref('')
 const page = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
@@ -198,6 +211,9 @@ const loadEvents = async () => {
     if (selectedTypeId.value) {
       params.category_id = selectedTypeId.value
     }
+    if (searchKeyword.value) {
+      params.keyword = searchKeyword.value
+    }
     if (activeTab.value !== 0) {
       const key = tabs[activeTab.value]
       const status = statusMap[key]
@@ -241,6 +257,12 @@ const loadActivityTypes = async () => {
 }
 
 const handleTypeChange = () => {
+  page.value = 1
+  scrollTop()
+  loadEvents()
+}
+
+const handleSearch = () => {
   page.value = 1
   scrollTop()
   loadEvents()
@@ -314,6 +336,12 @@ const cardBgStyle = {
 .page-title{font-size:22px;margin:12px 0;font-weight:700;color:#333}
 .tabs{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 12px;background:rgba(255,255,255,0.9);border-radius:6px;margin-bottom:12px;flex-wrap:wrap}
 .tabs-left{display:flex;gap:28px;flex:1}
+.filter-section{display:flex;align-items:center;gap:12px}
+.search-box{display:flex;align-items:center;background:#fff;border:1px solid #ddd;border-radius:4px;overflow:hidden;transition:border-color 0.2s}
+.search-box:focus-within{border-color:#0b4ea2}
+.search-input{border:none;padding:8px 12px;outline:none;font-size:14px;width:180px}
+.search-btn{background:#0b4ea2;color:#fff;border:none;padding:8px 14px;cursor:pointer;font-size:14px;transition:opacity 0.2s}
+.search-btn:hover{opacity:0.9}
 .tab{padding:8px 10px;cursor:pointer;color:#233;border-bottom:3px solid transparent;font-weight:600}
 .tab.active{color:#0b4ea2;border-bottom-color:#0b4ea2}
 .type-select{padding:8px 12px;border:1px solid #ddd;border-radius:4px;background:#fff;font-size:15px;color:#333;cursor:pointer;min-width:150px;transition:border-color 0.2s}

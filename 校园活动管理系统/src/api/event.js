@@ -36,6 +36,10 @@ export const createEvent = (data) => {
   return request.post('/events', data)
 }
 
+// 组织者：使用大模型生成活动文案
+export const generateEventCopy = (payload) =>
+  request.post('/events/generate-copy', payload)
+
 // 组织者：获取自己提交的活动及审核状态
 export const fetchOrganizerEvents = () =>
   request.get('/events/organizer/mine')

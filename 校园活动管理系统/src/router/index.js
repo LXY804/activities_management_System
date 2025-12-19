@@ -16,6 +16,10 @@ const Statistics = () => import('../views/Statistics.vue')
 const OrganizerManage = () => import('../views/OrganizerManage.vue')
 const AdminDashboard = () => import('../views/AdminDashboard.vue')
 const Exchange = () =>import('../views/Exchange.vue')
+const Forum = () => import('../views/Forum.vue')
+const MyPosts = () => import('../views/MyPosts.vue')
+const MyCommentedPosts = () => import('../views/MyCommentedPosts.vue')
+const Announcements = () => import('../views/Announcements.vue')
 
 const routes = [
   { path: '/', name: 'Home', component: Home },
@@ -30,7 +34,12 @@ const routes = [
   { path: '/login', name: 'Login', component: Login },
   { path: '/organizer/manage', name: 'OrganizerManage', component: OrganizerManage },
   { path: '/admin/dashboard', name: 'AdminDashboard', component: AdminDashboard },
-  {path: '/exchange', name: 'Exchange', component:Exchange},
+  { path: '/exchange', name: 'Exchange', component: Exchange },
+  { path: '/forum', name: 'Forum', component: Forum },
+  { path: '/forum/post', name: 'ForumPost', component: Forum },
+  { path: '/forum/my-posts', name: 'MyPosts', component: MyPosts },
+  { path: '/forum/my-commented', name: 'MyCommentedPosts', component: MyCommentedPosts },
+  { path: '/announcements', name: 'Announcements', component: Announcements },
   { 
     path: '/personal', 
     component: PersonalCenter,

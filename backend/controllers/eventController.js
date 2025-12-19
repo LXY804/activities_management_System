@@ -1,6 +1,7 @@
 const sequelize = require('../config/database')
 const { QueryTypes } = require('sequelize')
 const { success, error } = require('../utils/response')
+const { callDeepseek } = require('../utils/deepseekClient')
 const path = require('path')
 
 const registrationStatusExpr = `
@@ -69,6 +70,41 @@ const generateActivityCode = () => {
   const d = String(now.getDate()).padStart(2, '0')
   const ts = now.getTime().toString().slice(-4)
   return `ACT${y}${m}${d}${ts}`
+}
+
+// 使用 DeepSeek 生成活动宣传文案
+exports.generateEventCopy = async (req, res) => {
+  try {
+    const { title, activityType, location, startTime, endTime, belongCollege, description } = req.body
+
+    const prompt = `
+你是校园活动宣传文案助手，请为下面的活动生成一段简短、有吸引力的中文宣传文案（80~120字）：
+
+活动名称：${title || '未命名活动'}
+活动类型：${activityType || '综合活动'}
+活动地点：${location || '地点待定'}
+活动时间：${startTime || '时间待定'} ${endTime ? `- ${endTime}` : ''}
+面向学院：${belongCollege || '全体学院'}
+已有简介：${description || '无'}
+
+要求：
+1. 面向大学生，语气积极、自然，有号召力，但不要夸张。
+2. 用第二人称（你/大家）来写，不要出现“我是某某大模型”之类的自我介绍。
+3. 不要输出标题，只输出正文一段话。
+    `.trim()
+
+    const messages = [
+      { role: 'system', content: '你是校园活动宣传文案助手。' },
+      { role: 'user', content: prompt }
+    ]
+
+    const copy = await callDeepseek(messages)
+
+    success(res, { copy: (copy || '').trim() }, '生成成功')
+  } catch (err) {
+    console.error('生成活动文案错误:', err)
+    error(res, '生成活动文案失败', 500)
+  }
 }
 
 // 组织者创建活动（提交审核）
@@ -168,7 +204,7 @@ exports.createEvent = async (req, res) => {
 
 exports.getEventList = async (req, res) => {
   try {
-    const { status, category_id, page = 1, pageSize = 10 } = req.query
+    const { status, category_id, keyword, page = 1, pageSize = 10 } = req.query
 
     const offset = (parseInt(page, 10) - 1) * parseInt(pageSize, 10)
     const limit = parseInt(pageSize, 10)
@@ -184,6 +220,11 @@ exports.getEventList = async (req, res) => {
     if (category_id) {
       whereClause += ' AND v.type_id = ?'
       replacements.push(category_id)
+    }
+
+    if (keyword) {
+      whereClause += ' AND v.title LIKE ?'
+      replacements.push(`%${keyword}%`)
     }
 
     const listSql = `
@@ -286,11 +327,12 @@ exports.getEventDetail = async (req, res) => {
 }
 
 exports.registerEvent = async (req, res) => {
+  const t = await sequelize.transaction()
   try {
     const { id } = req.params
     const userId = req.user.id
 
-    // 检查用户信息是否完善
+    // 1) 检查用户信息是否完善
     const userInfoSql = `
       SELECT user_id, student_id, real_name, college_id
       FROM users
@@ -298,84 +340,94 @@ exports.registerEvent = async (req, res) => {
     `
     const [userInfo] = await sequelize.query(userInfoSql, {
       replacements: [userId],
-      type: QueryTypes.SELECT
+      type: QueryTypes.SELECT,
+      transaction: t
     })
-
     if (!userInfo) {
+      await t.rollback()
       return error(res, '用户不存在', 404)
     }
-
-    // 检查必要信息是否完善（学号、真实姓名、学院）
     const missingFields = []
     if (!userInfo.student_id) missingFields.push('学号')
     if (!userInfo.real_name) missingFields.push('真实姓名')
     if (!userInfo.college_id) missingFields.push('学院')
-
     if (missingFields.length > 0) {
+      await t.rollback()
       return error(res, `请先完善个人信息：${missingFields.join('、')}`, 400, {
         requiresProfileCompletion: true,
-        missingFields: missingFields
+        missingFields
       })
     }
 
+    // 2) 锁定活动行，读取容量/时间（FOR UPDATE）
     const eventSql = `
       SELECT activity_id AS id, capacity, start_time, end_time
       FROM activities
       WHERE activity_id = ?
+      FOR UPDATE
     `
     const [event] = await sequelize.query(eventSql, {
       replacements: [id],
-      type: QueryTypes.SELECT
+      type: QueryTypes.SELECT,
+      transaction: t
     })
-
     if (!event) {
+      await t.rollback()
       return error(res, '活动不存在', 404)
     }
-
     const now = new Date()
-    // 规则调整：活动开始后不再允许报名（不再使用 end_time 判断结束）
     if (event.start_time && new Date(event.start_time) <= now) {
+      await t.rollback()
       return error(res, '活动已开始，无法报名', 400)
     }
 
+    // 3) 防重复报名（行锁检查）
     const existingSql = `
       SELECT apply_id FROM user_activity_apply 
       WHERE activity_id = ? AND user_id = ? AND apply_status IN (0, 1)
+      FOR UPDATE
     `
     const [existing] = await sequelize.query(existingSql, {
       replacements: [id, userId],
-      type: QueryTypes.SELECT
+      type: QueryTypes.SELECT,
+      transaction: t
     })
-
     if (existing) {
+      await t.rollback()
       return error(res, '您已报名此活动', 400)
     }
 
+    // 4) 容量检查（行锁统计）
     if (event.capacity) {
       const countSql = `
         SELECT COUNT(*) AS count
         FROM user_activity_apply
         WHERE activity_id = ? AND apply_status IN (0, 1)
+        FOR UPDATE
       `
       const [count] = await sequelize.query(countSql, {
         replacements: [id],
-        type: QueryTypes.SELECT
+        type: QueryTypes.SELECT,
+        transaction: t
       })
-
       if (count.count >= event.capacity) {
+        await t.rollback()
         return error(res, '活动已满员', 400)
       }
     }
 
+    // 5) 插入报名
     const insertSql = `
       INSERT INTO user_activity_apply (activity_id, user_id, apply_status, applied_at)
       VALUES (?, ?, 0, NOW())
     `
     const [registrationId] = await sequelize.query(insertSql, {
       replacements: [id, userId],
-      type: QueryTypes.INSERT
+      type: QueryTypes.INSERT,
+      transaction: t
     })
 
+    // 6) 查询结果返回
     const selectSql = `
       SELECT 
         ua.apply_id AS registration_id,
@@ -386,14 +438,16 @@ exports.registerEvent = async (req, res) => {
       FROM user_activity_apply ua
       WHERE ua.apply_id = ?
     `
-
     const [registration] = await sequelize.query(selectSql, {
       replacements: [registrationId],
-      type: QueryTypes.SELECT
+      type: QueryTypes.SELECT,
+      transaction: t
     })
 
+    await t.commit()//提交
     success(res, registration, '报名成功，等待审核')
   } catch (err) {
+    await t.rollback()
     console.error('报名错误:', err)
     error(res, '服务器错误', 500)
   }

@@ -26,6 +26,9 @@
         <div class="comment-footer">
           <span>评论时间：{{ comment.date }}</span>
           <span>状态：{{ comment.status }}</span>
+          <button class="delete-btn" @click="onDelete(comment.id)" :disabled="deletingId === comment.id">
+            {{ deletingId === comment.id ? '删除中...' : '删除' }}
+          </button>
         </div>
       </div>
     </div>
@@ -38,13 +41,14 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { fetchMyComments } from '@/api/comment'
+import { fetchMyComments, deleteMyComment } from '@/api/comment'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const comments = ref([])
 const loading = ref(false)
 const errorMsg = ref('')
+const deletingId = ref(null)
 
 const requireLogin = () => {
   if (!localStorage.getItem('token')) {
@@ -78,6 +82,21 @@ const loadComments = async () => {
     errorMsg.value = err?.message || '加载评论失败'
   } finally {
     loading.value = false
+  }
+}
+
+const onDelete = async (id) => {
+  if (!requireLogin()) return
+  if (!confirm('确认删除这条评论吗？删除后不可恢复。')) return
+  deletingId.value = id
+  try {
+    await deleteMyComment(id)
+    comments.value = comments.value.filter(c => c.id !== id)
+  } catch (err) {
+    console.error(err)
+    alert(err?.message || '删除失败')
+  } finally {
+    deletingId.value = null
   }
 }
 

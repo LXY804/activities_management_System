@@ -29,6 +29,11 @@
           :class="{ active: currentView === 'checkin' }"
           @click="currentView = 'checkin'"
         >签到管理</a>
+        <a 
+          class="menu__item" 
+          :class="{ active: currentView === 'announcement' }"
+          @click="currentView = 'announcement'"
+        >申请公告</a>
       </nav>
     </aside>
 
@@ -52,7 +57,19 @@
               </div>
               <div class="form-field span-2">
                 <label>活动简介</label>
-                <textarea v-model="form.description" rows="3" placeholder="简要介绍活动亮点与目标"></textarea>
+                <textarea
+                  v-model="form.description"
+                  rows="3"
+                  placeholder="简要介绍活动亮点与目标，或点击下方按钮让 AI 帮你生成"
+                ></textarea>
+                <button
+                  type="button"
+                  class="btn ai-btn"
+                  :disabled="genCopyLoading"
+                  @click="handleGenerateCopy"
+                >
+                  {{ genCopyLoading ? 'AI 正在生成...' : 'AI 生成活动文案' }}
+                </button>
               </div>
               <div class="form-field">
                 <label>活动类型 <span>*</span></label>
@@ -335,6 +352,59 @@
           <p>功能开发中...</p>
         </div>
       </div>
+
+      <!-- 申请公告视图 -->
+      <div v-if="currentView === 'announcement'">
+        <section class="form-section">
+          <div class="section-header">
+            <h2>申请发布系统公告</h2>
+            <p>填写公告内容，提交后等待管理员审核</p>
+          </div>
+          <div class="form-grid">
+            <div class="form-field span-2">
+              <label>公告标题 <span>*</span></label>
+              <input v-model="announcementForm.title" type="text" placeholder="请输入公告标题" required />
+            </div>
+            <div class="form-field span-2">
+              <label>公告内容 <span>*</span></label>
+              <textarea
+                v-model="announcementForm.content"
+                rows="6"
+                placeholder="请输入公告内容"
+                required
+              ></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-primary" @click="handleApplyAnnouncement">
+              提交申请
+            </button>
+          </div>
+        </section>
+
+        <section class="form-section" style="margin-top: 30px;">
+          <div class="section-header">
+            <h2>我的公告申请记录</h2>
+            <p>查看申请状态和确认数</p>
+          </div>
+          <div v-if="myAnnouncements.length" class="announcement-list">
+            <div v-for="item in myAnnouncements" :key="item.id" class="announcement-item">
+              <div>
+                <h3>{{ item.title }}</h3>
+                <p class="announcement-meta">
+                  <span>状态：{{ getStatusText(item.status, item.admin_check) }}</span>
+                  <span v-if="item.published_at">发布时间：{{ formatTime(item.published_at) }}</span>
+                </p>
+                <p v-if="item.check_remark" class="remark">驳回原因：{{ item.check_remark }}</p>
+                <p class="confirmation-count">确认数：{{ item.confirmation_count || 0 }}</p>
+              </div>
+            </div>
+          </div>
+          <div v-else class="empty-state">
+            <p>暂无申请记录</p>
+          </div>
+        </section>
+      </div>
     </main>
       </div>
     </div>
@@ -342,15 +412,19 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import NavBar from '@/components/NavBar.vue'
 import libraryImg from '@/assets/图书馆.webp'
-import { createEvent } from '@/api/event'
+import { createEvent, generateEventCopy } from '@/api/event'
 import {
   fetchMyActivities as fetchOrganizerActivities,
   fetchActivityApplications,
   updateApplicationStatus
 } from '@/api/organizer'
+import {
+  applyAnnouncement,
+  fetchOrganizerConfirmationStats
+} from '@/api/announcement'
 
 const API_ORIGIN = (
   import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
@@ -381,6 +455,63 @@ const bgStyle = {
   minHeight: '100vh'
 }
 const currentView = ref('publish')
+
+// 公告相关
+const announcementForm = ref({
+  title: '',
+  content: ''
+})
+const myAnnouncements = ref([])
+
+const getStatusText = (status, adminCheck) => {
+  if (status === 1) return '已发布'
+  if (status === 2) return '已驳回'
+  if (adminCheck === 0) return '待审核'
+  return '未知状态'
+}
+
+const formatTime = (timeStr) => {
+  if (!timeStr) return ''
+  const date = new Date(timeStr)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const handleApplyAnnouncement = async () => {
+  if (!announcementForm.value.title || !announcementForm.value.content) {
+    alert('请填写标题和内容')
+    return
+  }
+  try {
+    await applyAnnouncement(announcementForm.value)
+    alert('申请已提交，等待管理员审核')
+    announcementForm.value = { title: '', content: '' }
+    loadMyAnnouncements()
+  } catch (err) {
+    alert(err?.message || '提交失败')
+  }
+}
+
+const loadMyAnnouncements = async () => {
+  try {
+    const list = await fetchOrganizerConfirmationStats()
+    myAnnouncements.value = list || []
+  } catch (err) {
+    console.error('加载公告记录失败:', err)
+  }
+}
+
+// 监听视图切换
+watch(() => currentView.value, (newView) => {
+  if (newView === 'announcement') {
+    loadMyAnnouncements()
+  }
+})
 const selectedActivity = ref(null)
 const currentApplications = ref([])
 
@@ -411,6 +542,7 @@ const getDefaultForm = () => ({
 
 // 表单数据
 const form = reactive(getDefaultForm())
+const genCopyLoading = ref(false)
 
 // 我的活动列表
 const myActivities = ref([])
@@ -496,6 +628,40 @@ const handleSubmit = async () => {
     clearDraft()
   } catch (err) {
     window.alert(err?.message || '提交失败，请重试')
+  }
+}
+
+// 使用大模型生成活动简介文案
+const handleGenerateCopy = async () => {
+  if (genCopyLoading.value) return
+  // 基本必填信息建议先填“活动名称”和“类型”，效果更好
+  if (!form.title || !form.activityType) {
+    window.alert('请先填写活动名称和活动类型，再让 AI 帮你生成文案')
+    return
+  }
+  genCopyLoading.value = true
+  try {
+    const payload = {
+      title: form.title,
+      activityType: form.activityType,
+      location: form.location,
+      startTime: form.startTime,
+      endTime: form.endTime,
+      belongCollege: form.belongCollege,
+      description: form.description || form.detailRichText
+    }
+    const res = await generateEventCopy(payload)
+    const copy = res?.data?.copy || res?.copy
+    if (copy) {
+      form.description = copy
+    } else {
+      window.alert('AI 暂时没有返回内容，请稍后再试')
+    }
+  } catch (err) {
+    console.error(err)
+    window.alert(err?.message || '生成文案失败，请稍后重试')
+  } finally {
+    genCopyLoading.value = false
   }
 }
 
@@ -959,6 +1125,21 @@ const isUpdating = (id) => updatingApplicationId.value === id
   background:#f5f5f5;
 }
 
+/* AI 生成按钮样式 */
+.ai-btn{
+  margin-top:8px;
+  padding:8px 16px;
+  font-size:13px;
+  background:#2563eb;
+  color:#fff;
+  box-shadow:0 6px 14px rgba(37,99,235,0.25);
+}
+.ai-btn:disabled{
+  opacity:.7;
+  cursor:default;
+  box-shadow:none;
+}
+
 /* 活动列表样式 */
 .activities-container{
   max-width:1100px;
@@ -1318,5 +1499,46 @@ const isUpdating = (id) => updatingApplicationId.value === id
     width: 100%;
     justify-content: flex-end;
   }
+}
+
+.announcement-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.announcement-item {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.announcement-item h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.announcement-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 14px;
+  color: #999;
+  margin-bottom: 8px;
+}
+
+.remark {
+  color: #f44336;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.confirmation-count {
+  color: #0b4ea2;
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 8px;
 }
 </style>
