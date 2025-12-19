@@ -39,11 +39,16 @@
           :class="{ active: activeMenu === 'announcements' }"
           @click="activeMenu = 'announcements'"
         >系统公告</a>
+        <a 
+          class="sidebar__item"
+          :class="{ active: activeMenu === 'gifts' }"
+          @click="activeMenu = 'gifts'"
+        >积分礼品</a>
       </nav>
     </aside>
 
     <main class="admin-content">
-      <header class="admin-header" v-if="activeMenu !== 'announcements'">
+      <header class="admin-header" v-if="activeMenu !== 'announcements' && activeMenu !== 'gifts' && activeMenu !== 'news'">
         <div>
           <h1>管理后台</h1>
           <p>系统审核、用户管理与平台统计</p>
@@ -53,29 +58,22 @@
         </div>
       </header>
 
-      <section class="admin-grid" v-if="activeMenu !== 'announcements'">
+      <section class="admin-grid" v-if="activeMenu !== 'announcements' && activeMenu !== 'gifts' && activeMenu !== 'news'">
         <article class="admin-card">
           <h3>待审核活动</h3>
           <p class="admin-card__value">{{ reviewList.length }}</p>
-          <p class="admin-card__desc">提交待审核，需尽快处理</p>
         </article>
         <article class="admin-card">
-          <h3>本月新增用户</h3>
+          <h3>待审核帖子</h3>
+          <p class="admin-card__value">{{ pendingPostsCount }}</p>
+        </article>
+        <article class="admin-card">
+          <h3>待审核公告</h3>
+          <p class="admin-card__value">{{ pendingAnnouncementsCount }}</p>
+        </article>
+        <article class="admin-card">
+          <h3>新增用户</h3>
           <p class="admin-card__value">{{ newUsersThisMonth.count }}</p>
-          <p class="admin-card__desc" v-if="newUsersThisMonth.growthRate > 0">
-            较上月提升 {{ newUsersThisMonth.growthRate }}%
-          </p>
-          <p class="admin-card__desc" v-else-if="newUsersThisMonth.growthRate < 0">
-            较上月下降 {{ Math.abs(newUsersThisMonth.growthRate) }}%
-          </p>
-          <p class="admin-card__desc" v-else>
-            与上月持平
-          </p>
-        </article>
-        <article class="admin-card">
-          <h3>系统运行状态</h3>
-          <p class="admin-card__value status good">正常</p>
-          <p class="admin-card__desc">服务全部可用</p>
         </article>
       </section>
 
@@ -421,6 +419,149 @@
           </article>
         </div>
 
+        <!-- 积分礼品管理面板 -->
+        <div v-if="activeMenu === 'gifts'" class="gifts-container">
+          <article class="panel">
+            <header class="panel-header-with-btn">
+              <h2>礼品列表</h2>
+              <button class="btn btn-primary" @click="showGiftForm = true">新增礼品</button>
+            </header>
+            <div v-if="giftsList.length" class="gifts-list">
+              <div v-for="item in giftsList" :key="item.id" class="gift-item">
+                <div class="gift-image" v-if="item.image_url">
+                  <img :src="buildImageUrl(item.image_url)" alt="礼品图片" />
+                </div>
+                <div class="gift-info">
+                  <h3>{{ item.name }}</h3>
+                  <p class="gift-desc">{{ item.description || '暂无描述' }}</p>
+                  <div class="gift-meta">
+                    <span>所需积分：{{ item.points_required }}</span>
+                    <span>库存：{{ item.stock }}</span>
+                  </div>
+                </div>
+                <div class="gift-actions">
+                  <button class="btn btn-add-stock" @click="handleAddStock(item)">增加库存</button>
+                  <button class="btn btn-delete" @click="handleDeleteGift(item.id)">删除</button>
+                </div>
+              </div>
+            </div>
+            <p v-else class="empty-text">暂无礼品</p>
+          </article>
+        </div>
+
+        <!-- 新增礼品弹窗 -->
+        <div v-if="showGiftForm" class="modal-overlay" @click="closeGiftForm">
+          <div class="modal-content" @click.stop>
+            <div class="modal-header">
+              <h2>新增礼品</h2>
+              <button class="modal-close" @click="closeGiftForm">×</button>
+            </div>
+            <div class="modal-body">
+              <div class="gift-form">
+                <div class="form-group">
+                  <label>礼品名称 <span>*</span></label>
+                  <input 
+                    v-model="giftForm.name" 
+                    type="text" 
+                    placeholder="请输入礼品名称" 
+                    class="form-input"
+                  />
+                </div>
+                <div class="form-group">
+                  <label>礼品描述</label>
+                  <textarea 
+                    v-model="giftForm.description" 
+                    placeholder="请输入礼品描述" 
+                    class="form-textarea"
+                  ></textarea>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>所需积分 <span>*</span></label>
+                    <input 
+                      v-model.number="giftForm.points_required" 
+                      type="number" 
+                      placeholder="请输入所需积分" 
+                      class="form-input"
+                      min="1"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label>库存数量 <span>*</span></label>
+                    <input 
+                      v-model.number="giftForm.stock" 
+                      type="number" 
+                      placeholder="请输入库存数量" 
+                      class="form-input"
+                      min="0"
+                    />
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>礼品图片</label>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    @change="handleGiftImageChange"
+                    class="file-input"
+                  />
+                  <div v-if="giftImagePreview" class="image-preview">
+                    <img :src="giftImagePreview" alt="预览" />
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button class="btn btn-secondary" @click="closeGiftForm">取消</button>
+                  <button class="btn btn-primary" @click="handleCreateGift">确认新增</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 增加库存弹窗 -->
+        <div v-if="showAddStockModal" class="modal-overlay" @click="closeAddStockModal">
+          <div class="modal-content modal-small" @click.stop>
+            <div class="modal-header">
+              <h2>增加库存</h2>
+              <button class="modal-close" @click="closeAddStockModal">×</button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label>礼品名称</label>
+                <input 
+                  :value="currentGift?.name" 
+                  type="text" 
+                  class="form-input"
+                  disabled
+                />
+              </div>
+              <div class="form-group">
+                <label>当前库存</label>
+                <input 
+                  :value="currentGift?.stock" 
+                  type="number" 
+                  class="form-input"
+                  disabled
+                />
+              </div>
+              <div class="form-group">
+                <label>增加数量 <span>*</span></label>
+                <input 
+                  v-model.number="addStockAmount" 
+                  type="number" 
+                  placeholder="请输入要增加的数量" 
+                  class="form-input"
+                  min="1"
+                />
+              </div>
+              <div class="form-actions">
+                <button class="btn btn-secondary" @click="closeAddStockModal">取消</button>
+                <button class="btn btn-primary" @click="handleConfirmAddStock">确认增加</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- 论坛管理面板 -->
         <div v-if="activeMenu === 'forum'" class="forum-management-container">
           <article class="panel">
@@ -489,6 +630,12 @@ import {
   updateNews,
   deleteNews
 } from '@/api/news'
+import {
+  createGift,
+  fetchAllGifts,
+  updateGift,
+  deleteGift
+} from '@/api/gift'
 
 // 当前活动菜单
 const activeMenu = ref('review')
@@ -503,6 +650,8 @@ const announcementStats = ref([])
 
 // 论坛管理相关
 const pendingPosts = ref([])
+const pendingPostsCount = ref(0)
+const pendingAnnouncementsCount = ref(0)
 
 // 资讯管理相关
 const newsForm = ref({
@@ -510,6 +659,21 @@ const newsForm = ref({
   content: ''
 })
 const newsList = ref([])
+
+// 积分礼品管理相关
+const giftForm = ref({
+  name: '',
+  description: '',
+  points_required: 0,
+  stock: 0
+})
+const giftImageFile = ref(null)
+const giftImagePreview = ref(null)
+const giftsList = ref([])
+const showGiftForm = ref(false)
+const showAddStockModal = ref(false)
+const currentGift = ref(null)
+const addStockAmount = ref(0)
 
 const API_ORIGIN = (
   import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
@@ -591,6 +755,8 @@ onMounted(() => {
   loadNewUsersThisMonth() // 加载本月新增用户
   loadSystemConfig() // 加载系统配置
   loadActivityStats(selectedMonth.value) // 加载当前月份的统计数据
+  loadPendingPosts() // 加载待审核帖子数量
+  loadPendingAnnouncements() // 加载待审核公告数量
   // 如果初始菜单是用户管理，则加载数据
   if (activeMenu.value === 'users') {
     loadUsers()
@@ -604,6 +770,8 @@ const approveActivity = async (index) => {
     await approveEvent(activity.creationId)
     reviewList.value.splice(index, 1)
     showNotification(`✓ 已通过 "${activity.name}" 的审核`, 'success')
+    // 重新加载待审核活动列表以更新计数
+    loadPendingEvents()
   } catch (e) {
     console.error('审核通过失败:', e)
     showNotification('审核通过失败，请稍后重试', 'warning')
@@ -620,6 +788,8 @@ const rejectActivity = async (index) => {
     await rejectEvent(activity.creationId, remark)
     reviewList.value.splice(index, 1)
     showNotification(`✗ 已驳回 "${activity.name}" 的审核请求`, 'warning')
+    // 重新加载待审核活动列表以更新计数
+    loadPendingEvents()
   } catch (e) {
     console.error('驳回审核失败:', e)
     showNotification('驳回审核失败，请稍后重试', 'warning')
@@ -905,10 +1075,12 @@ const showAllData = () => {
 const loadPendingAnnouncements = async () => {
   try {
     const list = await fetchPendingAnnouncements()
-    pendingAnnouncements.value = list
+    pendingAnnouncements.value = list || []
+    pendingAnnouncementsCount.value = list?.length || 0
   } catch (err) {
     console.error('获取待审核公告失败:', err)
     showNotification('获取待审核公告失败', 'error')
+    pendingAnnouncementsCount.value = 0
   }
 }
 
@@ -942,6 +1114,8 @@ const handleApproveAnnouncement = async (id) => {
     showNotification('审核通过', 'success')
     loadPendingAnnouncements()
     loadAnnouncementStats()
+    // 更新统计数据
+    pendingAnnouncementsCount.value = Math.max(0, pendingAnnouncementsCount.value - 1)
   } catch (err) {
     showNotification(err?.message || '操作失败', 'error')
   }
@@ -953,6 +1127,8 @@ const handleRejectAnnouncement = async (id) => {
     await rejectAnnouncement(id, remark)
     showNotification('已驳回', 'success')
     loadPendingAnnouncements()
+    // 更新统计数据
+    pendingAnnouncementsCount.value = Math.max(0, pendingAnnouncementsCount.value - 1)
   } catch (err) {
     showNotification(err?.message || '操作失败', 'error')
   }
@@ -975,9 +1151,11 @@ const formatTime = (timeStr) => {
 const loadPendingPosts = async () => {
   try {
     const list = await fetchPendingPosts()
-    pendingPosts.value = list
+    pendingPosts.value = list || []
+    pendingPostsCount.value = list?.length || 0
   } catch (err) {
     console.error('获取待审核帖子失败:', err)
+    pendingPostsCount.value = 0
     showNotification('获取待审核帖子失败', 'error')
   }
 }
@@ -987,6 +1165,8 @@ const handleApprovePost = async (id) => {
     await approvePost(id)
     showNotification('审核通过', 'success')
     loadPendingPosts()
+    // 更新统计数据
+    pendingPostsCount.value = Math.max(0, pendingPostsCount.value - 1)
   } catch (err) {
     showNotification(err?.message || '操作失败', 'error')
   }
@@ -998,6 +1178,8 @@ const handleRejectPost = async (id) => {
     await rejectPost(id, remark)
     showNotification('已驳回', 'success')
     loadPendingPosts()
+    // 更新统计数据
+    pendingPostsCount.value = Math.max(0, pendingPostsCount.value - 1)
   } catch (err) {
     showNotification(err?.message || '操作失败', 'error')
   }
@@ -1059,6 +1241,121 @@ const handleDeleteNews = async (id) => {
   }
 }
 
+// 积分礼品管理功能
+const loadGiftsList = async () => {
+  try {
+    const list = await fetchAllGifts()
+    giftsList.value = list || []
+  } catch (err) {
+    console.error('加载礼品列表失败:', err)
+    showNotification('加载礼品列表失败', 'error')
+  }
+}
+
+const handleGiftImageChange = (event) => {
+  const file = event.target.files?.[0]
+  if (file) {
+    giftImageFile.value = file
+    if (giftImagePreview.value) {
+      URL.revokeObjectURL(giftImagePreview.value)
+    }
+    giftImagePreview.value = URL.createObjectURL(file)
+  }
+}
+
+const closeGiftForm = () => {
+  showGiftForm.value = false
+  giftForm.value = {
+    name: '',
+    description: '',
+    points_required: 0,
+    stock: 0
+  }
+  giftImageFile.value = null
+  if (giftImagePreview.value) {
+    URL.revokeObjectURL(giftImagePreview.value)
+    giftImagePreview.value = null
+  }
+}
+
+const handleCreateGift = async () => {
+  if (!giftForm.value.name || !giftForm.value.points_required || giftForm.value.stock === undefined) {
+    showNotification('请填写礼品名称、所需积分和库存数量', 'warning')
+    return
+  }
+
+  if (giftForm.value.points_required <= 0) {
+    showNotification('所需积分必须大于0', 'warning')
+    return
+  }
+
+  if (giftForm.value.stock < 0) {
+    showNotification('库存数量不能为负数', 'warning')
+    return
+  }
+
+  try {
+    await createGift({
+      ...giftForm.value,
+      image: giftImageFile.value
+    })
+    showNotification('礼品创建成功', 'success')
+    closeGiftForm()
+    loadGiftsList()
+  } catch (err) {
+    showNotification(err?.message || '创建失败', 'error')
+  }
+}
+
+const handleAddStock = (item) => {
+  currentGift.value = item
+  addStockAmount.value = 0
+  showAddStockModal.value = true
+}
+
+const closeAddStockModal = () => {
+  showAddStockModal.value = false
+  currentGift.value = null
+  addStockAmount.value = 0
+}
+
+const handleConfirmAddStock = async () => {
+  if (!addStockAmount.value || addStockAmount.value <= 0) {
+    showNotification('请输入有效的增加数量', 'warning')
+    return
+  }
+
+  if (!currentGift.value) {
+    return
+  }
+
+  try {
+    const newStock = currentGift.value.stock + addStockAmount.value
+    await updateGift(currentGift.value.id, {
+      name: currentGift.value.name,
+      description: currentGift.value.description || '',
+      points_required: currentGift.value.points_required,
+      stock: newStock
+    })
+    showNotification('库存增加成功', 'success')
+    closeAddStockModal()
+    loadGiftsList()
+  } catch (err) {
+    showNotification(err?.message || '增加库存失败', 'error')
+  }
+}
+
+const handleDeleteGift = async (id) => {
+  if (!confirm('确认删除此礼品吗？')) return
+  try {
+    await deleteGift(id)
+    showNotification('删除成功', 'success')
+    loadGiftsList()
+  } catch (err) {
+    showNotification(err?.message || '删除失败', 'error')
+  }
+}
+
 // 监听菜单切换，加载对应数据
 watch(() => activeMenu.value, (newMenu) => {
   if (newMenu === 'announcements') {
@@ -1068,6 +1365,8 @@ watch(() => activeMenu.value, (newMenu) => {
     loadPendingPosts()
   } else if (newMenu === 'news') {
     loadNewsList()
+  } else if (newMenu === 'gifts') {
+    loadGiftsList()
   }
 })
 
@@ -1147,23 +1446,31 @@ watch(() => activeMenu.value, (newMenu) => {
 }
 .admin-grid{
   display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:20px;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:16px;
 }
 .admin-card{
   background:#fff;
-  border-radius:16px;
-  padding:20px;
-  box-shadow:0 10px 25px rgba(0,0,0,0.06);
+  border-radius:12px;
+  padding:16px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.05);
+}
+.admin-card h3{
+  font-size:14px;
+  font-weight:500;
+  color:#666;
+  margin:0 0 8px 0;
 }
 .admin-card__value{
-  font-size:32px;
+  font-size:24px;
   font-weight:700;
-  margin:16px 0 6px;
+  margin:0;
+  color:#333;
 }
 .admin-card__desc{
   color:#888;
-  font-size:14px;
+  font-size:12px;
+  margin-top:4px;
 }
 .admin-card .status{
   display:inline-block;
@@ -1814,6 +2121,12 @@ watch(() => activeMenu.value, (newMenu) => {
   .admin-grid{
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
+}
+
+@media (max-width: 768px) {
+  .admin-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
   .review-container{
     grid-template-columns:1fr;
   }
@@ -2005,6 +2318,237 @@ watch(() => activeMenu.value, (newMenu) => {
 
 .btn-delete:hover {
   opacity: 0.9;
+}
+
+.gifts-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.panel-header-with-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gift-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.form-group label span {
+  color: #f44336;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-input {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #0b4ea2;
+}
+
+.form-input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.file-input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.image-preview {
+  margin-top: 12px;
+}
+
+.image-preview img {
+  max-width: 200px;
+  max-height: 150px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+}
+
+.gifts-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.gift-item {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gift-image {
+  width: 100%;
+  height: 150px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #f5f5f5;
+}
+
+.gift-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.gift-info {
+  flex: 1;
+}
+
+.gift-info h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.gift-desc {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.gift-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 14px;
+  color: #999;
+}
+
+.gift-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.btn-add-stock {
+  background: #4caf50;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.3s;
+}
+
+.btn-add-stock:hover {
+  background: #45a049;
+}
+
+/* 弹窗样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #fff;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-small {
+  max-width: 400px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  color: #333;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.btn-secondary {
+  background: #999;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.3s;
+}
+
+.btn-secondary:hover {
+  background: #777;
 }
 </style>
 

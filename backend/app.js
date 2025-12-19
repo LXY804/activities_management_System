@@ -41,6 +41,7 @@ app.use('/api', require('./routes/chat'))
 app.use('/api/forum', require('./routes/forum'))
 app.use('/api/announcements', require('./routes/announcements'))
 app.use('/api/news', require('./routes/news'))
+app.use('/api/gifts', require('./routes/gifts'))
 // 健康检查
 app.get('/api/health', (req, res) => {
   res.json({ code: 200, message: '服务运行正常' })
