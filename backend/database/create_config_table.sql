@@ -1,3 +1,5 @@
+USE activity_management;
+
 -- 系统配置表
 CREATE TABLE IF NOT EXISTS system_config (
   config_id INT PRIMARY KEY AUTO_INCREMENT,

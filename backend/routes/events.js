@@ -42,6 +42,8 @@ const uploadCover = multer({
 // 学生 / 公共接口
 router.get('/types', eventController.getActivityTypes) // 获取活动类型列表
 router.get('/', eventController.getEventList)
+router.get('/highlights', eventController.getHighlightedEvents)
+router.get('/week', eventController.getWeeklyEvents)
 router.get('/:id', eventController.getEventDetail)
 router.post('/:id/register', authenticate, eventController.registerEvent)
 

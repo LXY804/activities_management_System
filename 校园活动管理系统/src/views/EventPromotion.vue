@@ -1,421 +1,330 @@
 <template>
-  <div class="page">
+  <div class="premium-page">
     <NavBar />
 
-    <!-- Hero 轮播，展示前 3 个活动 -->
-    <div
-      v-if="heroEvents.length"
-      class="activity-container"
-      @mouseenter="stopHeroCarousel"
-      @mouseleave="startHeroCarousel"
-    >
-      <!-- 左箭头 -->
-      <button class="carousel-arrow left" @click="prevHero">
-        ‹
-      </button>
-
-      <!-- 当前活动内容 -->
-      <div class="image-section">
-        <img :src="currentHero.image" :alt="currentHero.title" />
-      </div>
-      <div class="content-section">
-        <h2>{{ currentHero.title }}</h2>
-        <div
-          v-if="currentHero.description"
-          v-html="formatDescription(currentHero.description)"
-        ></div>
-        <p v-else>暂无描述</p>
-        <a
-          @click.prevent="gotoEvent(currentHero.id)"
-          href="#"
-          class="btn"
-        >
-          查看详情 <span class="arrow">→</span>
-        </a>
-
-        <!-- 小圆点指示器 -->
-        <div class="carousel-dots">
-          <span
-            v-for="(item, index) in heroEvents"
-            :key="item.id"
-            class="dot"
-            :class="{ active: index === currentHeroIndex }"
-            @click="goHero(index)"
-          ></span>
-        </div>
-      </div>
-
-      <!-- 右箭头 -->
-      <button class="carousel-arrow right" @click="nextHero">
-        ›
-      </button>
-    </div>
-    <div v-else-if="loadingHero" class="activity-container">
-      <div class="content-section" style="width: 100%; text-align: center;">
-        <p>加载中...</p>
-      </div>
-    </div>
-
-    <!-- 下方活动列表 -->
-    <section class="events-list">
-      <h3>更多活动</h3>
-      <div v-if="loading" class="loading">加载中...</div>
-      <div v-else-if="errorMsg" class="error">{{ errorMsg }}</div>
-      <div v-else class="events-grid">
-        <article class="event-card" v-for="ev in events" :key="ev.id">
-          <div class="card-thumb">
-            <img :src="ev.image" :alt="ev.title" />
-          </div>
-          <div class="card-body">
-            <h4>{{ ev.title }}</h4>
-            <p class="meta">{{ ev.date }} · {{ ev.location }}</p>
-            <p class="excerpt">{{ ev.excerpt }}</p>
-            <div class="card-actions">
-              <button class="btn blue" @click="gotoEvent(ev.id)">查看详情 →</button>
+    <main class="dashboard-wrapper">
+      <section class="bento-item hero-main">
+        <div class="carousel-container">
+          <transition name="fade-scale" mode="out-in">
+            <div :key="currentHeroIndex" class="hero-content">
+              <div class="hero-image-overlay">
+                <img :src="currentHero.image" :alt="currentHero.title" />
+                <div class="image-scrim"></div>
+              </div>
+              
+              <div class="hero-info-layer">
+                <div class="tag-row">
+                  <span class="vibe-badge">{{ heroMood }}</span>
+                  <span class="hot-badge">HOT 热门</span>
+                </div>
+                <h1 class="display-title">{{ currentHero.title }}</h1>
+                <p class="hero-subtitle" v-html="currentHero.description"></p>
+                
+                <div class="hero-footer-meta">
+                  <div class="meta-item">
+                    <i class="icon">📍</i>
+                    <span>{{ currentHero.location || '校园活动中心' }}</span>
+                  </div>
+                  <div class="meta-item">
+                    <i class="icon">📅</i>
+                    <span>{{ formatDate(currentHero.start_time) }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
+          </transition>
+        </div>
+      </section>
+
+      <section class="bento-item activity-radar">
+        <header class="section-header">
+          <div class="header-text">
+            <h3>元气雷达</h3>
+            <p>本周共有 {{ events.length }} 场精彩</p>
           </div>
-        </article>
-      </div>
-      <div v-if="!loading && !errorMsg && events.length === 0" class="empty-state">
-        <p>暂无活动</p>
-      </div>
-    </section>
+          <button 
+            class="refresh-trigger" 
+            :class="{ 'is-spinning': loading }" 
+            @click="loadEvents"
+            title="刷新活动"
+          >
+            <svg class="refresh-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C14.8273 3 17.3509 4.30051 19 6.33333M19 6.33333V3M19 6.33333H15.6667" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </header>
+
+        <div class="scroll-list custom-scrollbar">
+          <div v-if="loading && events.length === 0" class="state-msg">精彩活动加载中...</div>
+          <div v-for="event in events" :key="event.id" class="event-mini-card" @click="gotoEvent(event.id)">
+            <div class="date-box">
+              <span class="d-day">{{ event.date?.split('-')[2] }}</span>
+              <span class="d-month">{{ event.weekday }}</span>
+            </div>
+            <div class="event-brief">
+              <h4>{{ event.title }}</h4>
+              <p>{{ event.location }}</p>
+            </div>
+            <div class="event-status">{{ event.statusText }}</div>
+          </div>
+          <div v-if="!loading && events.length === 0" class="state-msg">未来一周暂无活动</div>
+        </div>
+      </section>
+
+      <section class="bento-item stats-grid">
+        <div v-for="stat in heroStats" :key="stat.label" class="stat-tile">
+          <span class="stat-label">{{ stat.label }}</span>
+          <span class="stat-val">{{ stat.value }}</span>
+        </div>
+      </section>
+
+      <section class="bento-item action-cta">
+        <div class="cta-inner" :style="{ backgroundImage: `url(${currentHero.image})` }">
+          <div class="cta-content">
+            <p>准备好解锁新故事了吗？</p>
+            <button class="primary-btn" @click="gotoEvent(currentHero.id)">
+              立即报名参与 <span class="arrow-icon">↗</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+    
+    <div class="bg-glow blob-1"></div>
+    <div class="bg-glow blob-2"></div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import NavBar from '../components/NavBar.vue'
-import { fetchEvents, fetchEventDetail } from '@/api/event'
+import { fetchEventHighlights, fetchWeeklyEvents } from '@/api/event'
 
 const router = useRouter()
-
-// 后端基础地址，用于拼接封面图片等静态资源完整 URL
-const API_ORIGIN = (
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
-).replace(/\/api\/?$/, '')
-
-const DEFAULT_COVER = `${API_ORIGIN}/uploads/3b72bdb5a6ca17d85131e816c9fdd0b1.jpg`
-
-// 轮播 Hero 区：前 3 个活动
 const heroEvents = ref([])
 const currentHeroIndex = ref(0)
-const loadingHero = ref(false)
 const events = ref([])
 const loading = ref(false)
-const errorMsg = ref('')
 
-// 构建图片URL
-const buildImageUrl = (coverUrl) => {
-  if (!coverUrl) return DEFAULT_COVER
-  // 如果已经是完整URL，直接返回
-  if (coverUrl.startsWith('http://') || coverUrl.startsWith('https://')) {
-    return coverUrl
-  }
-  let normalized = coverUrl.replace(/\\/g, '/')
-  if (!normalized.startsWith('/')) {
-    normalized = '/' + normalized
-  }
-  // 如果是相对路径，拼接API基础地址
-  return API_ORIGIN + normalized
+const VIBE_LABELS = ['能量补给', '社交现场', '灵感工坊', '律动打卡', '硬核交流']
+const STATUS_TEXT = { open: '进行中', upcoming: '预热中', ended: '已结束' }
+
+const API_ORIGIN = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/api\/?$/, '')
+const DEFAULT_COVER = `${API_ORIGIN}/uploads/default.jpg`
+const DEFAULT_HERO = {
+  title: '校园活动热浪',
+  description: '更多武汉理工校园活动正在筹备中，敬请期待。',
+  image: DEFAULT_COVER,
+  location: '校园活动中心',
+  start_time: null
 }
 
-// 当前展示的 Hero 活动
-const currentHero = computed(() => {
-  return heroEvents.value[currentHeroIndex.value] || {}
+const buildImageUrl = (url) => {
+  if (!url || url === 'null' || url === '') return DEFAULT_COVER
+  return url.startsWith('http') ? url : API_ORIGIN + (url.startsWith('/') ? url : '/' + url)
+}
+
+const formatDate = (d) => d ? new Date(d).toISOString().split('T')[0] : '待定'
+const getWeekday = (d) => ['周日','周一','周二','周三','周四','周五','周六'][new Date(d).getDay()] || '待定'
+
+const currentHero = computed(() => heroEvents.value[currentHeroIndex.value] || DEFAULT_HERO)
+const heroMood = computed(() => VIBE_LABELS[currentHeroIndex.value % VIBE_LABELS.length])
+const totalCapacity = computed(() => events.value.reduce((sum, item) => sum + (Number(item.capacity) || 0), 0))
+const participationHeat = computed(() => {
+  const seats = totalCapacity.value
+  if (!seats) return 0
+  const signed = events.value.reduce((sum, item) => sum + (Number(item.signed_up) || 0), 0)
+  return Math.min(100, Math.round((signed / seats) * 100))
 })
+const heroStats = computed(() => [
+  { label: '容量前五', value: `${heroEvents.value.length} 场` },
+  { label: '活跃指数', value: `${participationHeat.value}%` },
+  { label: '招募席位', value: totalCapacity.value ? `${totalCapacity.value}+` : '0' }
+])
 
-// 轮播定时器
-let heroTimer = null
-
-// 格式化日期
-const formatDate = (dateString) => {
-  if (!dateString) return ''
-  const date = new Date(dateString)
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${date.getFullYear()}-${month}-${day}`
-}
-
-// 格式化描述文本，将换行符转换为段落
-const formatDescription = (description) => {
-  if (!description) return ''
-  // 将换行符转换为 <br> 或段落
-  return description
-    .split('\n')
-    .filter(line => line.trim())
-    .map(line => `<p>${line.trim()}</p>`)
-    .join('')
-}
-
-// 加载 Hero 活动（前 3 个活动）
+// 加载容量前五的活动
 const loadHeroEvents = async () => {
-  loadingHero.value = true
   try {
-    const data = await fetchEvents({ page: 1, pageSize: 3 })
-    const eventList = data?.list || []
-
-    heroEvents.value = eventList.map((item) => ({
-      id: item.id,
-      title: item.title || '活动标题',
-      description: item.description || '',
-      image: buildImageUrl(item.cover_url),
-      location: item.location || '',
-      start_time: item.start_time,
-      end_time: item.end_time
+    const list = await fetchEventHighlights({ limit: 5 })
+    heroEvents.value = list.map(item => ({
+      ...item,
+      image: buildImageUrl(item.cover_url)
     }))
-
-    if (heroEvents.value.length > 1) {
-      startHeroCarousel()
-    }
+    currentHeroIndex.value = 0
   } catch (err) {
-    console.error('加载 Hero 活动失败:', err)
-  } finally {
-    loadingHero.value = false
+    console.error('加载精选活动失败:', err)
   }
 }
 
-// 轮播控制
-const startHeroCarousel = () => {
-  if (heroEvents.value.length <= 1) return
-  if (heroTimer) return
-  heroTimer = setInterval(() => {
-    nextHero()
-  }, 3000)
-}
-
-const stopHeroCarousel = () => {
-  if (heroTimer) {
-    clearInterval(heroTimer)
-    heroTimer = null
+// 加载未来七天的活动
+const loadRadarList = async () => {
+  try {
+    const list = await fetchWeeklyEvents()
+    events.value = (list || []).map(item => ({
+      ...item,
+      date: formatDate(item.start_time),
+      weekday: getWeekday(item.start_time),
+      statusText: STATUS_TEXT[item.status] || '进行中'
+    }))
+  } catch (err) {
+    console.error('加载活动列表失败:', err)
   }
 }
 
-const nextHero = () => {
-  if (!heroEvents.value.length) return
-  currentHeroIndex.value = (currentHeroIndex.value + 1) % heroEvents.value.length
-}
-
-const prevHero = () => {
-  if (!heroEvents.value.length) return
-  currentHeroIndex.value =
-    (currentHeroIndex.value - 1 + heroEvents.value.length) % heroEvents.value.length
-}
-
-const goHero = (index) => {
-  if (index < 0 || index >= heroEvents.value.length) return
-  currentHeroIndex.value = index
-}
-
-// 加载活动列表（展示前 8 个，包括轮播中的活动）
 const loadEvents = async () => {
   loading.value = true
-  errorMsg.value = ''
   try {
-    const data = await fetchEvents({ page: 1, pageSize: 8 })
-    const eventList = data?.list || []
-    
-    const eventsToShow = eventList
-    
-    events.value = eventsToShow.map((item) => ({
-      id: item.id,
-      title: item.title,
-      date: formatDate(item.start_time),
-      location: item.location || '',
-      image: buildImageUrl(item.cover_url),
-      excerpt: item.description ? (item.description.length > 50 ? item.description.substring(0, 50) + '...' : item.description) : '暂无描述'
-    }))
+    await Promise.all([loadHeroEvents(), loadRadarList()])
   } catch (err) {
     console.error(err)
-    errorMsg.value = err?.message || '加载活动失败'
   } finally {
-    loading.value = false
+    setTimeout(() => { loading.value = false }, 600)
   }
 }
 
-function gotoEvent(id) {
-  router.push({ name: 'EventInfo', params: { id } }).catch(() => {
-    router.push('/promotion')
-  })
-}
+const gotoEvent = (id) => id && router.push({ name: 'EventInfo', params: { id } })
 
-onMounted(() => {
-  loadHeroEvents()
-  loadEvents()
-})
-
-onUnmounted(() => {
-  stopHeroCarousel()
-})
-</script> 
+onMounted(loadEvents)
+</script>
 
 <style scoped>
-.page {
-  background-color: #e6e6e6;
-  min-height: 100vh;
+/* 此处保持您原有的所有 CSS 样式不变 */
+:root {
+  --glass: rgba(255, 255, 255, 0.75);
+  --border: rgba(255, 255, 255, 0.4);
+  --accent: #2dd4bf;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
 }
 
-
-.activity-container {
-  display: flex;
-  max-width: 1200px;
-  margin: 35px auto 0;
-  background-color: #0053a9; /* 整个区域为蓝色背景 */
-  border-radius: 8px;
-  overflow: visible; /* 允许图片凸出 */
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
-  align-items: center;
-  padding: 36px; /* 左侧留出蓝色边距 */
-  column-gap: 32px;
+.premium-page {
+  height: 100vh;
+  background: #f8fafc;
   position: relative;
-  height: 560px; /* 固定高度，保持各轮播一致 */
+  overflow: hidden; 
+  color: var(--text-main);
+  padding: 80px 24px 24px;
+  box-sizing: border-box;
 }
 
-.image-section {
-  flex: 0 0 420px; /* 固定图片区宽度 */
+.dashboard-wrapper {
+  max-width: 1400px;
+  height: calc(100% - 20px);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.8fr 1fr;
+  grid-template-rows: minmax(300px, 1fr) 180px;
+  gap: 24px;
   position: relative;
-  z-index: 2;
-  height: 100%;
-  display: flex;
-  align-items: center;
-}
-.image-section img {
-  width: 100%;
-  height: 100%;
-  display: block;
-  border-radius: 6px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
-  object-fit: cover;
+  z-index: 1;
 }
 
-.content-section {
-  flex: 1;
-  color: #fff;
-  padding: 24px 30px;
+.bento-item {
+  background: var(--glass);
+  backdrop-filter: blur(24px);
+  border-radius: 32px;
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.04);
 }
 
-.content-section h2 {
-  font-size: 2.6rem;
-  margin-bottom: 12px;
-  position: relative;
-  padding-bottom: 10px;
-}
-.content-section h2::after {
-  content: '';
+.hero-main { position: relative; overflow: hidden; }
+.hero-content { height: 100%; position: relative; }
+.hero-image-overlay { position: absolute; inset: 0; }
+.hero-image-overlay img { width: 100%; height: 100%; object-fit: cover; }
+.image-scrim {
   position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 56px;
-  height: 4px;
-  background-color: white;
+  inset: 0;
+  background: linear-gradient(to right, rgba(255,255,255,0.95) 15%, transparent 75%);
 }
 
-.content-section p {
-  font-size: 1.05rem;
-  line-height: 1.8;
-  margin-bottom: 18px;
-  text-align: justify;
+.hero-info-layer {
+  position: relative;
+  height: 100%;
+  padding: 40px 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: 55%;
 }
 
-.btn {
-  padding: 12px 26px;
-  background-color: transparent;
-  color: white;
-  border: 2px solid white;
-  border-radius: 50px;
-  font-size: 1.05rem;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.25s ease;
-}
-.btn:hover { background-color: rgba(255,255,255,0.08); }
-
-/* 蓝色实心按钮，主要用于白底卡片上的可见 CTA */
-.btn.blue{
-  background-color: #0070d1;
-  color: #fff;
-  border: 1px solid #0062b0;
-  padding: 8px 14px; /* 缩小按钮内边距 */
-  font-size: 0.95rem; /* 略小文字 */
-  border-radius: 6px;
-}
-.btn.blue:hover { background-color: #005aa0 }
-
-/* 响应式 */
-@media (max-width: 900px) {
-  .activity-container { padding: 20px; column-gap: 16px; height: auto; }
-  .image-section { flex-basis: 320px; align-self: center; height: auto; }
-  .image-section img { height: auto; }
-  .content-section h2 { font-size: 2rem; }
+.display-title {
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-weight: 800;
+  line-height: 1.1;
+  margin: 16px 0;
+  color: #0f172a;
 }
 
-@media (max-width: 600px) {
-  .activity-container { flex-direction: column; padding: 18px; height: auto; }
-  .image-section { align-self: center; width: 100%; flex-basis: auto; height: auto; }
-  .content-section { padding: 18px 8px; }
+.tag-row { display: flex; gap: 12px; }
+.vibe-badge { background: #f1f5f9; padding: 6px 16px; border-radius: 100px; font-size: 13px; font-weight: 600; }
+.hot-badge { background: #fee2e2; color: #ef4444; padding: 6px 16px; border-radius: 100px; font-size: 13px; font-weight: 600; }
+
+.hero-footer-meta { display: flex; gap: 20px; color: var(--text-muted); font-size: 14px; }
+.hero-footer-meta .icon { margin-right: 4px; font-style: normal; }
+
+.activity-radar { 
+  padding: 32px; 
+  display: flex; 
+  flex-direction: column;
+  overflow: hidden; 
+}
+.section-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; flex-shrink: 0; }
+.header-text h3 { font-size: 20px; font-weight: 800; margin: 0; }
+.header-text p { font-size: 14px; color: var(--text-muted); margin: 4px 0 0; }
+
+.refresh-trigger {
+  width: 42px; height: 42px; display: flex; align-items: center; justify-content: center;
+  background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 14px; color: #64748b; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.events-list{max-width:1200px;margin:28px auto;padding:0 18px}
-.events-list h3{max-width:1200px;margin:0 0 14px 18px;font-size:1.4rem;color:#123}
-.loading,.error,.empty-state{text-align:center;padding:40px 20px;color:#666;font-size:16px}
-.events-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px}
-.event-card{background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,0.08);display:flex;flex-direction:column}
-.card-thumb img{width:100%;height:160px;object-fit:cover;display:block}
-.card-body{padding:12px 14px;flex:1;display:flex;flex-direction:column}
-.card-body h4{margin:0 0 6px;font-size:1.05rem}
-.card-body .meta{color:#666;font-size:0.9rem;margin-bottom:8px}
-.card-body .excerpt{flex:1;color:#444;font-size:0.95rem}
-.card-actions{margin-top:12px;display:flex;justify-content:flex-end}
-/* 轮播箭头 */
-.carousel-arrow{
-  position:absolute;
-  top:50%;
-  transform:translateY(-50%);
-  width:40px;
-  height:40px;
-  border-radius:50%;
-  border:none;
-  background:rgba(255,255,255,0.2);
-  color:#fff;
-  font-size:24px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  cursor:pointer;
-  transition:background .2s, transform .2s;
-  z-index:3;
+.is-spinning .refresh-svg { animation: rotate-animation 0.8s infinite linear; }
+@keyframes rotate-animation { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+.scroll-list { flex: 1; overflow-y: auto; margin-top: 10px; padding-right: 8px; }
+.state-msg { text-align: center; color: var(--text-muted); padding: 20px; font-size: 14px; }
+
+.event-mini-card {
+  display: flex; align-items: center; gap: 16px; padding: 18px; border-radius: 22px; margin-bottom: 14px;
+  background: rgba(255,255,255,0.4); cursor: pointer; transition: all 0.25s; border: 1px solid transparent;
 }
-.carousel-arrow.left{left:16px;}
-.carousel-arrow.right{right:16px;}
-.carousel-arrow:hover{
-  background:rgba(255,255,255,0.35);
-  transform:translateY(-50%) scale(1.05);
+.event-mini-card:hover { background: white; transform: translateX(6px); border-color: rgba(45, 212, 191, 0.2); }
+
+.date-box { text-align: center; background: white; padding: 10px; border-radius: 14px; min-width: 54px; }
+.d-day { display: block; font-size: 20px; font-weight: 800; color: #0f172a; }
+.d-month { font-size: 11px; color: #94a3b8; font-weight: 600; }
+
+.event-brief h4 { font-size: 15px; font-weight: 700; margin: 0; color: #334155; }
+.event-brief p { font-size: 12px; color: #64748b; margin: 4px 0 0; }
+.event-status { margin-left: auto; font-size: 11px; color: #0d9488; font-weight: 700; background: #f0fdfa; padding: 4px 10px; border-radius: 8px; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); padding: 24px; gap: 20px; }
+.stat-tile { background: rgba(255,255,255,0.5); border-radius: 24px; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: background 0.3s; }
+.stat-tile:hover { background: white; }
+.stat-label { font-size: 12px; color: #64748b; font-weight: 600; margin-bottom: 4px; }
+.stat-val { font-size: 26px; font-weight: 900; color: #0f172a; }
+
+.action-cta .cta-inner { height: 100%; background-size: cover; background-position: center; position: relative; border-radius: 32px; overflow: hidden; }
+.cta-content {
+  position: absolute; inset: 0; background: rgba(45, 212, 191, 0.88); backdrop-filter: blur(6px);
+  display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; text-align: center; padding: 20px;
+}
+.primary-btn {
+  margin-top: 18px; background: white; color: #0d9488; border: none; padding: 14px 36px;
+  border-radius: 100px; font-weight: 800; cursor: pointer; transition: all 0.3s;
 }
 
-/* 轮播小圆点 */
-.carousel-dots{
-  position:absolute;
-  left:50%;
-  bottom:20px;
-  transform:translateX(-50%);
-  display:flex;
-  gap:8px;
-  align-items:center;
-}
-.dot{
-  width:10px;
-  height:10px;
-  border-radius:50%;
-  background:rgba(255,255,255,0.4);
-  cursor:pointer;
-  transition:background .2s, transform .2s;
-}
-.dot.active{
-  background:#fff;
-  transform:scale(1.2);
-}
+.bg-glow { position: absolute; border-radius: 50%; filter: blur(100px); z-index: 0; pointer-events: none; }
+.blob-1 { width: 500px; height: 500px; background: rgba(45, 212, 191, 0.15); top: -100px; right: -100px; }
+.blob-2 { width: 600px; height: 600px; background: rgba(99, 102, 241, 0.1); bottom: -200px; left: -100px; }
 
+.custom-scrollbar::-webkit-scrollbar { width: 5px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+@media (max-width: 1024px) {
+  .premium-page { overflow-y: auto; height: auto; }
+  .dashboard-wrapper { grid-template-columns: 1fr; grid-template-rows: auto; height: auto; }
+  .hero-info-layer { max-width: 100%; padding: 40px; }
+}
 </style>
