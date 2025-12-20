@@ -43,7 +43,7 @@ exports.createPost = async (req, res) => {
 
     try {
       const userId = req.user.id
-      const { title, content } = req.body
+      const { title, content, categoryId } = req.body
 
       if (!title || !content) {
         return error(res, '标题和内容不能为空', 400)
@@ -54,16 +54,19 @@ exports.createPost = async (req, res) => {
         imageUrl = path.posix.join('/uploads/forum', req.file.filename)
       }
 
+      const categoryIdValue = categoryId ? parseInt(categoryId, 10) : 0
+
+      // 新发布的帖子默认状态为待审核（status=0, admin_check=0），需要管理员审核通过后才能显示
       const sql = `
-        INSERT INTO forum_posts (user_id, title, content, image_url, status, admin_check)
-        VALUES (?, ?, ?, ?, 0, 0)
+        INSERT INTO forum_posts (user_id, title, content, image_url, category_id, status, admin_check)
+        VALUES (?, ?, ?, ?, ?, 0, 0)
       `
       const [postId] = await sequelize.query(sql, {
-        replacements: [userId, title, content, imageUrl],
+        replacements: [userId, title, content, imageUrl, categoryIdValue],
         type: QueryTypes.INSERT
       })
 
-      success(res, { postId }, '发帖成功')
+      success(res, { postId }, '帖子已提交，等待管理员审核通过后即可显示')
     } catch (err) {
       console.error('发帖错误:', err)
       error(res, '服务器错误', 500)
@@ -78,7 +81,8 @@ exports.getPosts = async (req, res) => {
     const offset = (parseInt(page, 10) - 1) * parseInt(pageSize, 10)
     const limit = parseInt(pageSize, 10)
 
-    let whereClause = 'WHERE p.status = 1'
+    // 只显示已审核通过的帖子（status=1 且 admin_check=1）
+    let whereClause = 'WHERE p.status = 1 AND p.admin_check = 1'
     const replacements = []
 
     if (keyword) {
@@ -93,12 +97,28 @@ exports.getPosts = async (req, res) => {
         p.title,
         p.content,
         p.image_url,
+        p.category_id,
         p.created_at,
         p.status,
         u.username AS author,
         u.user_id AS author_id,
         COUNT(DISTINCT c.comment_id) AS comment_count,
-        COUNT(DISTINCT f.favorite_id) AS favorite_count
+        COUNT(DISTINCT f.favorite_id) AS favorite_count,
+        (
+          SELECT JSON_ARRAYAGG(
+            JSON_OBJECT(
+              'id', fc.comment_id,
+              'userName', u2.username,
+              'content', fc.content,
+              'created_at', fc.created_at
+            )
+          )
+          FROM forum_comments fc
+          INNER JOIN users u2 ON fc.user_id = u2.user_id
+          WHERE fc.post_id = p.post_id
+          ORDER BY fc.created_at ASC
+          LIMIT 10
+        ) AS comments
       FROM forum_posts p
       INNER JOIN users u ON p.user_id = u.user_id
       LEFT JOIN forum_comments c ON p.post_id = c.post_id
@@ -263,6 +283,40 @@ exports.deletePost = async (req, res) => {
   }
 }
 
+// 获取我的发帖统计
+exports.getMyStats = async (req, res) => {
+  try {
+    const userId = req.user.id
+
+    // 获取我的帖子数量
+    const myPostsSql = 'SELECT COUNT(*) AS count FROM forum_posts WHERE user_id = ?'
+    const [myPostsResult] = await sequelize.query(myPostsSql, {
+      replacements: [userId],
+      type: QueryTypes.SELECT
+    })
+
+    // 获取我的评论数量（对他人帖子的评论）
+    const myCommentsSql = `
+      SELECT COUNT(*) AS count 
+      FROM forum_comments c
+      INNER JOIN forum_posts p ON c.post_id = p.post_id
+      WHERE c.user_id = ? AND p.user_id != ?
+    `
+    const [myCommentsResult] = await sequelize.query(myCommentsSql, {
+      replacements: [userId, userId],
+      type: QueryTypes.SELECT
+    })
+
+    success(res, {
+      myPostsCount: myPostsResult.count || 0,
+      myCommentsCount: myCommentsResult.count || 0
+    })
+  } catch (err) {
+    console.error('获取我的统计错误:', err)
+    error(res, '服务器错误', 500)
+  }
+}
+
 // 获取我的发帖列表
 exports.getMyPosts = async (req, res) => {
   try {
@@ -277,10 +331,30 @@ exports.getMyPosts = async (req, res) => {
         p.title,
         p.content,
         p.image_url,
+        p.category_id,
+        p.status,
         p.created_at,
+        u.username AS author,
+        u.user_id AS author_id,
         COUNT(DISTINCT c.comment_id) AS comment_count,
-        COUNT(DISTINCT f.favorite_id) AS favorite_count
+        COUNT(DISTINCT f.favorite_id) AS favorite_count,
+        (
+          SELECT JSON_ARRAYAGG(
+            JSON_OBJECT(
+              'id', fc.comment_id,
+              'userName', u2.username,
+              'content', fc.content,
+              'created_at', fc.created_at
+            )
+          )
+          FROM forum_comments fc
+          INNER JOIN users u2 ON fc.user_id = u2.user_id
+          WHERE fc.post_id = p.post_id
+          ORDER BY fc.created_at ASC
+          LIMIT 10
+        ) AS comments
       FROM forum_posts p
+      INNER JOIN users u ON p.user_id = u.user_id
       LEFT JOIN forum_comments c ON p.post_id = c.post_id
       LEFT JOIN forum_favorites f ON p.post_id = f.post_id
       WHERE p.user_id = ?
@@ -331,11 +405,29 @@ exports.getMyCommentedPosts = async (req, res) => {
         p.title,
         p.content,
         p.image_url,
+        p.category_id,
+        p.status,
         p.created_at,
         u.username AS author,
+        u.user_id AS author_id,
         COUNT(DISTINCT c2.comment_id) AS comment_count,
         COUNT(DISTINCT f.favorite_id) AS favorite_count,
-        MAX(c.created_at) AS my_comment_time
+        MAX(c.created_at) AS my_comment_time,
+        (
+          SELECT JSON_ARRAYAGG(
+            JSON_OBJECT(
+              'id', fc.comment_id,
+              'userName', u3.username,
+              'content', fc.content,
+              'created_at', fc.created_at
+            )
+          )
+          FROM forum_comments fc
+          INNER JOIN users u3 ON fc.user_id = u3.user_id
+          WHERE fc.post_id = p.post_id
+          ORDER BY fc.created_at ASC
+          LIMIT 10
+        ) AS comments
       FROM forum_comments c
       INNER JOIN forum_posts p ON c.post_id = p.post_id
       INNER JOIN users u ON p.user_id = u.user_id

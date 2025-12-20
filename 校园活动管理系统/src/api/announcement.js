@@ -44,3 +44,7 @@ export const applyAnnouncement = (data) =>
 export const fetchOrganizerConfirmationStats = () =>
   request.get('/announcements/organizer/stats')
 
+// 用户：获取未确认公告数量
+export const fetchUnconfirmedCount = () =>
+  request.get('/announcements/unconfirmed/count')
+

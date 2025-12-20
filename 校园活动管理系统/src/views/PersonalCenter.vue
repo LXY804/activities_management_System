@@ -22,7 +22,10 @@
             
             <div class="user-meta">
               <p class="role-tag">🌿 校园共创者</p>
-              <h1>{{ username }}</h1>
+              <h1>
+                {{ username }}
+                <span class="user-id">ID: {{ userId || '--' }}</span>
+              </h1>
               <div class="meta-badges">
                 <span>📍 校园中心</span>
                 <span class="dot">·</span>
@@ -86,6 +89,7 @@ const IconStat = { template: `<svg viewBox="0 0 24 24" fill="none" stroke="curre
 
 const router = useRouter()
 const username = ref('用户名')
+const userId = ref('')
 const avatarUrl = ref('')
 const stats = ref({
   participationCount: 0,
@@ -123,6 +127,7 @@ onMounted(async () => {
     const profile = await fetchProfile()
     if (profile) {
       username.value = profile.real_name || profile.username
+      userId.value = profile.id || profile.user_id || ''
       if (profile.image) avatarUrl.value = API_ORIGIN + profile.image
     }
   } catch (e) {
@@ -195,7 +200,8 @@ onMounted(async () => {
   padding: 3px 12px; border-radius: 100px; border: 3px solid white;
 }
 
-.user-meta h1 { font-size: 32px; margin: 6px 0; font-weight: 800; letter-spacing: -0.5px; }
+.user-meta h1 { font-size: 32px; margin: 6px 0; font-weight: 800; letter-spacing: -0.5px; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.user-id { font-size: 16px; font-weight: 400; color: #94a3b8; letter-spacing: 0; }
 .role-tag { font-size: 13px; font-weight: 700; color: #0db18c; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 6px;}
 .meta-badges { font-size: 14px; color: #64748b; display: flex; gap: 8px; }
 
@@ -210,11 +216,31 @@ onMounted(async () => {
 .stat-pill .l { font-size: 11px; color: #64748b; font-weight: 600; margin-top: 4px; }
 
 /* 中央导航条 */
-.central-nav { display: flex; padding: 8px; gap: 6px; background: rgba(255, 255, 255, 0.6); }
+.central-nav { 
+  display: flex; 
+  padding: 8px; 
+  gap: 6px; 
+  background: rgba(255, 255, 255, 0.6); 
+  position: relative;
+  z-index: 10;
+}
 .nav-link {
-  flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px;
-  padding: 14px; border-radius: 20px; text-decoration: none; color: #64748b;
-  font-weight: 600; font-size: 15px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex: 1; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  gap: 10px;
+  padding: 14px; 
+  border-radius: 20px; 
+  text-decoration: none; 
+  color: #64748b;
+  font-weight: 600; 
+  font-size: 15px; 
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 11;
+  cursor: pointer;
+  pointer-events: auto;
 }
 .nav-icon { width: 18px; height: 18px; }
 .nav-link:hover { color: #1e293b; background: rgba(236, 253, 245, 0.6); }

@@ -2,7 +2,7 @@ const sequelize = require('../config/database')
 const { QueryTypes } = require('sequelize')
 const { success, error } = require('../utils/response')
 
-// 删除自己的评论
+// 删除自己的评论（允许删除任何状态的评论）
 exports.deleteMyComment = async (req, res) => {
   try {
     const userId = req.user.id
@@ -10,7 +10,7 @@ exports.deleteMyComment = async (req, res) => {
 
     // 确认评论存在且属于当前用户
     const sql = `
-      SELECT comment_id
+      SELECT comment_id, user_id
       FROM activity_comments
       WHERE comment_id = ? AND user_id = ?
       LIMIT 1
@@ -24,17 +24,22 @@ exports.deleteMyComment = async (req, res) => {
       return error(res, '评论不存在或无权删除', 404)
     }
 
-    // 删除
-    const delSql = 'DELETE FROM activity_comments WHERE comment_id = ?'
-    await sequelize.query(delSql, {
-      replacements: [id],
+    // 直接删除，不检查状态（用户应该可以删除自己的任何评论）
+    const delSql = 'DELETE FROM activity_comments WHERE comment_id = ? AND user_id = ?'
+    const result = await sequelize.query(delSql, {
+      replacements: [id, userId],
       type: QueryTypes.DELETE
     })
+
+    // 检查是否真的删除了
+    if (result && result[1] && result[1] === 0) {
+      return error(res, '删除失败，评论可能已被删除', 404)
+    }
 
     success(res, null, '删除成功')
   } catch (err) {
     console.error('删除评论错误:', err)
-    error(res, '服务器错误', 500)
+    error(res, '服务器错误: ' + err.message, 500)
   }
 }
 

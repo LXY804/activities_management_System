@@ -13,6 +13,7 @@ export const createPost = (data) => {
   const formData = new FormData()
   formData.append('title', data.title)
   formData.append('content', data.content)
+  formData.append('categoryId', data.categoryId || 0)
   if (data.image) {
     formData.append('image', data.image)
   }
@@ -41,6 +42,10 @@ export const updatePost = (id, data) => {
 // 删除帖子
 export const deletePost = (id) =>
   request.delete(`/forum/posts/${id}`)
+
+// 获取我的统计
+export const fetchMyStats = () =>
+  request.get('/forum/my/stats')
 
 // 获取我的发帖列表
 export const fetchMyPosts = (params) =>

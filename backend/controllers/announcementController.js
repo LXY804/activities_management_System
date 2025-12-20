@@ -367,6 +367,34 @@ exports.getOrganizerConfirmationStats = async (req, res) => {
   }
 }
 
+// 用户：获取未确认公告数量
+exports.getUnconfirmedCount = async (req, res) => {
+  try {
+    const userId = req.user.id
+
+    const sql = `
+      SELECT COUNT(*) AS unconfirmedCount
+      FROM announcements a
+      WHERE a.status = 1
+        AND a.announcement_id NOT IN (
+          SELECT announcement_id
+          FROM announcement_confirmations
+          WHERE user_id = ?
+        )
+    `
+
+    const [result] = await sequelize.query(sql, {
+      replacements: [userId],
+      type: QueryTypes.SELECT
+    })
+
+    success(res, { count: result?.unconfirmedCount || 0 })
+  } catch (err) {
+    console.error('获取未确认公告数量错误:', err)
+    error(res, '服务器错误', 500)
+  }
+}
+
 // 管理员：获取所有公告列表（包括待审核、已发布、已驳回）
 exports.getAllAnnouncements = async (req, res) => {
   try {

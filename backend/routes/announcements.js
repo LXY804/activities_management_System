@@ -12,6 +12,9 @@ router.post('/:id/confirm', authenticate, announcementController.confirmAnnounce
 // 检查用户是否已确认（需要登录）
 router.get('/:id/confirm', authenticate, announcementController.checkConfirmation)
 
+// 用户：获取未确认公告数量（需要登录）
+router.get('/unconfirmed/count', authenticate, announcementController.getUnconfirmedCount)
+
 // 管理员：直接发布公告
 router.post('/', authenticate, authorize('admin'), announcementController.createAnnouncement)
 

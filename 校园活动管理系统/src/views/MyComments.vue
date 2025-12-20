@@ -129,10 +129,14 @@ const onDelete = async (id) => {
   deletingId.value = id
   try {
     await deleteMyComment(id)
+    // 从列表中移除已删除的评论
     comments.value = comments.value.filter(c => c.id !== id)
+    // 显示成功提示
+    alert('删除成功')
   } catch (err) {
-    console.error(err)
-    alert(err?.message || '删除失败')
+    console.error('删除评论错误:', err)
+    const errorMsg = err?.response?.data?.message || err?.message || '删除失败，请稍后重试'
+    alert(errorMsg)
   } finally {
     deletingId.value = null
   }

@@ -33,6 +33,7 @@ const buildBaseEventQuery = () => `
     a.end_time,
     a.capacity,
     a.type_id,
+    a.created_at,
     CASE
       WHEN NOW() < a.start_time THEN 'upcoming'
       WHEN NOW() BETWEEN a.start_time AND a.end_time THEN 'open'
@@ -117,7 +118,7 @@ exports.generateEventCopy = async (req, res) => {
     const { title, activityType, location, startTime, endTime, belongCollege, description } = req.body
 
     const prompt = `
-你是校园活动宣传文案助手，请为下面的活动生成一段简短、有吸引力的中文宣传文案（80~120字）：
+你是校园活动简介生成助手，请为下面的活动生成一段简洁、有吸引力的活动简介（50~100字）：
 
 活动名称：${title || '未命名活动'}
 活动类型：${activityType || '综合活动'}
@@ -127,9 +128,11 @@ exports.generateEventCopy = async (req, res) => {
 已有简介：${description || '无'}
 
 要求：
-1. 面向大学生，语气积极、自然，有号召力，但不要夸张。
-2. 用第二人称（你/大家）来写，不要出现"我是某某大模型"之类的自我介绍。
-3. 不要输出标题，只输出正文一段话。
+1. 生成简洁明了的活动简介，突出活动亮点、目标和参与价值。
+2. 面向大学生，语气积极、自然，有吸引力，但不要夸张。
+3. 用第三人称或客观描述，不要出现"我是某某大模型"之类的自我介绍。
+4. 只输出简介正文，不要输出标题或其他格式。
+5. 如果已有简介，可以在其基础上优化，或根据活动信息生成新的简介。
     `.trim()
 
     const messages = [

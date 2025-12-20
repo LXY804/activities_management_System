@@ -18,7 +18,7 @@
             </div>
           </div>
         </div>
-        <section v-if="activeCategoryId === null" class="map-interactive-layer animate-fade">
+        <section v-if="activeCategoryId === null && viewMode === 'all'" class="map-interactive-layer animate-fade">
           <button class="raw-map-anchor" style="left: 50%; top: 12%;" @click="goBoard(0)">
             <div class="icon-img-host">
               <img src="@/assets/人员信息.svg" class="raw-icon" />
@@ -39,7 +39,7 @@
           </button>
         </section>
         <transition name="panel-slide">
-          <section v-if="activeCategoryId !== null" class="board-panel-overlay">
+          <section v-if="activeCategoryId !== null || viewMode === 'myPosts' || viewMode === 'myComments'" class="board-panel-overlay">
             <div class="board-glass-box glass-blur">
               <header class="panel-navbar">
                 <div class="panel-navbar-top">
@@ -78,34 +78,58 @@
                 <div class="hero-info">
                   <span class="hero-icon" aria-hidden="true">{{ currentCategoryMeta.emoji }}</span>
                   <div>
-                    <p class="hero-label">{{ currentCategoryMeta.label }}</p>
-                    <h3>{{ currentCategoryMeta.desc }}</h3>
+                    <p class="hero-label">{{ viewModeLabel }}</p>
+                    <h3>{{ viewModeDesc }}</h3>
                     <small>{{ currentCategoryMeta.tip }}</small>
                   </div>
                 </div>
-                <div class="hero-stats">
-                  <div class="hero-stat">
-                    <strong>{{ activeCategoryPostCount }}</strong>
-                    <span>板块帖子</span>
-                  </div>
-                  <div class="hero-stat">
-                    <strong>{{ mockPosts.length }}</strong>
-                    <span>全站累计</span>
+                <div class="hero-actions">
+                  <button v-if="viewMode !== 'all'" class="btn-back" @click="showAllPosts">
+                    <span>← 返回全部</span>
+                  </button>
+                  <button class="btn-publish" @click="showPublishModal = true">
+                    <span class="publish-icon">✍️</span>
+                    <span>发布帖子</span>
+                  </button>
+                  <div class="hero-stats">
+                    <div 
+                      class="hero-stat" 
+                      :class="{ 'active': viewMode === 'myPosts' }" 
+                      @click.stop.prevent="showMyPosts"
+                      @mousedown.stop
+                    >
+                      <strong>{{ myPostsCount }}</strong>
+                      <span>我的帖子</span>
+                    </div>
+                    <div 
+                      class="hero-stat" 
+                      :class="{ 'active': viewMode === 'myComments' }" 
+                      @click.stop.prevent="showMyComments"
+                      @mousedown.stop
+                    >
+                      <strong>{{ myCommentsCount }}</strong>
+                      <span>我的消息</span>
+                    </div>
                   </div>
                 </div>
               </section>
-              <div class="panel-main-grid">
-                <aside class="panel-side-bento">
-                  <div class="white-bento-card publish-card">
-                    <div class="bento-card-head">
-                      <div class="compose-icon" aria-hidden="true">✍️</div>
-                      <div>
-                        <p>发布新讨论</p>
-                        <small>{{ currentCategoryMeta.tip }}</small>
+              <!-- 发布帖子弹窗 -->
+              <Teleport to="body">
+                <div v-if="showPublishModal" class="publish-modal-overlay" @click.self="closePublishModal">
+                  <div class="publish-modal-content">
+                    <div class="publish-modal-header">
+                      <h2>发布新帖子</h2>
+                      <button class="modal-close-btn" @click="closePublishModal">×</button>
                       </div>
-                    </div>
-                    <div class="bento-form-scroll custom-scrollbar">
+                    <div class="publish-modal-body">
                       <form @submit.prevent="publishPost" class="bento-form">
+                        <div class="form-group">
+                          <label>选择类别</label>
+                          <select v-model.number="publishForm.categoryId" class="category-select" required>
+                            <option :value="0">全部 / 未分类</option>
+                            <option v-for="cat in forumCategories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                          </select>
+                        </div>
                         <input v-model.trim="publishForm.title" type="text" placeholder="标题 (吸引大家点击...)" required />
                         <textarea v-model.trim="publishForm.content" rows="6" placeholder="分享今天的见闻、求助信息或出物详情..." required></textarea>
                         <div class="bento-upload-area">
@@ -133,28 +157,24 @@
                             <span>置顶</span>
                           </label>
                           <div class="bento-action-btns">
-                            <button type="button" class="btn-cancel" @click="resetForm">取消</button>
+                            <button type="button" class="btn-cancel" @click="closePublishModal">取消</button>
                             <button type="submit" class="btn-send-grad">确认发布</button>
                           </div>
                         </div>
                       </form>
                     </div>
                   </div>
-                  <div class="white-bento-card mt-20 stats-infographic">
-                    <div class="info-row">
-                      <div class="info-cell">
-                        <span class="val">{{ mockPosts.length }}</span>
-                        <span class="lab">累计动态</span>
                       </div>
-                      <div class="info-cell">
-                        <span class="val">{{ activeCategoryPostCount }}</span>
-                        <span class="lab">本版块</span>
-                      </div>
-                    </div>
-                  </div>
-                </aside>
+              </Teleport>
+              <div class="panel-main-grid">
                 <main class="panel-feed-container custom-scrollbar">
-                  <transition-group name="post-anim">
+                  <div v-if="loading" class="loading-state">
+                    <p>正在加载帖子...</p>
+                  </div>
+                  <div v-else-if="errorMsg" class="error-state">
+                    <p>{{ errorMsg }}</p>
+                  </div>
+                  <transition-group v-else name="post-anim">
                     <article
                       v-for="post in filteredPosts"
                       :key="post.id"
@@ -191,7 +211,7 @@
                           </div>
                         </div>
                         <div class="interaction-control">
-                          <form @submit.prevent="addComment(post)" class="reply-form-vibe">
+                          <form @submit.prevent="addCommentToPost(post)" class="reply-form-vibe">
                             <input v-model.trim="commentDrafts[post.id]" placeholder="回帖交流..." />
                           </form>
                           <div class="op-btns-group">
@@ -207,8 +227,18 @@
                       </footer>
                     </article>
                   </transition-group>
-                  <div v-if="filteredPosts.length === 0" class="empty-vibe">
-                    <p>🍃 暂无匹配动态，换个分类看看吧</p>
+                  <div v-if="!loading && !errorMsg && filteredPosts.length === 0" class="empty-vibe">
+                    <p v-if="viewMode === 'myPosts'">📝 您还没有发布过帖子</p>
+                    <p v-else-if="viewMode === 'myComments'">💬 您还没有评论过任何帖子</p>
+                    <p v-else>🍃 暂无匹配动态，换个分类看看吧</p>
+                  </div>
+                  <!-- 调试：显示当前状态 -->
+                  <div v-if="false" style="position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.8); color: white; padding: 10px; z-index: 9999; font-size: 12px;">
+                    <p>loading: {{ loading }}</p>
+                    <p>errorMsg: {{ errorMsg || '无' }}</p>
+                    <p>posts: {{ posts.length }}</p>
+                    <p>filtered: {{ filteredPosts.length }}</p>
+                    <p>viewMode: {{ viewMode }}</p>
                   </div>
                 </main>
               </div>
@@ -225,14 +255,19 @@
 </template>
 
 <script setup>
-import { reactive, ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { reactive, ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import NavBar from '@/components/NavBar.vue'
+import { fetchPosts, createPost, addComment, deletePost, fetchPostComments, fetchMyStats, fetchMyPosts, fetchMyCommentedPosts } from '@/api/forum'
 import mapImage from '@/assets/论坛背景图.jpg'
 import iconResale from '@/assets/论坛-二手闲置.png'
 import iconHelp from '@/assets/论坛-打听求助.png'
 import iconLove from '@/assets/论坛-恋爱交友.png'
 import iconFun from '@/assets/论坛-校园趣事.png'
 import iconJob from '@/assets/论坛-兼职招聘.png'
+
+const router = useRouter()
+const API_ORIGIN = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/api\/?$/, '')
 
 const forumCategories = [
   { id: 1, name: '二手闲置', position: { left: '20%', top: '88%' }, icon: iconResale },
@@ -260,53 +295,216 @@ const currentUser = reactive({
 const activeCategoryId = ref(null)
 const keyword = ref('')
 const commentDrafts = reactive({})
-const publishForm = reactive({ title: '', content: '', imageInputs: ['', '', ''], isSticky: false })
+const publishForm = reactive({ title: '', content: '', imageInputs: ['', '', ''], isSticky: false, categoryId: 0 })
+const showPublishModal = ref(false)
 const imagePicker = ref(null)
 const tempImageUrls = ref([])
+const viewMode = ref('all') // 'all' | 'myPosts' | 'myComments'
 
 const currentCategoryMeta = computed(() => {
   const target = activeCategoryId.value ?? 0
   return categoryMetaMap[target] || categoryMetaMap[0]
 })
+
+const viewModeLabel = computed(() => {
+  if (viewMode.value === 'myPosts') return '我的帖子'
+  if (viewMode.value === 'myComments') return '我的消息'
+  return currentCategoryMeta.value.label
+})
+
+const viewModeDesc = computed(() => {
+  if (viewMode.value === 'myPosts') return '查看我发布的所有帖子'
+  if (viewMode.value === 'myComments') return '查看我评论过的帖子'
+  return currentCategoryMeta.value.desc
+})
 const imagePreviewList = computed(() => publishForm.imageInputs.filter(src => src))
 
-const mockPosts = reactive([
-  { id: 1, categoryId: 1, userId: 101, userName: '南湖余文乐', title: '【急出】南湖西院出Giant公路车，碟刹24速', content: '由于毕业无法带走，极品成色。原价2800购入，现价1100。南湖校区自提，车况非常好，送车锁。', status: 'active', isSticky: true, createdAt: '2025-05-18T10:00:00Z', images: ['https://img.alicdn.com/imgextra/i4/1596671518/O1CN01pBikeC1d2v8b3MtMz_!!0-item_pic.jpg'], comments: [{ id: 1, userName: '鉴湖车神', content: '鉴主教学楼这边能骑过来看看吗？' }] },
-  { id: 2, categoryId: 2, userId: 202, userName: '鉴湖钉子户', title: '求助：博学楼302有没有捡到一个蓝色钥匙包？', content: '昨晚在那自习，里面有升升公寓的门禁卡和两把宿舍钥匙，真的很急，今天还要回寝室。', status: 'active', isSticky: false, createdAt: '2025-05-19T08:30:00Z', images: [], comments: [{ id: 2, userName: '理大暖男', content: '我刚才去302看了一眼，去一楼保安亭问问？' }] },
-  { id: 3, categoryId: 4, userId: 303, userName: '南湖大橘粉', title: '南湖图书馆后门的猫猫又胖了，大家真的别喂火腿肠了！', content: '宿管阿姨说它最近已经跳不上窗台了，建议大家换成健康的冻干或者猫粮。', status: 'active', isSticky: false, createdAt: '2025-05-20T14:20:00Z', images: ['https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=500'], comments: [{ id: 3, userName: '喵星人', content: '它是真的心宽体胖。' }] },
-  { id: 4, categoryId: 5, userId: 404, userName: '校团委兼职组', title: '【官方招募】校园文创市集执行志愿者，有补贴', content: '本周五下午校门口。协助布展。表现优异送理大限定帆布包。', status: 'active', isSticky: true, createdAt: '2025-05-14T09:00:00Z', images: [], comments: [] },
-  { id: 5, categoryId: 3, userId: 505, userName: '鉴湖晚风', title: '寻找每天在鉴湖边晨读的那个戴蓝色耳机的女孩', content: '你经常在早上7点左右出现，读的是托尔斯泰，感觉很有气质，想交个朋友。', status: 'active', isSticky: false, createdAt: '2025-05-20T19:00:00Z', images: [], comments: [] },
-  { id: 6, categoryId: 1, userId: 606, userName: '考研退坑小张', title: '出全套考研数学资料（武忠祥+李永乐）', content: '全是新的，还没翻就保研了，南湖图书馆面交。', status: 'active', isSticky: false, createdAt: '2025-05-18T16:00:00Z', images: ['https://img.alicdn.com/imgextra/i3/2208035252538/O1CN01Z7z6hJ1Q2Y8N0V7Yp_!!2208035252538.jpg'], comments: [] },
-  { id: 7, categoryId: 2, userId: 707, userName: '小白本白', title: '救命！鉴主402的插座怎么没电了？', content: '电脑快关机了，有没有同学知道那边的电表开关在哪？', status: 'solved', isSticky: false, createdAt: '2025-05-19T10:00:00Z', images: [], comments: [] },
-  { id: 8, categoryId: 4, userId: 808, userName: '理大摄影师', title: '今日份鉴湖夕阳，理大yyds！', content: '理大的夏天虽然热，但夕阳真的从不让人失望！毕业快乐！', status: 'active', isSticky: false, createdAt: '2025-05-20T19:30:00Z', images: ['https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=500'], comments: [] },
-  { id: 9, categoryId: 5, userId: 909, userName: '研会公关部', title: '急招：晚会短视频剪辑助手', content: '熟悉PR/剪映即可，酬劳面议，管饭！', status: 'active', isSticky: false, createdAt: '2025-05-20T11:00:00Z', images: [], comments: [] },
-  { id: 11, categoryId: 1, userId: 111, userName: '转专业的小苏', title: '低价出大一计算机专业课教材，九成新', content: 'C语言、数据结构、计算机组成原理。南湖校区面交。', status: 'active', isSticky: false, createdAt: '2025-05-17T09:00:00Z', images: [], comments: [] },
-  { id: 12, categoryId: 2, userId: 222, userName: '赶论文的人', title: '求助：南湖校区哪家打印店现在还开门？', content: '要在12点前打出初稿，西院后街的都关了。', status: 'active', isSticky: false, createdAt: '2025-05-20T22:30:00Z', images: [], comments: [] },
-  { id: 13, categoryId: 3, userId: 333, userName: '吃瓜群众', title: '今天的鉴湖边有大动作！', content: '看到有人在布置玫瑰花阵，难道是哪个学院的求婚吗？', status: 'active', isSticky: false, createdAt: '2025-05-19T17:00:00Z', images: [], comments: [] },
-  { id: 14, categoryId: 4, userId: 444, userName: '升升原住民', title: '升升二食堂的麻辣烫涨价了...', content: '心碎，以前10块钱吃到撑，现在要15了。', status: 'active', isSticky: false, createdAt: '2025-05-18T12:00:00Z', images: [], comments: [] },
-  { id: 15, categoryId: 2, userId: 555, userName: '求职老鸟', title: '有没有推荐的刷题网站？', content: '除了力扣和牛客，还有没有比较适合理大计算机考研/找工作的。', status: 'active', isSticky: false, createdAt: '2025-05-15T14:00:00Z', images: [], comments: [] },
-  { id: 16, categoryId: 1, userId: 666, userName: '电赛退坑', title: '出一堆电赛元器件，还有电烙铁', content: '包含各种传感器、STM32核心板，通通白菜价处理。', status: 'active', isSticky: false, createdAt: '2025-05-20T08:00:00Z', images: [], comments: [] }
-])
+const posts = ref([])
+const loading = ref(false)
+const errorMsg = ref('')
+const myPostsCount = ref(0)
+const myCommentsCount = ref(0)
 
 const currentBoardName = computed(() => {
   if (activeCategoryId.value === 0) return '理大广场 · 全部动态'
   return forumCategories.find(c => c.id === activeCategoryId.value)?.name || ''
 })
-const activeCategoryPostCount = computed(() => {
-  if (activeCategoryId.value === 0) return mockPosts.length
-  return mockPosts.filter(p => p.categoryId === activeCategoryId.value).length
-})
+
 const filteredPosts = computed(() => {
-  let list = [...mockPosts]
-  if (activeCategoryId.value !== 0 && activeCategoryId.value !== null) {
+  if (!posts.value || !Array.isArray(posts.value)) {
+    return []
+  }
+  let list = [...posts.value]
+  
+  // 如果是"我的帖子"或"我的消息"视图，不进行类别和关键词筛选，直接显示所有结果
+  if (viewMode.value === 'myPosts' || viewMode.value === 'myComments') {
+    return list.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0)
+      const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0)
+      return dateB - dateA
+    })
+  }
+  
+  // 按类别筛选（仅在全部视图模式下）
+  if (activeCategoryId.value !== null && activeCategoryId.value !== 0) {
     list = list.filter(p => p.categoryId === activeCategoryId.value)
   }
+  
+  // 按关键词筛选
   if (keyword.value) {
     const k = keyword.value.toLowerCase()
-    list = list.filter(p => p.title.toLowerCase().includes(k) || p.content.toLowerCase().includes(k))
+    list = list.filter(p => 
+      (p.title && p.title.toLowerCase().includes(k)) || 
+      (p.content && p.content.toLowerCase().includes(k))
+    )
   }
-  return list.sort((a, b) => b.isSticky - a.isSticky || new Date(b.createdAt) - new Date(a.createdAt))
+  
+  return list.sort((a, b) => {
+    const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0)
+    const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0)
+    return dateB - dateA
+  })
 })
+
+const loadMyStats = async () => {
+  // 检查是否登录
+  if (!localStorage.getItem('token')) {
+    myPostsCount.value = 0
+    myCommentsCount.value = 0
+    return
+  }
+
+  try {
+    const stats = await fetchMyStats()
+    myPostsCount.value = stats?.myPostsCount || 0
+    myCommentsCount.value = stats?.myCommentsCount || 0
+  } catch (err) {
+    console.error('加载我的统计失败:', err)
+    // 如果未登录或其他错误，不显示错误，只显示0
+    myPostsCount.value = 0
+    myCommentsCount.value = 0
+  }
+}
+
+const loadPosts = async () => {
+  loading.value = true
+  errorMsg.value = ''
+  try {
+    let fetchedPosts = []
+    
+    if (viewMode.value === 'myPosts') {
+      if (!localStorage.getItem('token')) {
+        errorMsg.value = '请先登录'
+        posts.value = []
+        loading.value = false
+        return
+      }
+      const data = await fetchMyPosts({ page: 1, pageSize: 100 })
+      fetchedPosts = data?.list || []
+    } else if (viewMode.value === 'myComments') {
+      if (!localStorage.getItem('token')) {
+        errorMsg.value = '请先登录'
+        posts.value = []
+        loading.value = false
+        return
+      }
+      const data = await fetchMyCommentedPosts({ page: 1, pageSize: 100 })
+      fetchedPosts = data?.list || []
+    } else {
+      const params = {}
+      if (keyword.value) {
+        params.keyword = keyword.value
+      }
+      const data = await fetchPosts({ page: 1, pageSize: 100, ...params })
+      fetchedPosts = data?.list || []
+    }
+    
+    // 从数据库获取数据并转换格式
+    posts.value = fetchedPosts.map(post => {
+      let comments = []
+      if (post.comments) {
+        if (typeof post.comments === 'string') {
+          try {
+            comments = JSON.parse(post.comments)
+          } catch (e) {
+            comments = []
+          }
+        } else if (Array.isArray(post.comments)) {
+          comments = post.comments
+        }
+      }
+      
+      return {
+        id: post.id,
+        categoryId: post.category_id || 0,
+        userId: post.author_id || post.user_id,
+        userName: post.author || post.username,
+        title: post.title,
+        content: post.content,
+        status: (post.status === 1 || post.status === '1') ? 'active' : 'solved',
+        isSticky: false,
+        createdAt: post.created_at,
+        images: post.image_url ? [API_ORIGIN + post.image_url] : [],
+        comments: comments || []
+      }
+    })
+  } catch (err) {
+    errorMsg.value = '加载失败: ' + (err.message || '请稍后重试')
+    posts.value = []
+    if (err.message && (err.message.includes('401') || err.message.includes('认证'))) {
+      errorMsg.value = '请先登录'
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+const showMyPosts = async (e) => {
+  if (e) {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+  
+  if (!localStorage.getItem('token')) {
+    if (confirm('此操作需要登录，是否前往登录？')) {
+      router.push('/login')
+    }
+    return
+  }
+  
+  // 设置一个特殊值来显示帖子列表，而不是地图
+  activeCategoryId.value = -1  // 使用-1表示"我的帖子"视图
+  viewMode.value = 'myPosts'
+  keyword.value = ''
+  await loadPosts()
+}
+
+const showMyComments = async (e) => {
+  if (e) {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+  
+  if (!localStorage.getItem('token')) {
+    if (confirm('此操作需要登录，是否前往登录？')) {
+      router.push('/login')
+    }
+    return
+  }
+  
+  // 设置一个特殊值来显示帖子列表，而不是地图
+  activeCategoryId.value = -2  // 使用-2表示"我的消息"视图
+  viewMode.value = 'myComments'
+  keyword.value = ''
+  await loadPosts()
+}
+
+const showAllPosts = async () => {
+  viewMode.value = 'all'
+  activeCategoryId.value = null
+  keyword.value = ''
+  await loadPosts()
+}
 
 const releaseTempImageUrls = () => {
   tempImageUrls.value.forEach(url => URL.revokeObjectURL(url))
@@ -322,7 +520,7 @@ const handleImageSelect = (event) => {
   event.target.value = ''
 }
 const triggerImagePicker = () => { imagePicker.value?.click() }
-const goBoard = (id) => { activeCategoryId.value = id; keyword.value = '' }
+const goBoard = (id) => goBoardWithLoad(id)
 const goPortal = () => { activeCategoryId.value = null }
 const getCatName = (id) => forumCategories.find(c => c.id === id)?.name || '未分类'
 const isMyPost = (post) => post.userId === currentUser.id
@@ -332,41 +530,149 @@ const resetForm = () => {
   publishForm.title = ''
   publishForm.content = ''
   publishForm.imageInputs = ['', '', '']
+  publishForm.categoryId = activeCategoryId.value || 0 // 根据当前板块设置默认类别
   releaseTempImageUrls()
   if (imagePicker.value) imagePicker.value.value = ''
 }
 
-const publishPost = () => {
-  if (!publishForm.title || !publishForm.content) return
-  mockPosts.unshift({
-    id: Date.now(),
-    categoryId: activeCategoryId.value === 0 ? 4 : activeCategoryId.value,
-    userId: currentUser.id,
-    userName: currentUser.name,
-    title: publishForm.title,
-    content: publishForm.content,
-    status: 'active',
-    isSticky: currentUser.role === 'admin' ? publishForm.isSticky : false,
-    createdAt: new Date().toISOString(),
-    images: publishForm.imageInputs.filter(v => v !== ''),
-    comments: []
-  })
+const closePublishModal = () => {
+  showPublishModal.value = false
   resetForm()
 }
 
-const addComment = (post) => {
-  const text = commentDrafts[post.id]
-  if (!text) return
-  post.comments.push({ id: Date.now(), userName: currentUser.name, content: text })
-  commentDrafts[post.id] = ''
+const publishPost = async () => {
+  if (!publishForm.title || !publishForm.content) {
+    alert('请填写标题和内容')
+    return
+  }
+  
+  try {
+    // 处理图片上传（如果有）
+    const imageFile = publishForm.imageInputs.find(img => img && typeof img !== 'string')
+    
+    await createPost({
+    title: publishForm.title,
+    content: publishForm.content,
+      categoryId: publishForm.categoryId || 0,
+      image: imageFile
+    })
+    
+    alert('帖子已提交，等待管理员审核通过后即可显示！')
+    closePublishModal()
+    // 重新加载帖子列表和统计
+    await loadPosts()
+    await loadMyStats()
+  } catch (err) {
+    console.error('发帖错误:', err)
+    alert('发帖失败: ' + (err.message || '未知错误'))
+  }
 }
-const handleStatusToggle = (p) => p.status = p.status === 'active' ? 'solved' : 'active'
-const toggleSticky = (p) => p.isSticky = !p.isSticky
 
-const handleDelete = (id) => {
+const requireLogin = () => {
+  if (!localStorage.getItem('token')) {
+    if (confirm('此操作需要登录，是否前往登录？')) {
+      router.push('/login')
+    }
+    return false
+  }
+  return true
+}
+
+const addCommentToPost = async (post) => {
+  if (!requireLogin()) return
+  
+  const text = commentDrafts[post.id]
+  if (!text || !text.trim()) {
+    alert('请输入评论内容')
+    return
+  }
+  
+  const postIndex = posts.value.findIndex(p => p.id === post.id)
+  if (postIndex === -1) return
+  
+  // 获取当前用户信息
+  const currentUsername = localStorage.getItem('username') || currentUser.name || '我'
+  const currentUserId = Number(localStorage.getItem('userId')) || currentUser.id
+  
+  // 创建临时评论对象（乐观更新）
+  const tempComment = {
+    id: Date.now(), // 临时ID，后端会返回真实ID
+    userName: currentUsername,
+    content: text.trim(),
+    created_at: new Date().toISOString()
+  }
+  
+  // 立即添加到本地状态（实时显示）
+  if (!posts.value[postIndex].comments) {
+    posts.value[postIndex].comments = []
+  }
+  posts.value[postIndex].comments.push(tempComment)
+  
+  // 清空输入框
+  const commentText = text.trim()
+  commentDrafts[post.id] = ''
+  
+  try {
+    // 提交到后端
+    const result = await addComment(post.id, commentText)
+    
+    // 如果后端返回了评论ID，更新临时评论的ID
+    if (result?.commentId && posts.value[postIndex].comments) {
+      const tempIndex = posts.value[postIndex].comments.findIndex(c => c.id === tempComment.id)
+      if (tempIndex !== -1) {
+        posts.value[postIndex].comments[tempIndex].id = result.commentId
+      }
+    }
+    
+    // 更新我的消息统计
+    loadMyStats()
+    
+    // 可选：在后台重新获取评论列表以确保数据完全同步（不阻塞UI）
+    fetchPostComments(post.id).then(comments => {
+      if (comments && Array.isArray(comments) && posts.value[postIndex]) {
+        posts.value[postIndex].comments = comments
+      }
+    }).catch(err => {
+      console.warn('后台同步评论失败:', err)
+      // 失败不影响已显示的评论
+    })
+  } catch (err) {
+    console.error('评论失败:', err)
+    
+    // 如果提交失败，移除刚才添加的临时评论
+    if (posts.value[postIndex].comments) {
+      const tempIndex = posts.value[postIndex].comments.findIndex(c => c.id === tempComment.id)
+      if (tempIndex !== -1) {
+        posts.value[postIndex].comments.splice(tempIndex, 1)
+      }
+    }
+    
+    // 恢复输入框内容
+    commentDrafts[post.id] = commentText
+    
+    alert('评论失败: ' + (err.message || '未知错误，请稍后重试'))
+  }
+}
+
+const handleStatusToggle = (p) => {
+  // 状态切换功能需要后端支持，暂时保留前端逻辑
+  p.status = p.status === 'active' ? 'solved' : 'active'
+}
+
+const toggleSticky = (p) => {
+  // 置顶功能需要后端支持，暂时保留前端逻辑
+  p.isSticky = !p.isSticky
+}
+
+const handleDelete = async (id) => {
   if(!confirm('确定删除吗？')) return
-  const idx = mockPosts.findIndex(p => p.id === id)
-  if (idx !== -1) mockPosts.splice(idx, 1)
+  
+  try {
+    await deletePost(id)
+    await loadPosts() // 重新加载帖子列表
+  } catch (err) {
+    alert('删除失败: ' + (err.message || '未知错误'))
+  }
 }
 const formatTime = (v) => {
   const d = new Date(v)
@@ -377,9 +683,35 @@ const generateColor = (name) => {
   return colors[name.length % colors.length]
 }
 
+const goBoardWithLoad = (id) => {
+  viewMode.value = 'all' // 切换到分类视图时，重置为全部模式
+  activeCategoryId.value = id
+  keyword.value = ''
+  // 根据当前板块设置默认类别
+  if (id && id !== 0) {
+    publishForm.categoryId = id
+  }
+  loadPosts()
+}
+
+watch(keyword, () => {
+  loadPosts()
+})
+
 onMounted(() => {
   const role = localStorage.getItem('userRole')
+  const userId = localStorage.getItem('userId')
+  const username = localStorage.getItem('username')
   if (role) currentUser.role = role
+  if (userId) currentUser.id = Number(userId)
+  if (username) currentUser.name = username
+  // 确保 posts 初始化为空数组
+  if (!posts.value) {
+    posts.value = []
+  }
+  // 从数据库加载数据
+  loadPosts()
+  loadMyStats()
 })
 onBeforeUnmount(() => {
   releaseTempImageUrls()
@@ -534,6 +866,71 @@ onBeforeUnmount(() => {
   box-shadow: 0 20px 50px rgba(15, 29, 51, 0.08);
   gap: 30px;
 }
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.btn-publish {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, var(--mint), #0db18c);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 15px rgba(13, 177, 140, 0.3);
+}
+.btn-publish:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(13, 177, 140, 0.4);
+}
+.btn-publish:active {
+  transform: translateY(0);
+}
+.publish-icon {
+  font-size: 18px;
+}
+.btn-back {
+  padding: 14px 24px;
+  background: #f1f5f9;
+  color: #64748b;
+  border: none;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.btn-back:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+.hero-stat {
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+  z-index: 10;
+  pointer-events: auto;
+  user-select: none;
+}
+.hero-stat:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background: rgba(13, 177, 140, 0.05);
+}
+.hero-stat.active {
+  background: rgba(13, 177, 140, 0.15);
+  border: 2px solid var(--mint);
+}
+.hero-stat:active {
+  transform: translateY(0);
+}
 .hero-info { display: flex; align-items: center; gap: 22px; }
 .hero-icon {
   width: 72px; height: 72px;
@@ -546,7 +943,7 @@ onBeforeUnmount(() => {
 }
 .hero-label { margin: 0; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; color: #94a3b8; }
 .board-hero h3 { margin: 4px 0; font-size: 24px; color: #0f172a; }
-.hero-stats { display: flex; gap: 22px; }
+.hero-stats { display: flex; gap: 22px; flex-wrap: wrap; }
 .hero-stat { min-width: 120px; text-align: center; background: rgba(255,255,255,0.8); border-radius: 20px; padding: 12px 18px; }
 .hero-stat strong { display: block; font-size: 26px; color: #0f172a; }
 .hero-stat span { color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
@@ -581,7 +978,7 @@ onBeforeUnmount(() => {
   transition: 0.3s;
 }
 .nav-pill-btn.active { background: var(--mint); color: white; box-shadow: 0 8px 20px rgba(13, 177, 140, 0.3); }
-.panel-main-grid { flex: 1; display: grid; grid-template-columns: 360px 1fr; gap: 36px; padding: 30px 40px 40px; overflow: hidden; }
+.panel-main-grid { flex: 1; display: grid; grid-template-columns: 1fr; gap: 36px; padding: 30px 40px 40px; overflow: hidden; }
 
 .publish-card { 
   display: flex; 
@@ -612,6 +1009,19 @@ onBeforeUnmount(() => {
   border: 1px solid #f1f5f9; padding: 18px; border-radius: 20px; background: #f8fafc; outline: none; font-size: 15px;
 }
 .bento-form input:focus, .bento-form textarea:focus { border-color: var(--mint); background: white; }
+.form-group {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.form-group label {
+  font-size: 13px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.category-select {
+  border: 1px solid #f1f5f9; padding: 18px; border-radius: 20px; background: #f8fafc; outline: none; font-size: 15px;
+  cursor: pointer; transition: 0.3s;
+}
+.category-select:focus {
+  border-color: var(--mint); background: white;
+}
 
 .bento-footer { display: flex; flex-direction: column; gap: 18px; margin-top: 20px; }
 .bento-action-btns { display: flex; gap: 12px; width: 100%; }
@@ -646,7 +1056,7 @@ onBeforeUnmount(() => {
 .panel-feed-container { height: 100%; overflow-y: auto !important; padding-right: 15px; padding-bottom: 400px; scroll-padding-bottom: 100px; }
 
 .post-premium-card {
-  background: white; border-radius: 36px; padding: 40px; margin-bottom: 30px;
+  background: white; border-radius: 28px; padding: 24px; margin-bottom: 20px;
   border: 1px solid transparent; transition: 0.5s cubic-bezier(0.23, 1, 0.32, 1);
 }
 .post-premium-card:hover { border-color: var(--mint); transform: translateX(10px); }
@@ -658,39 +1068,39 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 .p-author {
   display: flex;
   align-items: center;
-  gap: 16px; /* 增加头像和名字的间距 */
+  gap: 12px;
 }
 .p-avatar {
-  width: 56px; 
-  height: 56px; 
-  border-radius: 20px; 
+  width: 44px; 
+  height: 44px; 
+  border-radius: 16px; 
   color: white;
   display: flex; 
   align-items: center; 
   justify-content: center; 
   font-weight: 900; 
-  font-size: 26px;
+  font-size: 20px;
   flex-shrink: 0;
   box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 .p-meta {
   display: flex;
-  flex-direction: column; /* 纵向排列名字和时间 */
-  gap: 4px;
+  flex-direction: column;
+  gap: 3px;
 }
 .p-name { 
   font-weight: 900; 
-  font-size: 18px; 
+  font-size: 15px; 
   color: var(--bg-dark); 
   line-height: 1.2;
 }
 .p-time { 
-  font-size: 12px; 
+  font-size: 11px; 
   color: #94a3b8; 
   font-weight: 600; 
   letter-spacing: 0.3px;
@@ -703,10 +1113,10 @@ onBeforeUnmount(() => {
   justify-content: flex-end;
 }
 .p-tag-vibe { 
-  font-size: 11px; 
+  font-size: 10px; 
   font-weight: 900; 
-  padding: 6px 14px; 
-  border-radius: 10px; 
+  padding: 4px 12px; 
+  border-radius: 8px; 
   margin-left: 0 !important; /* 清除旧的间距逻辑 */
   white-space: nowrap;
 }
@@ -714,21 +1124,21 @@ onBeforeUnmount(() => {
 
 .p-tag-vibe.sticky { background: var(--mint); color: white; }
 .p-tag-vibe.cat { background: #f1f5f9; color: #64748b; }
-.p-card-body h3 { font-size: 24px; font-weight: 900; margin: 18px 0; color: var(--bg-dark); }
-.p-card-body p { font-size: 16px; line-height: 1.8; color: #4b5563; margin-bottom: 25px; }
-.p-image-matrix { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
-.p-image-matrix img { width: 100%; height: 200px; object-fit: cover; border-radius: 28px; transition: 0.3s; cursor: pointer; }
-.comment-stream-box { margin-bottom: 25px; border-top: 1px dashed #f1f5f9; padding-top: 25px; }
-.c-item-row { font-size: 14px; padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,0.03); }
-.interaction-control { display: flex; align-items: center; gap: 20px; }
+.p-card-body h3 { font-size: 20px; font-weight: 900; margin: 12px 0; color: var(--bg-dark); }
+.p-card-body p { font-size: 14px; line-height: 1.7; color: #4b5563; margin-bottom: 16px; }
+.p-image-matrix { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+.p-image-matrix img { width: 100%; height: 160px; object-fit: cover; border-radius: 20px; transition: 0.3s; cursor: pointer; }
+.comment-stream-box { margin-bottom: 16px; border-top: 1px dashed #f1f5f9; padding-top: 16px; }
+.c-item-row { font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.03); }
+.interaction-control { display: flex; align-items: center; gap: 16px; }
 .reply-form-vibe { flex: 1; }
 .reply-form-vibe input {
-  width: 100%; background: #f8fafc; border: 1px solid #f1f5f9; padding: 14px 24px;
-  border-radius: 100px; font-size: 14px; outline: none; transition: 0.3s;
+  width: 100%; background: #f8fafc; border: 1px solid #f1f5f9; padding: 10px 18px;
+  border-radius: 100px; font-size: 13px; outline: none; transition: 0.3s;
 }
 .btn-text-op {
-  border: none; background: #f1f5f9; padding: 10px 20px; border-radius: 12px;
-  font-size: 13px; font-weight: 900; color: #64748b; cursor: pointer; transition: 0.2s;
+  border: none; background: #f1f5f9; padding: 8px 16px; border-radius: 10px;
+  font-size: 12px; font-weight: 900; color: #64748b; cursor: pointer; transition: 0.2s;
 }
 .btn-text-op.danger { color: #f43f5e; }
 
@@ -740,6 +1150,125 @@ onBeforeUnmount(() => {
 .panel-slide-enter-active, .panel-slide-leave-active { transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1); }
 .panel-slide-enter-from, .panel-slide-leave-to { transform: translateY(100%); opacity: 0; }
 .animate-fade { animation: fadeIn 1s ease; }
+
+/* 发布帖子弹窗样式 */
+.publish-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+.publish-modal-content {
+  background: white;
+  border-radius: 32px;
+  width: 100%;
+  max-width: 700px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s ease;
+  overflow: hidden;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.publish-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 32px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.publish-modal-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.modal-close-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: #f1f5f9;
+  border-radius: 12px;
+  font-size: 24px;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.modal-close-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.publish-modal-body {
+  padding: 32px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.publish-modal-body .bento-form {
+  gap: 20px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .board-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+  
+  .hero-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .btn-publish {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .hero-stats {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .publish-modal-content {
+    max-width: 100%;
+    border-radius: 24px 24px 0 0;
+    max-height: 95vh;
+  }
+  
+  .publish-modal-header,
+  .publish-modal-body {
+    padding: 20px;
+  }
+}
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 .custom-scrollbar::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -749,8 +1278,10 @@ onBeforeUnmount(() => {
 
 .mt-20 { margin-top: 20px; }
 .empty-vibe { text-align: center; padding: 150px 0; font-size: 1.5rem; color: #94a3b8; font-weight: 800; }
+.loading-state, .error-state { text-align: center; padding: 100px 0; font-size: 1.2rem; color: #64748b; }
+.loading-state { color: #0db18c; }
+.error-state { color: #ef4444; }
 @media (max-width: 1350px) {
   .panel-main-grid { grid-template-columns: 1fr; }
-  .panel-side-bento { display: none; }
 }
 </style>

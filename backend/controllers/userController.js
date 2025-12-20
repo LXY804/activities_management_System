@@ -127,27 +127,67 @@ exports.updateProfile = async (req, res) => {
       return success(res, null, '无需更新')
     }
 
-    // 调用存储过程 sp_update_user_profile 统一更新个人信息
-    // 传入 NULL 的字段由存储过程中的 COALESCE 保留原值
-    const sql = 'CALL sp_update_user_profile(?,?,?,?,?,?,?,?,?,?,?)'
-    const params = [
-      userId,               // p_user_id
-      phone ?? null,        // p_phone
-      email ?? null,        // p_email
-      collegeId ?? null,    // p_college_id
-      studentId ?? null,    // p_student_id
-      realName ?? null,     // p_real_name
-      gender ?? null,       // p_gender
-      idType ?? null,       // p_id_type
-      idNumber ?? null,     // p_id_number
-      className ?? null,    // p_class_name
-      image ?? null         // p_image
-    ]
-
-    await sequelize.query(sql, {
-      replacements: params,
-      type: QueryTypes.RAW
-    })
+    // 构建动态 UPDATE 语句，只更新提供的字段
+    // 将空字符串转换为 NULL，避免 ENUM 类型字段报错
+    const updateFields = []
+    const updateValues = []
+    
+    // 辅助函数：将空字符串转换为 null
+    const normalizeValue = (value) => {
+      if (value === '' || value === null) return null
+      return value
+    }
+    
+    if (phone !== undefined) {
+      updateFields.push('phone = ?')
+      updateValues.push(normalizeValue(phone))
+    }
+    if (email !== undefined) {
+      updateFields.push('email = ?')
+      updateValues.push(normalizeValue(email))
+    }
+    if (collegeId !== undefined && collegeId !== null && collegeId !== '') {
+      updateFields.push('college_id = ?')
+      updateValues.push(collegeId)
+    }
+    if (studentId !== undefined) {
+      updateFields.push('student_id = ?')
+      updateValues.push(normalizeValue(studentId))
+    }
+    if (realName !== undefined) {
+      updateFields.push('real_name = ?')
+      updateValues.push(normalizeValue(realName))
+    }
+    // gender 是 ENUM 类型，空字符串必须转换为 NULL
+    if (gender !== undefined) {
+      updateFields.push('gender = ?')
+      updateValues.push(gender === '' ? null : gender)
+    }
+    if (idType !== undefined) {
+      updateFields.push('id_type = ?')
+      updateValues.push(normalizeValue(idType))
+    }
+    if (idNumber !== undefined) {
+      updateFields.push('id_number = ?')
+      updateValues.push(normalizeValue(idNumber))
+    }
+    if (className !== undefined) {
+      updateFields.push('class_name = ?')
+      updateValues.push(normalizeValue(className))
+    }
+    if (image !== undefined) {
+      updateFields.push('image = ?')
+      updateValues.push(normalizeValue(image))
+    }
+    
+    if (updateFields.length > 0) {
+      updateValues.push(userId)
+      const sql = `UPDATE users SET ${updateFields.join(', ')} WHERE user_id = ?`
+      await sequelize.query(sql, {
+        replacements: updateValues,
+        type: QueryTypes.UPDATE
+      })
+    }
 
     // 角色仍按原逻辑单独处理，只允许管理员修改
     if (role && req.user.role === 'admin') {
@@ -281,7 +321,25 @@ exports.getUserStats = async (req, res) => {
       FROM users
     `
     
+    // 计算活跃用户数（最近30天有活动的用户：报名活动、发表评论、发帖等）
+    const activeUserSql = `
+      SELECT COUNT(DISTINCT user_id) AS active_count
+      FROM (
+        SELECT user_id FROM user_activity_apply WHERE applied_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        UNION
+        SELECT user_id FROM activity_comments WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        UNION
+        SELECT user_id FROM forum_posts WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        UNION
+        SELECT user_id FROM forum_comments WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+      ) AS active_users
+    `
+    
     const [stats] = await sequelize.query(sql, {
+      type: QueryTypes.SELECT
+    })
+    
+    const [activeResult] = await sequelize.query(activeUserSql, {
       type: QueryTypes.SELECT
     })
     
@@ -289,7 +347,8 @@ exports.getUserStats = async (req, res) => {
       total: stats.total || 0,
       students: stats.students || 0,
       organizers: stats.organizers || 0,
-      admins: stats.admins || 0
+      admins: stats.admins || 0,
+      active: activeResult?.active_count || 0
     })
   } catch (err) {
     console.error('获取用户统计错误:', err)

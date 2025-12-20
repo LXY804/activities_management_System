@@ -76,7 +76,17 @@
                   </div>
                 </div>
                 <div class="input-group">
-                  <label>活动简介</label>
+                  <label>
+                    活动简介
+                    <button 
+                      type="button" 
+                      class="btn-ai-generate" 
+                      @click="generateDescription"
+                      :disabled="generatingDescription"
+                    >
+                      {{ generatingDescription ? '生成中...' : '🤖 AI生成' }}
+                    </button>
+                  </label>
                   <textarea v-model="form.description" rows="2" placeholder="简要介绍活动亮点与目标"></textarea>
                 </div>
               </div>
@@ -363,81 +373,6 @@
               </template>
             </article>
           </section>
-
-          <section class="reward-card span-2">
-            <div class="rule-header">
-              <div>
-                <h3>积分规则</h3>
-                <p class="card-tip">为活动设置奖励动作，学生完成后自动计分</p>
-              </div>
-              <button class="btn-refresh ghost" @click="loadOrganizerRules">刷新</button>
-            </div>
-            <form class="rule-form" @submit.prevent="submitRuleForm">
-              <div class="two-cols">
-                <label>关联活动
-                  <select v-model="ruleForm.activityId" required>
-                    <option value="" disabled>请选择活动</option>
-                    <option v-for="act in myActivities" :value="act.id" :key="act.id">
-                      {{ act.title }}
-                    </option>
-                  </select>
-                </label>
-                <label>奖励名称
-                  <input v-model.trim="ruleForm.actionLabel" type="text" placeholder="如：签到" required />
-                </label>
-              </div>
-              <div class="two-cols">
-                <label>积分值
-                  <input v-model.number="ruleForm.pointsValue" type="number" min="1" required />
-                </label>
-                <label>启用
-                  <select v-model="ruleForm.isActive">
-                    <option :value="true">启用</option>
-                    <option :value="false">暂停</option>
-                  </select>
-                </label>
-              </div>
-              <label>说明
-                <textarea v-model.trim="ruleForm.description" rows="2" placeholder="规则说明、触发条件等"></textarea>
-              </label>
-              <div class="form-actions">
-                <button type="submit" class="btn-primary-vibe" :disabled="savingRule">
-                  {{ savingRule ? '保存中...' : '保存规则' }}
-                </button>
-              </div>
-            </form>
-
-            <div v-if="loadingRules" class="reward-loading">加载规则中...</div>
-            <div v-else>
-              <div class="rule-list" v-if="organizerRules.length">
-                <h4>最近规则</h4>
-                <ul>
-                  <li v-for="rule in organizerRules" :key="rule.id" @click="editRule(rule)">
-                    <div>
-                      <strong>{{ rule.actionLabel }}</strong>
-                      <p>活动 {{ rule.activityId }} · {{ rule.pointsValue }} 分</p>
-                    </div>
-                    <span class="status-tag" :class="rule.isActive ? 'active' : 'inactive'">
-                      {{ rule.isActive ? '启用' : '停用' }}
-                    </span>
-                  </li>
-                </ul>
-              </div>
-              <p v-else class="empty">暂无已保存的积分规则</p>
-            </div>
-          </section>
-
-          <section class="reward-card span-2">
-            <h3>礼品兑换热度</h3>
-            <div class="card-tip">按兑换数量 TOP5</div>
-            <ul class="heat-list" v-if="organizerAnalytics.giftHeat.length">
-              <li v-for="gift in organizerAnalytics.giftHeat" :key="gift.id">
-                <span>{{ gift.title }}</span>
-                <strong>{{ gift.redeemed }}</strong>
-              </li>
-            </ul>
-            <p v-else class="empty">暂无兑换数据</p>
-          </section>
         </div>
 
         <div v-if="['statistics', 'checkin'].includes(currentView)" class="view-container">
@@ -478,7 +413,7 @@
 <script setup>
 import { ref, reactive, onMounted, onBeforeUnmount, watch } from 'vue'
 import NavBar from '@/components/NavBar.vue'
-import { createEvent } from '@/api/event'
+import { createEvent, generateEventCopy } from '@/api/event'
 import {
   fetchMyActivities as fetchOrganizerActivities,
   fetchActivityApplications,
@@ -491,6 +426,7 @@ import {
   updateGiftStatus,
   fetchPointRules,
   savePointRule,
+  deletePointRule,
   fetchOrganizerRewardStats
 } from '@/api/reward'
 
@@ -625,6 +561,7 @@ const form = reactive(getDefaultForm())
 const coverImageFile = ref(null)
 const coverImagePreview = ref(null)
 const DRAFT_KEY = 'organizer_publish_draft'
+const generatingDescription = ref(false)
 
 // --- 业务方法 ---
 onMounted(() => {
@@ -913,6 +850,21 @@ const editRule = (rule) => {
   ruleForm.isActive = !!rule.isActive
 }
 
+const handleDeleteRule = async (ruleId) => {
+  if (!confirm('确定要删除这条积分规则吗？')) {
+    return
+  }
+  
+  try {
+    await deletePointRule(ruleId)
+    alert('积分规则已删除')
+    loadOrganizerRules()
+  } catch (err) {
+    console.error('删除积分规则失败', err)
+    alert(err?.response?.data?.message || '删除失败，请稍后重试')
+  }
+}
+
 const handleCoverUpload = (e) => {
   const file = e.target.files[0]
   if (file) {
@@ -963,6 +915,38 @@ const handleSubmit = async () => {
 const handleSaveDraft = () => {
   localStorage.setItem(DRAFT_KEY, JSON.stringify(form))
   alert('草稿已保存至本地')
+}
+
+const generateDescription = async () => {
+  if (!form.title) {
+    alert('请先填写活动名称')
+    return
+  }
+  
+  generatingDescription.value = true
+  try {
+    const response = await generateEventCopy({
+      title: form.title,
+      activityType: form.activityType || '',
+      location: form.location || '',
+      startTime: form.startTime || '',
+      endTime: form.endTime || '',
+      belongCollege: form.belongCollege || '',
+      description: form.description || ''
+    })
+    
+    if (response && response.copy) {
+      form.description = response.copy
+      alert('活动简介已生成！')
+    } else {
+      alert('生成失败，请稍后重试')
+    }
+  } catch (err) {
+    console.error('生成活动简介失败:', err)
+    alert(err?.response?.data?.message || '生成失败，请稍后重试')
+  } finally {
+    generatingDescription.value = false
+  }
 }
 
 const openReviewPanel = async (act) => {
@@ -1091,8 +1075,28 @@ onBeforeUnmount(() => {
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .form-row-2 { display: flex; gap: 16px; }
 .input-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; flex: 1; }
-.input-group label, .inner-label { font-size: 12px; font-weight: 700; color: var(--text-light); }
+.input-group label, .inner-label { font-size: 12px; font-weight: 700; color: var(--text-light); display: flex; align-items: center; justify-content: space-between; }
 .input-group label span { color: #f43f5e; }
+.btn-ai-generate {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: auto;
+}
+.btn-ai-generate:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+.btn-ai-generate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 .input-group input, .input-group select, .input-group textarea {
   border: 1px solid #f1f5f9; background: #f8fafc; border-radius: 10px;
   padding: 10px; font-size: 13px; transition: 0.2s;
@@ -1233,7 +1237,27 @@ onBeforeUnmount(() => {
 .rule-form textarea { border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 12px; font-size: 13px; background: #f8fafc; }
 .rule-form textarea { min-height: 70px; }
 .rule-list ul { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.rule-list li { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 12px; background: #f8fafc; cursor: pointer; }
+.rule-list li { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 12px; background: #f8fafc; }
+.btn-delete-rule {
+  background: #f44336;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 4px 10px;
+  font-size: 18px;
+  line-height: 1;
+  transition: all 0.2s;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-delete-rule:hover {
+  background: #d32f2f;
+  transform: scale(1.1);
+}
 .rule-list strong { display: block; font-size: 13px; }
 .empty { text-align: center; color: #94a3b8; font-size: 13px; padding: 12px 0; }
 

@@ -84,6 +84,12 @@ router.post(
   authorize('organizer', 'admin'),
   rewardController.savePointRule
 )
+router.delete(
+  '/rules/:id',
+  authenticate,
+  authorize('organizer', 'admin'),
+  rewardController.deletePointRule
+)
 router.post(
   '/transactions/adjust',
   authenticate,

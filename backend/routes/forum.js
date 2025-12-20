@@ -30,6 +30,9 @@ router.post('/posts/:postId/favorite', authenticate, forumController.toggleFavor
 // 检查收藏状态（需要登录）
 router.get('/posts/:postId/favorite', authenticate, forumController.checkFavorite)
 
+// 获取我的统计（需要登录）
+router.get('/my/stats', authenticate, forumController.getMyStats)
+
 // 获取我的发帖列表（需要登录）
 router.get('/my/posts', authenticate, forumController.getMyPosts)
 

@@ -43,9 +43,9 @@
             <div class="header-main">
               <h2>礼品库 <span class="subtitle">今日甄选</span></h2>
             </div>
-            <button class="shuffle-btn" @click="shuffleGifts">
+            <button class="shuffle-btn" @click="refreshGifts">
               <i class="shuffle-icon">↻</i>
-              换一批
+              刷新
             </button>
           </header>
 
@@ -207,16 +207,38 @@ const redeemState = reactive({
 
 const redeemCost = computed(() => (redeemState.gift?.pointsCost || 0) * (redeemState.quantity || 1))
 
+// API 基础路径
+const API_ORIGIN = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/api\/?$/, '')
+
+// 构建图片URL
+const buildImageUrl = (imageUrl) => {
+  if (!imageUrl) return assetImages[0] // 如果没有图片，使用默认图片
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl
+  }
+  let normalized = imageUrl.replace(/\\/g, '/')
+  if (!normalized.startsWith('/')) {
+    normalized = '/' + normalized
+  }
+  return API_ORIGIN + normalized
+}
+
 const formatGift = (gift, index) => ({
   ...gift,
   deliveryType: gift.deliveryType || gift.delivery_type || 'offline',
-  coverImage: assetImages[index % assetImages.length]
+  // 优先使用数据库中的图片，如果没有则使用静态图片作为默认值
+  coverImage: gift.coverImage ? buildImageUrl(gift.coverImage) : assetImages[index % assetImages.length]
 })
 
 const shuffleGifts = () => {
   if (allGifts.value.length === 0) return
   const shuffled = [...allGifts.value].sort(() => 0.5 - Math.random())
   displayedGifts.value = shuffled.slice(0, 6)
+}
+
+// 刷新礼品库（从服务器重新加载）
+const refreshGiftLibrary = async () => {
+  await refreshGifts()
 }
 
 const refreshGifts = async () => {

@@ -537,6 +537,53 @@ exports.savePointRule = async (req, res) => {
   }
 }
 
+// 删除积分规则
+exports.deletePointRule = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { role, id: userId } = req.user
+
+    if (!id) {
+      return error(res, '请提供规则ID', 400)
+    }
+
+    // 检查规则是否存在
+    const checkSql = `
+      SELECT rule_id, organizer_id
+      FROM activity_point_rules
+      WHERE rule_id = ?
+    `
+    const [rule] = await sequelize.query(checkSql, {
+      replacements: [id],
+      type: QueryTypes.SELECT
+    })
+
+    if (!rule) {
+      return error(res, '积分规则不存在', 404)
+    }
+
+    // 组织者只能删除自己创建的规则
+    if (role === 'organizer' && rule.organizer_id !== userId) {
+      return error(res, '只能删除自己创建的积分规则', 403)
+    }
+
+    // 删除规则
+    const deleteSql = `
+      DELETE FROM activity_point_rules
+      WHERE rule_id = ?
+    `
+    await sequelize.query(deleteSql, {
+      replacements: [id],
+      type: QueryTypes.DELETE
+    })
+
+    success(res, null, '积分规则已删除')
+  } catch (err) {
+    console.error('删除积分规则失败:', err)
+    error(res, '删除积分规则失败', 500)
+  }
+}
+
 exports.adjustPoints = async (req, res) => {
   try {
     const { userId, amount, reason = '', relatedActivityId = null } = req.body

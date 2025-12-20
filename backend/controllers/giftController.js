@@ -40,14 +40,14 @@ exports.getGifts = async (req, res) => {
     const sql = `
       SELECT 
         gift_id AS id,
-        name,
+        title AS name,
         description,
-        image_url,
-        points_required,
+        cover_image AS image_url,
+        points_cost AS points_required,
         stock
-      FROM gifts
-      WHERE stock > 0
-      ORDER BY points_required ASC
+      FROM gift_items
+      WHERE stock > 0 AND status = 'active'
+      ORDER BY points_cost ASC
     `
 
     const list = await sequelize.query(sql, {
@@ -69,12 +69,12 @@ exports.getGiftDetail = async (req, res) => {
     const sql = `
       SELECT 
         gift_id AS id,
-        name,
+        title AS name,
         description,
-        image_url,
-        points_required,
+        cover_image AS image_url,
+        points_cost AS points_required,
         stock
-      FROM gifts
+      FROM gift_items
       WHERE gift_id = ?
     `
 
@@ -124,12 +124,13 @@ exports.createGift = async (req, res) => {
         imageUrl = path.posix.join('/uploads/gifts', req.file.filename)
       }
 
+      const adminId = req.user.id
       const sql = `
-        INSERT INTO gifts (name, description, image_url, points_required, stock)
-        VALUES (?, ?, ?, ?, ?)
+      INSERT INTO gift_items (title, description, cover_image, points_cost, stock, status, created_by)
+      VALUES (?, ?, ?, ?, ?, 'pending', ?)
       `
       const [giftId] = await sequelize.query(sql, {
-        replacements: [name, description || '', imageUrl, points, stockNum],
+        replacements: [name, description || '', imageUrl, points, stockNum, adminId],
         type: QueryTypes.INSERT
       })
 
@@ -144,17 +145,17 @@ exports.createGift = async (req, res) => {
 // 管理员：获取所有礼品列表（包括库存为0的）
 exports.getAllGifts = async (req, res) => {
   try {
-    const sql = `
+      const sql = `
       SELECT 
         gift_id AS id,
-        name,
+        title AS name,
         description,
-        image_url,
-        points_required,
+        cover_image AS image_url,
+        points_cost AS points_required,
         stock,
         created_at,
         updated_at
-      FROM gifts
+      FROM gift_items
       ORDER BY created_at DESC
     `
 
@@ -181,7 +182,7 @@ exports.updateGift = async (req, res) => {
       const { name, description, points_required, stock } = req.body
 
       // 检查礼品是否存在
-      const checkSql = 'SELECT gift_id FROM gifts WHERE gift_id = ?'
+      const checkSql = 'SELECT gift_id FROM gift_items WHERE gift_id = ?'
       const [gift] = await sequelize.query(checkSql, {
         replacements: [id],
         type: QueryTypes.SELECT
@@ -202,12 +203,12 @@ exports.updateGift = async (req, res) => {
         return error(res, '库存数量不能为负数', 400)
       }
 
-      let updateSql = 'UPDATE gifts SET name = ?, description = ?, points_required = ?, stock = ?'
+      let updateSql = 'UPDATE gift_items SET title = ?, description = ?, points_cost = ?, stock = ?'
       const replacements = [name, description || '', points, stockNum]
 
       if (req.file) {
         const imageUrl = path.posix.join('/uploads/gifts', req.file.filename)
-        updateSql += ', image_url = ?'
+        updateSql += ', cover_image = ?'
         replacements.push(imageUrl)
       }
 
@@ -243,7 +244,7 @@ exports.deleteGift = async (req, res) => {
       return error(res, '礼品不存在', 404)
     }
 
-    await sequelize.query('DELETE FROM gifts WHERE gift_id = ?', {
+    await sequelize.query('DELETE FROM gift_items WHERE gift_id = ?', {
       replacements: [id],
       type: QueryTypes.DELETE
     })

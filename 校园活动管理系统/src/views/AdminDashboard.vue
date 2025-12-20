@@ -4,51 +4,60 @@
     <aside class="sidebar">
       <div class="sidebar__title">管理后台</div>
       <nav class="sidebar__menu">
-        <a 
+        <button 
+          type="button"
           class="sidebar__item" 
           :class="{ active: activeMenu === 'review' }"
           @click="activeMenu = 'review'"
-        >审核活动发布</a>
-        <a 
+        >审核活动发布</button>
+        <button 
+          type="button"
           class="sidebar__item"
           :class="{ active: activeMenu === 'rewards' }"
-          @click.prevent="switchToRewards"
-        >积分管理</a>
-        <a 
+          @click="switchToRewards"
+        >积分管理</button>
+        <button 
+          type="button"
           class="sidebar__item"
           :class="{ active: activeMenu === 'users' }"
-          @click.prevent="switchToUsers"
-        >用户管理</a>
-        <a 
+          @click="switchToUsers"
+        >用户管理</button>
+        <button 
+          type="button"
           class="sidebar__item"
           :class="{ active: activeMenu === 'forum' }"
           @click="activeMenu = 'forum'"
-        >论坛管理</a>
-        <a 
+        >论坛管理</button>
+        <button 
+          type="button"
           class="sidebar__item"
           :class="{ active: activeMenu === 'config' }"
-          @click.prevent="switchToConfig"
-        >系统配置</a>
-        <a 
+          @click="switchToConfig"
+        >系统配置</button>
+        <button 
+          type="button"
           class="sidebar__item"
           :class="{ active: activeMenu === 'stats' }"
-          @click.prevent="switchToStats"
-        >数据统计</a>
-        <a 
+          @click="switchToStats"
+        >数据统计</button>
+        <button 
+          type="button"
           class="sidebar__item"
           :class="{ active: activeMenu === 'news' }"
           @click="activeMenu = 'news'"
-        >发布资讯</a>
-        <a 
+        >发布资讯</button>
+        <button 
+          type="button"
           class="sidebar__item"
           :class="{ active: activeMenu === 'announcements' }"
           @click="activeMenu = 'announcements'"
-        >系统公告</a>
-        <a 
+        >系统公告</button>
+        <button 
+          type="button"
           class="sidebar__item"
           :class="{ active: activeMenu === 'gifts' }"
           @click="activeMenu = 'gifts'"
-        >积分礼品</a>
+        >积分礼品</button>
       </nav>
     </aside>
 
@@ -319,69 +328,6 @@
             </section>
           </div>
 
-          <div class="reward-board">
-            <section class="sub-panel">
-              <div class="panel-head">
-                <div>
-                  <p class="eyebrow">库存预警</p>
-                  <h3>低于阈值</h3>
-                </div>
-                <button class="ghost-link" @click="loadRewardOverview">刷新</button>
-              </div>
-              <ul v-if="lowStockGifts.length" class="low-stock-list">
-                <li v-for="gift in lowStockGifts" :key="gift.id">
-                  <div>
-                    <h4>{{ gift.title }}</h4>
-                    <p>剩余 {{ gift.stock }} 件</p>
-                  </div>
-                  <span class="badge warning">补货</span>
-                </li>
-              </ul>
-              <p v-else class="empty">库存全部在安全范围</p>
-            </section>
-
-            <section class="sub-panel">
-              <div class="panel-head">
-                <div>
-                  <p class="eyebrow">积分规则</p>
-                  <h3>调整活动积分</h3>
-                </div>
-                <button class="ghost-link" @click="loadPointRules">刷新</button>
-              </div>
-              <div v-if="loadingRules" class="loading small">加载规则中...</div>
-              <div v-else class="rule-list" v-show="pointRules.length">
-                <div
-                  v-for="rule in pointRules.slice(0, 5)"
-                  :key="rule.id"
-                  class="rule-row"
-                  @click="editRule(rule)"
-                >
-                  <div>
-                    <h4>{{ rule.actionLabel }}</h4>
-                    <p>活动 {{ rule.activityId }} · {{ rule.pointsValue }} 分</p>
-                  </div>
-                  <span class="badge" :class="{ success: rule.isActive }">
-                    {{ rule.isActive ? '启用' : '停用' }}
-                  </span>
-                </div>
-              </div>
-              <form class="stack-form" @submit.prevent="submitRule">
-                <div class="inline-inputs">
-                  <input v-model.number="ruleForm.activityId" type="number" min="1" placeholder="活动 ID" required />
-                  <input v-model.trim="ruleForm.actionLabel" type="text" placeholder="规则标题" required />
-                  <input v-model.number="ruleForm.pointsValue" type="number" min="1" placeholder="积分" required />
-                </div>
-                <textarea v-model.trim="ruleForm.description" rows="2" placeholder="规则描述"></textarea>
-                <label class="checkbox-inline">
-                  <input type="checkbox" v-model="ruleForm.isActive" /> 启用规则
-                </label>
-                <button class="btn" type="submit" :disabled="savingRule">
-                  {{ savingRule ? '保存中...' : '保存/更新规则' }}
-                </button>
-              </form>
-            </section>
-          </div>
-
           <section class="sub-panel full-width">
             <div class="panel-head">
               <div>
@@ -517,7 +463,6 @@
             <div class="month-control">
               <label class="month-info" for="month-selector">
                 <span class="label-text">选择月份</span>
-                <strong class="label-value">{{ selectedMonthLabel }}</strong>
               </label>
               <input 
                 id="month-selector"
@@ -574,7 +519,25 @@
                 placeholder="请输入资讯内容" 
                 class="form-textarea"
               ></textarea>
+              
+              <!-- 图片预览 -->
+              <div v-if="newsImagePreview" class="image-preview">
+                <img :src="newsImagePreview" alt="预览" />
+                <button type="button" class="btn-remove-image" @click="removeNewsImage">×</button>
+              </div>
+              
+              <!-- 操作按钮 -->
               <div class="form-actions">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  @change="handleNewsImageChange"
+                  ref="newsImageInput"
+                  style="display: none;"
+                />
+                <button type="button" class="btn btn-secondary" @click="$refs.newsImageInput?.click()">
+                  {{ newsImagePreview ? '更换图片' : '选择文件' }}
+                </button>
                 <button class="btn btn-primary" @click="handleCreateNews">发布资讯</button>
               </div>
             </div>
@@ -683,7 +646,8 @@
               <h2>礼品列表</h2>
               <button class="btn btn-primary" @click="showGiftForm = true">新增礼品</button>
             </header>
-            <div v-if="giftsList.length" class="gifts-list">
+            <div v-if="loadingGifts" class="loading small">加载礼品中...</div>
+            <div v-else-if="giftsList.length" class="gifts-list">
               <div v-for="item in giftsList" :key="item.id" class="gift-item">
                 <div class="gift-image" v-if="item.image_url">
                   <img :src="buildImageUrl(item.image_url)" alt="礼品图片" />
@@ -694,6 +658,8 @@
                   <div class="gift-meta">
                     <span>所需积分：{{ item.points_required }}</span>
                     <span>库存：{{ item.stock }}</span>
+                    <span>状态：{{ item.status === 'active' ? '已上架' : item.status === 'pending' ? '待审核' : item.status === 'inactive' ? '已下架' : item.status === 'rejected' ? '已驳回' : item.status }}</span>
+                    <span>交付方式：{{ item.deliveryType === 'offline' ? '线下领取' : item.deliveryType === 'online' ? '线上发放' : '线上/线下皆可' }}</span>
                   </div>
                 </div>
                 <div class="gift-actions">
@@ -857,7 +823,10 @@
 
 <script setup>
 import { ref, computed, onMounted, reactive, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import NavBar from '../components/NavBar.vue'
+
+const router = useRouter()
 import { fetchPendingEvents, approveEvent, rejectEvent } from '@/api/event'
 import { 
   fetchUserList, 
@@ -874,26 +843,35 @@ import {
   rejectPost
 } from '@/api/forum'
 import {
+  createAnnouncement,
+  fetchPendingAnnouncements,
+  approveAnnouncement,
+  rejectAnnouncement,
+  fetchAllAnnouncements
+} from '@/api/announcement'
+import {
   createNews,
   fetchAllNews,
   updateNews,
   deleteNews
 } from '@/api/news'
 import {
-  createGift,
   fetchAllGifts,
-} from '@/api/user'
+} from '@/api/gift'
 import {
   fetchAdminRewardOverview,
   fetchManagedGifts,
   updateGiftStatus,
+  updateGift,
   createGift,
   fetchPointRules,
   savePointRule,
+  deletePointRule,
   adjustRewardPoints,
   fetchAdminRewardOrders,
   updateAdminOrderStatus
 } from '@/api/reward'
+import { deleteGift } from '@/api/gift'
 
 // 当前活动菜单
 const activeMenu = ref('review')
@@ -916,6 +894,8 @@ const newsForm = ref({
   title: '',
   content: ''
 })
+const newsImageFile = ref(null)
+const newsImagePreview = ref(null)
 const newsList = ref([])
 
 // 积分礼品管理相关
@@ -1015,6 +995,120 @@ const loadPendingEvents = async () => {
   }
 }
 
+// 加载待审核帖子
+const loadPendingPosts = async () => {
+  try {
+    const list = await fetchPendingPosts()
+    pendingPosts.value = list || []
+    pendingPostsCount.value = list?.length || 0
+  } catch (e) {
+    console.error('加载待审核帖子失败:', e)
+    pendingPosts.value = []
+    pendingPostsCount.value = 0
+  }
+}
+
+// 加载待审核公告
+const loadPendingAnnouncements = async () => {
+  try {
+    const data = await fetchPendingAnnouncements()
+    pendingAnnouncements.value = data || []
+    pendingAnnouncementsCount.value = data?.length || 0
+  } catch (e) {
+    console.error('加载待审核公告失败:', e)
+    pendingAnnouncements.value = []
+    pendingAnnouncementsCount.value = 0
+  }
+}
+
+// 创建公告
+const handleCreateAnnouncement = async () => {
+  if (!announcementForm.value.title || !announcementForm.value.content) {
+    showNotification('请填写标题和内容', 'warning')
+    return
+  }
+  
+  try {
+    await createAnnouncement({
+      title: announcementForm.value.title,
+      content: announcementForm.value.content
+    })
+    showNotification('✓ 公告发布成功', 'success')
+    // 清空表单
+    announcementForm.value.title = ''
+    announcementForm.value.content = ''
+    // 重新加载待审核公告列表和统计数据
+    loadPendingAnnouncements()
+    loadAnnouncementStats()
+  } catch (e) {
+    console.error('发布公告失败:', e)
+    showNotification('发布公告失败，请稍后重试', 'warning')
+  }
+}
+
+// 审核通过公告
+const handleApproveAnnouncement = async (id) => {
+  try {
+    await approveAnnouncement(id)
+    showNotification('✓ 公告已通过审核', 'success')
+    loadPendingAnnouncements()
+    loadAnnouncementStats()
+  } catch (e) {
+    console.error('审核公告失败:', e)
+    showNotification('审核公告失败，请稍后重试', 'warning')
+  }
+}
+
+// 驳回公告
+const handleRejectAnnouncement = async (id) => {
+  const remark = window.prompt('请输入驳回原因（可选）：') || ''
+  try {
+    await rejectAnnouncement(id, remark)
+    showNotification('✗ 公告已驳回', 'warning')
+    loadPendingAnnouncements()
+    loadAnnouncementStats()
+  } catch (e) {
+    console.error('驳回公告失败:', e)
+    showNotification('驳回公告失败，请稍后重试', 'warning')
+  }
+}
+
+// 加载公告统计数据
+const loadAnnouncementStats = async () => {
+  try {
+    const data = await fetchAllAnnouncements()
+    announcementStats.value = data || []
+  } catch (e) {
+    console.error('加载公告统计失败:', e)
+    announcementStats.value = []
+  }
+}
+
+// 处理帖子审核
+const handleApprovePost = async (postId) => {
+  try {
+    await approvePost(postId)
+    showNotification('✓ 帖子已通过审核', 'success')
+    loadPendingPosts()
+  } catch (e) {
+    console.error('审核帖子失败:', e)
+    showNotification('审核帖子失败，请稍后重试', 'warning')
+  }
+}
+
+// 处理帖子驳回
+const handleRejectPost = async (postId) => {
+  const remark = window.prompt('请输入驳回原因（可选）：') || ''
+  try {
+    await rejectPost(postId, remark)
+    showNotification('✗ 帖子已驳回', 'warning')
+    loadPendingPosts()
+  } catch (e) {
+    console.error('驳回帖子失败:', e)
+    showNotification('驳回帖子失败，请稍后重试', 'warning')
+  }
+}
+
 const switchToRewards = () => {
   activeMenu.value = 'rewards'
   if (!rewardPanelInitialized.value) {
@@ -1057,20 +1151,52 @@ const switchToStats = () => {
 }
 
 onMounted(() => {
-  loadPendingEvents()
-  loadUserStats() // 加载用户统计（用于概览卡片）
-  loadNewUsersThisMonth() // 加载本月新增用户
-  loadSystemConfig() // 加载系统配置
-  loadActivityStats(selectedMonth.value) // 加载当前月份的统计数据
-  loadPendingPosts() // 加载待审核帖子数量
-  loadPendingAnnouncements() // 加载待审核公告数量
-  // 如果初始菜单是用户管理，则加载数据
-  if (activeMenu.value === 'users') {
-    loadUsers()
+  // 检查登录状态和权限
+  const token = localStorage.getItem('token')
+  const userRole = localStorage.getItem('userRole')
+  
+  if (!token || userRole !== 'admin') {
+    alert('您没有权限访问管理后台，请先登录管理员账号')
+    router.push('/login')
+    return
   }
-  if (activeMenu.value === 'rewards') {
-    rewardPanelInitialized.value = true
-    refreshRewardPanel()
+  
+  // 使用 try-catch 包裹所有初始化操作，确保错误不会阻止页面交互
+  // 所有异步操作都使用 catch 处理错误，不阻塞页面
+  try {
+    // 并行加载数据，不阻塞页面交互
+    loadPendingEvents().catch(e => console.error('加载待审核活动失败:', e))
+    loadUserStats().catch(e => console.error('加载用户统计失败:', e))
+    loadNewUsersThisMonth().catch(e => console.error('加载本月新增用户失败:', e))
+    loadSystemConfig().catch(e => console.error('加载系统配置失败:', e))
+    loadActivityStats(selectedMonth.value).catch(e => console.error('加载活动统计失败:', e))
+    
+    // 加载待审核帖子和公告
+    loadPendingPosts().catch(e => console.error('加载待审核帖子失败:', e))
+    loadPendingAnnouncements().catch(e => console.error('加载待审核公告失败:', e))
+    
+    // 如果初始菜单是用户管理，则加载数据
+    if (activeMenu.value === 'users') {
+      loadUsers().catch(e => console.error('加载用户列表失败:', e))
+    }
+    if (activeMenu.value === 'rewards') {
+      rewardPanelInitialized.value = true
+      try {
+        refreshRewardPanel()
+      } catch (e) {
+        console.error('刷新奖励面板失败:', e)
+      }
+    }
+    if (activeMenu.value === 'news') {
+      loadNewsList().catch(e => console.error('加载资讯列表失败:', e))
+    }
+    if (activeMenu.value === 'announcements') {
+      loadPendingAnnouncements().catch(e => console.error('加载待审核公告失败:', e))
+      loadAnnouncementStats().catch(e => console.error('加载公告统计失败:', e))
+    }
+  } catch (e) {
+    console.error('管理后台初始化失败:', e)
+    // 即使初始化失败，也不阻止用户交互
   }
 })
 
@@ -1258,6 +1384,136 @@ const loadManagedGifts = async () => {
   }
 }
 
+// 加载所有礼品（用于礼品管理面板）
+const loadingGifts = ref(false)
+const loadAllGifts = async () => {
+  loadingGifts.value = true
+  try {
+    const data = await fetchManagedGifts()
+    // 转换数据格式以匹配模板
+    giftsList.value = data.map(gift => ({
+      id: gift.id,
+      name: gift.title,
+      description: gift.description || '',
+      points_required: gift.pointsCost || gift.points_cost || 0,
+      stock: gift.stock || 0,
+      image_url: gift.coverImage || gift.cover_image || '',
+      status: gift.status || 'active',
+      deliveryType: gift.deliveryType || gift.delivery_type || 'offline'
+    }))
+  } catch (e) {
+    console.error('加载礼品列表失败:', e)
+    showNotification('加载礼品列表失败', 'warning')
+    giftsList.value = []
+  } finally {
+    loadingGifts.value = false
+  }
+}
+
+// 删除礼品
+const handleDeleteGift = async (giftId) => {
+  if (!confirm('确定要删除这个礼品吗？删除后无法恢复。')) {
+    return
+  }
+  
+  try {
+    await deleteGift(giftId)
+    showNotification('✓ 礼品已删除', 'success')
+    loadAllGifts()
+  } catch (e) {
+    console.error('删除礼品失败:', e)
+    showNotification('删除礼品失败，请稍后重试', 'warning')
+  }
+}
+
+// 增加库存
+const handleAddStock = (gift) => {
+  currentGift.value = gift
+  addStockAmount.value = 0
+  showAddStockModal.value = true
+}
+
+// 确认增加库存
+const handleConfirmAddStock = async () => {
+  if (!addStockAmount.value || addStockAmount.value <= 0) {
+    showNotification('请输入有效的增加数量', 'warning')
+    return
+  }
+  
+  try {
+    const newStock = (currentGift.value.stock || 0) + addStockAmount.value
+    await updateGift(currentGift.value.id, {
+      stock: newStock
+    })
+    showNotification(`✓ 库存已增加 ${addStockAmount.value}，当前库存：${newStock}`, 'success')
+    closeAddStockModal()
+    loadAllGifts()
+  } catch (e) {
+    console.error('增加库存失败:', e)
+    showNotification('增加库存失败，请稍后重试', 'warning')
+  }
+}
+
+// 关闭增加库存弹窗
+const closeAddStockModal = () => {
+  showAddStockModal.value = false
+  currentGift.value = null
+  addStockAmount.value = 0
+}
+
+// 关闭礼品表单弹窗
+const closeGiftForm = () => {
+  showGiftForm.value = false
+  giftForm.name = ''
+  giftForm.description = ''
+  giftForm.points_required = 0
+  giftForm.stock = 0
+  giftImageFile.value = null
+  giftImagePreview.value = null
+}
+
+// 处理礼品图片选择
+const handleGiftImageChange = (e) => {
+  const file = e.target.files[0]
+  if (file) {
+    if (file.size > 5 * 1024 * 1024) {
+      showNotification('图片大小不能超过 5MB', 'warning')
+      return
+    }
+    giftImageFile.value = file
+    giftImagePreview.value = URL.createObjectURL(file)
+  }
+}
+
+// 创建礼品
+const handleCreateGift = async () => {
+  if (!giftForm.name || !giftForm.points_required || giftForm.points_required <= 0) {
+    showNotification('请填写完整的礼品信息', 'warning')
+    return
+  }
+  
+  try {
+    const formData = new FormData()
+    formData.append('title', giftForm.name)
+    formData.append('description', giftForm.description || '')
+    formData.append('pointsCost', giftForm.points_required)
+    formData.append('stock', giftForm.stock || 0)
+    formData.append('deliveryType', 'offline')
+    
+    if (giftImageFile.value) {
+      formData.append('coverImage', giftImageFile.value)
+    }
+    
+    await createGift(formData)
+    showNotification('✓ 礼品已创建', 'success')
+    closeGiftForm()
+    loadAllGifts()
+  } catch (e) {
+    console.error('创建礼品失败:', e)
+    showNotification('创建礼品失败，请稍后重试', 'warning')
+  }
+}
+
 const resetGiftForm = () => {
   newGiftForm.title = ''
   newGiftForm.description = ''
@@ -1290,7 +1546,7 @@ const createSystemGift = async () => {
 const approveGift = async (gift) => {
   try {
     await updateGiftStatus(gift.id, { status: 'active', reviewNote: '管理员审核通过' })
-    showNotification(`✓ 已上架「${gift.title}」`, 'success')
+    showNotification(`✓ 已上架「${gift.title}」，礼品库已更新`, 'success')
     loadManagedGifts()
   } catch (e) {
     console.error('审核礼品失败:', e)
@@ -1341,11 +1597,33 @@ const submitRule = async () => {
     await savePointRule({ ...ruleForm })
     showNotification('✓ 积分规则已保存', 'success')
     loadPointRules()
+    // 清空表单
+    ruleForm.activityId = ''
+    ruleForm.actionLabel = ''
+    ruleForm.pointsValue = ''
+    ruleForm.description = ''
+    ruleForm.isActive = true
   } catch (e) {
     console.error('保存积分规则失败:', e)
     showNotification('保存积分规则失败', 'warning')
   } finally {
     savingRule.value = false
+  }
+}
+
+// 删除积分规则
+const handleDeleteRule = async (ruleId) => {
+  if (!confirm('确定要删除这条积分规则吗？')) {
+    return
+  }
+  
+  try {
+    await deletePointRule(ruleId)
+    showNotification('✓ 积分规则已删除', 'success')
+    loadPointRules()
+  } catch (e) {
+    console.error('删除积分规则失败:', e)
+    showNotification('删除积分规则失败，请稍后重试', 'warning')
   }
 }
 
@@ -1573,6 +1851,102 @@ const showAllData = () => {
   showNotification('已显示全部数据统计', 'success')
 }
 
+// 资讯管理相关函数
+const loadNewsList = async () => {
+  try {
+    const list = await fetchAllNews()
+    newsList.value = Array.isArray(list) ? list : []
+  } catch (e) {
+    console.error('加载资讯列表失败:', e)
+    showNotification('加载资讯列表失败', 'warning')
+    newsList.value = []
+  }
+}
+
+const handleNewsImageChange = (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+  
+  if (!file.type.startsWith('image/')) {
+    showNotification('请上传图片文件', 'warning')
+    event.target.value = ''
+    return
+  }
+  
+  if (file.size > 5 * 1024 * 1024) {
+    showNotification('图片大小不能超过 5MB', 'warning')
+    event.target.value = ''
+    return
+  }
+  
+  newsImageFile.value = file
+  newsImagePreview.value = URL.createObjectURL(file)
+}
+
+const removeNewsImage = () => {
+  if (newsImagePreview.value) {
+    URL.revokeObjectURL(newsImagePreview.value)
+  }
+  newsImageFile.value = null
+  newsImagePreview.value = null
+  if (document.querySelector('input[type="file"]')) {
+    const input = document.querySelector('input[type="file"]')
+    if (input) input.value = ''
+  }
+}
+
+const handleCreateNews = async () => {
+  if (!newsForm.value.title || !newsForm.value.content) {
+    showNotification('请填写标题和内容', 'warning')
+    return
+  }
+  
+  try {
+    await createNews({
+      title: newsForm.value.title,
+      content: newsForm.value.content,
+      image: newsImageFile.value
+    })
+    showNotification('✓ 资讯发布成功', 'success')
+    // 清空表单
+    newsForm.value.title = ''
+    newsForm.value.content = ''
+    removeNewsImage()
+    // 重新加载资讯列表
+    await loadNewsList()
+  } catch (e) {
+    console.error('发布资讯失败:', e)
+    showNotification('发布资讯失败: ' + (e.response?.data?.message || e.message || '未知错误'), 'warning')
+  }
+}
+
+const handleEditNews = (item) => {
+  newsForm.value.title = item.title
+  newsForm.value.content = item.content
+  // 如果有图片，显示图片预览
+  if (item.image_url) {
+    newsImagePreview.value = buildImageUrl(item.image_url)
+    newsImageFile.value = null // 编辑时不清除已有图片，除非用户上传新图片
+  }
+  // 可以添加一个编辑状态标记，这里简化处理
+  showNotification('请修改后重新发布（编辑功能待完善）', 'info')
+}
+
+const handleDeleteNews = async (id) => {
+  if (!confirm('确认删除这条资讯吗？')) {
+    return
+  }
+  
+  try {
+    await deleteNews(id)
+    showNotification('✓ 资讯已删除', 'success')
+    await loadNewsList()
+  } catch (e) {
+    console.error('删除资讯失败:', e)
+    showNotification('删除资讯失败: ' + (e.response?.data?.message || e.message || '未知错误'), 'warning')
+  }
+}
+
 // 格式化时间（如果需要的话，可以保留）
 const formatTime = (timeStr) => {
   if (!timeStr) return ''
@@ -1599,6 +1973,16 @@ watch(activeMenu, (value) => {
     rewardPanelInitialized.value = true
     refreshRewardPanel()
   }
+  if (value === 'news' && newsList.value.length === 0) {
+    loadNewsList().catch(e => console.error('加载资讯列表失败:', e))
+  }
+  if (value === 'announcements') {
+    loadPendingAnnouncements().catch(e => console.error('加载待审核公告失败:', e))
+    loadAnnouncementStats().catch(e => console.error('加载公告统计失败:', e))
+  }
+  if (value === 'gifts') {
+    loadAllGifts().catch(e => console.error('加载礼品列表失败:', e))
+  }
 })
 
 </script>
@@ -1613,6 +1997,8 @@ watch(activeMenu, (value) => {
   position: relative;
   overflow: hidden;
   align-items: flex-start;
+  pointer-events: auto;
+  z-index: 1;
 }
 
 .admin-layout::before,
@@ -1656,6 +2042,8 @@ watch(activeMenu, (value) => {
   height: fit-content;
   max-height: calc(100vh - 64px);
   overflow-y: auto;
+  pointer-events: auto;
+  z-index: 10;
 }
 
 .sidebar::-webkit-scrollbar {
@@ -1690,6 +2078,11 @@ watch(activeMenu, (value) => {
   transition: all 0.2s ease;
   background: rgba(255, 255, 255, 0.55);
   border: 1px solid transparent;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  pointer-events: auto;
+  user-select: none;
 }
 
 .sidebar__item:hover {
@@ -1711,6 +2104,8 @@ watch(activeMenu, (value) => {
   box-shadow: 0 30px 70px rgba(40, 86, 120, 0.16);
   border: 1px solid rgba(255, 255, 255, 0.45);
   backdrop-filter: blur(18px);
+  pointer-events: auto;
+  z-index: 10;
 }
 
 .admin-header {
@@ -1749,28 +2144,35 @@ watch(activeMenu, (value) => {
 
 .admin-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
 }
 
 .admin-card {
   background: rgba(255, 255, 255, 0.95);
-  border-radius: 26px;
-  padding: 22px;
+  border-radius: 16px;
+  padding: 16px 20px;
   border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 20px 45px rgba(48, 81, 120, 0.14);
+  box-shadow: 0 4px 12px rgba(48, 81, 120, 0.1);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .admin-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 28px 55px rgba(48, 81, 120, 0.22);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(48, 81, 120, 0.15);
+}
+
+.admin-card h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  margin: 0 0 8px 0;
 }
 
 .admin-card__value {
-  font-size: 34px;
+  font-size: 28px;
   font-weight: 800;
-  margin: 14px 0 6px;
+  margin: 0;
   color: #142c46;
 }
 
@@ -1922,6 +2324,33 @@ watch(activeMenu, (value) => {
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(15, 42, 66, 0.05);
+}
+
+.btn-danger {
+  background: #f44336;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 4px 10px;
+  font-size: 18px;
+  line-height: 1;
+  transition: all 0.2s;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-danger:hover {
+  background: #d32f2f;
+  transform: scale(1.1);
+}
+
+.btn-small {
+  padding: 4px 8px;
+  font-size: 12px;
 }
 
 .reward-actions,
@@ -2657,6 +3086,53 @@ watch(activeMenu, (value) => {
   font-size: 14px;
   min-height: 200px;
   resize: vertical;
+}
+
+.news-form .form-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+
+.image-preview {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #ddd;
+}
+
+.image-preview img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.btn-remove-image {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-remove-image:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: scale(1.1);
 }
 
 .news-list {
