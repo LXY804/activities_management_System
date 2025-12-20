@@ -134,22 +134,18 @@ onMounted(() => {
 
 <style scoped>
 .container {
-  max-width: 800px;
-  margin: 24px auto;
+  max-width: 820px;
+  margin: 24px auto 80px;
   padding: 0 18px;
 }
 
 .back {
   background: transparent;
-  border: 0;
-  color: #0066cc;
+  border: none;
+  color: #23a971;
+  font-weight: 600;
   cursor: pointer;
   margin-bottom: 12px;
-  font-size: 14px;
-}
-
-.back:hover {
-  text-decoration: underline;
 }
 
 .header {
@@ -157,31 +153,28 @@ onMounted(() => {
 }
 
 .title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #333;
-  margin: 0 0 8px 0;
+  font-size: 34px;
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  color: var(--brand-deep);
 }
 
 .subtitle {
-  color: #666;
-  font-size: 16px;
-  margin: 0;
+  color: rgba(15, 29, 51, 0.6);
 }
 
 .loading,
 .error {
   text-align: center;
-  padding: 60px 20px;
-  color: #666;
-  font-size: 16px;
+  padding: 50px 20px;
+  color: rgba(15, 29, 51, 0.6);
 }
 
 .evaluate-form {
-  background: #fff;
-  border-radius: 12px;
+  border-radius: 30px;
   padding: 32px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-card);
+  background: rgba(255, 255, 255, 0.95);
 }
 
 .form-section {
@@ -189,15 +182,13 @@ onMounted(() => {
 }
 
 .form-label {
-  display: block;
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
+  font-weight: 700;
+  color: var(--brand-deep);
   margin-bottom: 12px;
 }
 
 .required {
-  color: #f44336;
+  color: #ff6b6b;
 }
 
 .rating-selector {
@@ -207,106 +198,82 @@ onMounted(() => {
 }
 
 .star-btn {
-  background: none;
+  background: transparent;
   border: none;
-  font-size: 36px;
-  color: #ddd;
+  font-size: 38px;
+  color: #e0e0e0;
   cursor: pointer;
-  padding: 0;
-  line-height: 1;
-  transition: all 0.2s;
-}
-
-.star-btn:hover {
-  transform: scale(1.1);
+  transition: transform 0.2s ease, color 0.2s ease;
 }
 
 .star-btn.active {
-  color: #ff9800;
+  color: #ffd166;
+  transform: translateY(-2px);
 }
 
 .rating-text {
-  font-size: 16px;
-  color: #666;
-  margin-left: 8px;
+  color: rgba(15, 29, 51, 0.65);
 }
 
 .content-input {
   width: 100%;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  border-radius: 20px;
+  border: 1px solid rgba(15, 29, 51, 0.08);
+  padding: 16px;
   font-size: 15px;
-  font-family: inherit;
-  line-height: 1.6;
-  resize: vertical;
-  transition: border-color 0.2s;
+  line-height: 1.7;
+  background: rgba(255, 255, 255, 0.9);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .content-input:focus {
   outline: none;
-  border-color: #0066cc;
+  border-color: var(--brand-emerald);
+  box-shadow: 0 0 0 3px rgba(102, 231, 177, 0.25);
 }
 
 .char-count {
   text-align: right;
   font-size: 12px;
-  color: #999;
-  margin-top: 4px;
+  color: rgba(15, 29, 51, 0.45);
 }
 
 .form-actions {
   display: flex;
   justify-content: flex-end;
   gap: 16px;
-  margin-top: 32px;
+  border-top: 1px dashed rgba(15, 29, 51, 0.1);
   padding-top: 24px;
-  border-top: 1px solid #eee;
 }
 
 .btn {
-  padding: 12px 32px;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
+  border-radius: 999px;
   border: none;
+  padding: 12px 32px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .btn-cancel {
-  background: #f5f5f5;
-  color: #666;
-}
-
-.btn-cancel:hover {
-  background: #e0e0e0;
+  background: rgba(15, 29, 51, 0.05);
+  color: rgba(15, 29, 51, 0.7);
 }
 
 .btn-submit {
-  background: #0066cc;
-  color: #fff;
-}
-
-.btn-submit:hover:not(:disabled) {
-  background: #0052a3;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 102, 204, 0.3);
+  background: linear-gradient(120deg, var(--brand-lime), var(--brand-emerald));
+  color: var(--brand-deep);
+  box-shadow: 0 18px 26px rgba(102, 231, 177, 0.35);
 }
 
 .btn-submit:disabled {
-  background: #ccc;
+  opacity: 0.4;
   cursor: not-allowed;
-  transform: none;
+  box-shadow: none;
 }
 
 @media (max-width: 768px) {
   .evaluate-form {
     padding: 24px;
-  }
-
-  .star-btn {
-    font-size: 32px;
   }
 
   .form-actions {

@@ -7,6 +7,7 @@ const EventInfo = () => import('../views/EventInfo.vue')
 const EventComments = () => import('../views/EventComments.vue')
 const EventEvaluate = () => import('../views/EventEvaluate.vue')
 const NewsList = () => import('../views/NewsList.vue')
+const ForumMain = () => import('../views/ForumMain.vue')
 const Login = () => import('../views/Login.vue')
 const PersonalCenter = () => import('../views/PersonalCenter.vue')
 const MyActivities = () => import('../views/MyActivities.vue')
@@ -15,17 +16,20 @@ const MyComments = () => import('../views/MyComments.vue')
 const Statistics = () => import('../views/Statistics.vue')
 const OrganizerManage = () => import('../views/OrganizerManage.vue')
 const AdminDashboard = () => import('../views/AdminDashboard.vue')
-const Exchange = () =>import('../views/Exchange.vue')
+const Exchange = () => import('../views/Exchange.vue')
 const Forum = () => import('../views/Forum.vue')
 const MyPosts = () => import('../views/MyPosts.vue')
 const MyCommentedPosts = () => import('../views/MyCommentedPosts.vue')
 const Announcements = () => import('../views/Announcements.vue')
+const Rewards = () => import('../views/Rewards.vue')
 
 const routes = [
   { path: '/', name: 'Home', component: Home },
   { path: '/home', name: 'HomePage', component: Home },
   { path: '/promotion', name: 'EventPromotion', component: EventPromotion },
+  { path: '/rewards', name: 'Rewards', component: Rewards },
   { path: '/events', name: 'EventList', component: EventList },
+  { path: '/forum', name: 'ForumMain', component: ForumMain },
   { path: '/event/:id', name: 'EventInfo', component: EventInfo },
   { path: '/event/:id/comments', name: 'EventComments', component: EventComments },
   { path: '/event/:id/evaluate', name: 'EventEvaluate', component: EventEvaluate },
@@ -60,23 +64,27 @@ const router = createRouter({
 
 // 路由守卫：检查登录状态
 router.beforeEach((to, from, next) => {
-  const isLoggedIn = localStorage.getItem('isLoggedIn')
+  const token = localStorage.getItem('token')
+  const storedFlag = localStorage.getItem('isLoggedIn')
+  const isLoggedIn = !!token || storedFlag === 'true'
   const userRole = localStorage.getItem('userRole')
-  
-  // 如果访问个人中心相关页面但未登录，跳转到登录页
+
   if (to.path.startsWith('/personal') && !isLoggedIn) {
     next('/login')
-  } 
-  else if (to.path.startsWith('/organizer') && userRole !== 'organizer') {
+    return
+  }
+
+  if (to.path.startsWith('/organizer') && userRole !== 'organizer') {
     next('/login')
+    return
   }
-  else if (to.path.startsWith('/admin') && userRole !== 'admin') {
+
+  if (to.path.startsWith('/admin') && userRole !== 'admin') {
     next('/login')
+    return
   }
-  // 首页和登录页不需要登录即可访问
-  else {
-    next()
-  }
+
+  next()
 })
 
 export default router

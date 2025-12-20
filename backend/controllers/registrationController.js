@@ -20,6 +20,37 @@ const eventStatusExpr = `
   END
 `
 
+const buildListSql = (includeCover = true, includePoints = true) => `
+  SELECT 
+    ua.apply_id AS registration_id,
+    ${registrationStatusExpr} AS registration_status,
+    ua.applied_at,
+    a.activity_id AS event_id,
+    a.activity_code AS event_code,
+    a.activity_name AS event_title,
+    a.location,
+    a.start_time,
+    a.end_time,
+    a.capacity,
+    a.type_id,
+    ${eventStatusExpr} AS event_status,
+    ${includeCover ? "COALESCE(a.cover_image, '')" : "''"} AS cover_url,
+    ${includePoints ? "COALESCE(a.points, 0)" : "0"} AS points,
+    CASE 
+      WHEN EXISTS (
+        SELECT 1 
+        FROM activity_comments ac 
+        WHERE ac.activity_id = a.activity_id 
+          AND ac.user_id = ua.user_id
+      ) THEN 1 
+      ELSE 0 
+    END AS has_comment,
+    u.username AS organizer_name
+  FROM user_activity_apply ua
+  INNER JOIN activities a ON ua.activity_id = a.activity_id
+  LEFT JOIN users u ON a.organizer_id = u.user_id
+`
+
 const statusMap = {
   pending: 0,
   approved: 1,
@@ -43,41 +74,6 @@ exports.getMyRegistrations = async (req, res) => {
       replacements.push(statusMap[status])
     }
 
-    const listSql = `
-      SELECT 
-        ua.apply_id AS registration_id,
-        ${registrationStatusExpr} AS registration_status,
-        ua.applied_at,
-        a.activity_id AS event_id,
-        a.activity_code AS event_code,
-        a.activity_name AS event_title,
-        a.location,
-        a.start_time,
-        a.end_time,
-        a.capacity,
-        a.type_id,
-        ${eventStatusExpr} AS event_status,
-        COALESCE(a.cover_image, '') AS cover_url,
-        COALESCE(a.points, 0) AS points,
-        -- 是否已评论：1 表示已评论，0 表示未评论
-        CASE 
-          WHEN EXISTS (
-            SELECT 1 
-            FROM activity_comments ac 
-            WHERE ac.activity_id = a.activity_id 
-              AND ac.user_id = ua.user_id
-          ) THEN 1 
-          ELSE 0 
-        END AS has_comment,
-        u.username AS organizer_name
-      FROM user_activity_apply ua
-      INNER JOIN activities a ON ua.activity_id = a.activity_id
-      LEFT JOIN users u ON a.organizer_id = u.user_id
-      ${whereClause}
-      ORDER BY ua.applied_at DESC
-      LIMIT ? OFFSET ?
-    `
-
     const countSql = `
       SELECT COUNT(*) AS total
       FROM user_activity_apply ua
@@ -89,10 +85,38 @@ exports.getMyRegistrations = async (req, res) => {
       type: QueryTypes.SELECT
     })
 
-    const list = await sequelize.query(listSql, {
-      replacements: [...replacements, limit, offset],
-      type: QueryTypes.SELECT
-    })
+    const executeListQuery = async (includeCover = true, includePoints = true) => {
+      const listSql = `${buildListSql(includeCover, includePoints)}
+        ${whereClause}
+        ORDER BY ua.applied_at DESC
+        LIMIT ? OFFSET ?
+      `
+
+      return sequelize.query(listSql, {
+        replacements: [...replacements, limit, offset],
+        type: QueryTypes.SELECT
+      })
+    }
+
+    let list
+    try {
+      list = await executeListQuery(true, true)
+    } catch (err) {
+      if (err?.original?.code === 'ER_BAD_FIELD_ERROR') {
+        // 数据库缺少某些列时退回到不包含这些字段的查询
+        try {
+          list = await executeListQuery(true, false)
+        } catch (err2) {
+          if (err2?.original?.code === 'ER_BAD_FIELD_ERROR') {
+            list = await executeListQuery(false, false)
+          } else {
+            throw err2
+          }
+        }
+      } else {
+        throw err
+      }
+    }
 
     success(res, {
       list,

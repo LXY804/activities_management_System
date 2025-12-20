@@ -42,6 +42,8 @@ const uploadCover = multer({
 // 学生 / 公共接口
 // 注意：具体路径必须放在参数路径（/:id）之前，否则会被参数路由捕获
 router.get('/types', eventController.getActivityTypes) // 获取活动类型列表
+router.get('/highlights', eventController.getHighlightedEvents) // 获取精选活动
+router.get('/week', eventController.getWeeklyEvents) // 获取本周活动
 
 // 组织者/管理员：AI 生成活动文案
 router.post(

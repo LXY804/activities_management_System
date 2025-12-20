@@ -4,6 +4,12 @@ import request from './request'
 export const fetchEvents = (params) =>
   request.get('/events', { params })
 
+export const fetchEventHighlights = (params) =>
+  request.get('/events/highlights', { params })
+
+export const fetchWeeklyEvents = (params) =>
+  request.get('/events/week', { params })
+
 export const fetchEventDetail = (id) =>
   request.get(`/events/${id}`)
 
@@ -24,15 +30,11 @@ export const registerEvent = (id) =>
 
 // 组织者提交活动（进入审核队列）
 export const createEvent = (data) => {
-  // 如果 data 是 FormData，直接使用
   if (data instanceof FormData) {
     return request.post('/events', data, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
+      headers: { 'Content-Type': 'multipart/form-data' }
     })
   }
-  // 否则使用普通 JSON 提交
   return request.post('/events', data)
 }
 
