@@ -2,27 +2,30 @@
   <div class="page event-info">
     <NavBar />
 
-    <div class="container">
-      <button class="back" @click="goBack">← 返回</button>
+    <main class="event-info__content">
+      <button class="back" @click="goBack">← 返回活动清单</button>
 
       <section class="hero">
-        <div class="hero-left">
+        <span class="hero-cloud hero-cloud--left" aria-hidden="true"></span>
+        <span class="hero-cloud hero-cloud--right" aria-hidden="true"></span>
+        <div class="hero-left glass-panel">
+          <div class="hero-chip">🌿 活力活动</div>
           <img :src="event.image" alt="封面" />
         </div>
 
         <aside class="hero-right">
-          <div class="date-card">
+          <div class="date-card glass-panel">
             <div class="day">{{ day }}</div>
             <div class="month-year">{{ month }}<br/>{{ year }}</div>
           </div>
 
-          <div class="info-card">
+          <div class="info-card glass-panel">
             <h1 class="title">{{ event.title }}</h1>
             <p class="meta">{{ formattedDate }} · {{ event.location }}</p>
             <p class="excerpt">{{ event.excerpt }}</p>
 
             <div class="stats">
-              <span>已报名：{{ event.signed_up || 0 }}</span>
+              <span>已报名 {{ event.signed_up || 0 }}</span>
               <span v-if="event.capacity"> / {{ event.capacity }} 人</span>
             </div>
 
@@ -31,14 +34,17 @@
             </div>
           </div>
 
-          <div class="small-card">
+          <div class="small-card glass-panel">
             <p>主办：{{ event.organizer || '学校' }}</p>
+          </div>
+          <div class="mood-card glass-panel">
+            <p>今日氛围：元气满满 ☀️</p>
           </div>
         </aside>
       </section>
 
       <article class="description" v-html="event.description_html || '<p>暂无详细信息</p>'"></article>
-    </div>
+    </main>
   </div>
 </template>
 
@@ -161,24 +167,212 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.container{max-width:1200px;margin:24px auto;padding:0 18px}
-.back{background:transparent;border:0;color:#0066cc;cursor:pointer;margin-bottom:12px}
-.hero{display:flex;gap:20px;align-items:stretch}
-.hero-left{flex:1}
-.hero-left img{width:100%;height:420px;object-fit:cover;border-radius:8px;display:block}
-.hero-right{width:320px;display:flex;flex-direction:column;gap:14px}
-.date-card{background:#123e8a;color:#fff;padding:16px;border-radius:8px;display:flex;align-items:center;gap:12px}
-.date-card .day{font-size:48px;font-weight:700;line-height:1}
-.date-card .month-year{font-size:14px;opacity:0.9}
-.info-card{background:#fff;padding:16px;border-radius:8px}
-.info-card .title{margin:0 0 8px 0;font-size:1.2rem}
-.meta{color:#666;margin-bottom:8px}
-.excerpt{color:#444;margin-bottom:10px}
-.stats{margin-bottom:10px}
-.actions{display:flex;gap:10px;align-items:center}
-.btn{padding:8px 14px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer}
-.btn.primary{background:#0070d1;color:#fff;border-color:#0062b0}
-.small-card{background:#f7f9fc;padding:12px;border-radius:8px}
-.description{background:#fff;padding:18px;border-radius:8px;margin-top:18px}
-@media(max-width:900px){.hero{flex-direction:column}.hero-left img{height:220px}.hero-right{width:100%}}
+.page.event-info {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #e9fff7, #f4f7ff 60%, #fff1f9);
+  position: relative;
+  overflow: hidden;
+}
+
+.page.event-info::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='160' height='160' viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='20' cy='20' r='6' fill='%23d8f8ff'/%3E%3Ccircle cx='120' cy='80' r='10' fill='%23ffe1f2'/%3E%3Ccircle cx='60' cy='130' r='8' fill='%23c8ffe0'/%3E%3C/svg%3E");
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.event-info__content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: calc(var(--topbar-height) + 32px) clamp(18px, 4vw, 64px) 100px;
+  position: relative;
+  z-index: 1;
+}
+
+.back {
+  background: rgba(255, 255, 255, 0.7);
+  border: none;
+  color: #1c7f64;
+  cursor: pointer;
+  margin-bottom: 18px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 999px;
+  box-shadow: 0 12px 30px rgba(28, 127, 100, 0.15);
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(280px, 360px);
+  gap: clamp(20px, 4vw, 32px);
+  align-items: stretch;
+  position: relative;
+}
+
+.hero-cloud {
+  position: absolute;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.65);
+  filter: blur(0px);
+}
+
+.hero-cloud--left {
+  top: -40px;
+  left: -60px;
+}
+
+.hero-cloud--right {
+  top: 120px;
+  right: -70px;
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 28px;
+  box-shadow: 0 25px 60px rgba(20, 78, 87, 0.12);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.glass-panel:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 30px 70px rgba(20, 78, 87, 0.18);
+}
+
+.hero-left {
+  flex: 1;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hero-left img {
+  width: 100%;
+  height: 420px;
+  object-fit: cover;
+  border-radius: 24px;
+}
+
+.hero-chip {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 6px 18px;
+  border-radius: 999px;
+  font-weight: 600;
+  color: #1d3e5b;
+  box-shadow: 0 15px 30px rgba(29, 62, 91, 0.12);
+}
+
+.hero-right {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.date-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--brand-deep);
+  padding: 24px;
+}
+
+.date-card .day {
+  font-size: 56px;
+  font-weight: 700;
+}
+
+.info-card {
+  color: var(--brand-deep);
+  padding: 28px;
+}
+
+.info-card .title {
+  margin: 0 0 8px;
+  font-size: 30px;
+  font-family: var(--font-display);
+}
+
+.meta {
+  color: rgba(15, 29, 51, 0.6);
+  margin-bottom: 10px;
+}
+
+.excerpt {
+  margin-bottom: 14px;
+  color: rgba(15, 29, 51, 0.7);
+}
+
+.stats {
+  display: inline-flex;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(182, 255, 130, 0.35);
+  font-weight: 600;
+}
+
+.actions {
+  margin-top: 16px;
+}
+
+.btn {
+  border: none;
+  border-radius: 999px;
+  padding: 12px 24px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn.primary {
+  background: linear-gradient(120deg, var(--brand-lime), var(--brand-emerald));
+  color: var(--brand-deep);
+  box-shadow: 0 18px 30px rgba(102, 231, 177, 0.35);
+  transition: transform 0.2s ease;
+}
+
+.btn.primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.btn.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.small-card,
+.mood-card {
+  font-weight: 600;
+  padding: 18px 24px;
+}
+
+.mood-card {
+  background: rgba(255, 248, 219, 0.9);
+  color: #c47a00;
+}
+
+.description {
+  margin-top: 32px;
+  padding: clamp(28px, 4vw, 40px);
+  border-radius: 32px;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.92), rgba(222, 245, 255, 0.9)),
+    url('https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?auto=format&fit=crop&w=1200&q=60');
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 30px 60px rgba(16, 45, 61, 0.1);
+}
+
+@media (max-width: 900px) {
+  .hero-left img {
+    height: 260px;
+  }
+
+  .hero {
+    grid-template-columns: 1fr;
+  }
+}
 </style>
