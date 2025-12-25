@@ -65,8 +65,46 @@
     const dragging = ref(false)
     const dragOffset = { x: 0, y: 0 }
     
-    // 简单用一个固定的 sessionId，实际可用用户ID + 时间戳
-    const sessionId = 'demo-session-1'
+    // 获取用户ID，用于个性化推荐
+    const getUserId = () => {
+      // 方法1：从localStorage直接获取
+      let userId = localStorage.getItem('userId')
+      if (userId) {
+        return Number(userId)
+      }
+      
+      // 方法2：从JWT token中解析userId（备用方案）
+      const token = localStorage.getItem('token')
+      if (token) {
+        try {
+          // JWT token格式：header.payload.signature
+          const payload = token.split('.')[1]
+          if (payload) {
+            const decoded = JSON.parse(atob(payload))
+            if (decoded.userId) {
+              // 同时保存到localStorage，下次直接使用
+              localStorage.setItem('userId', String(decoded.userId))
+              return Number(decoded.userId)
+            }
+          }
+        } catch (e) {
+          console.warn('解析JWT token失败:', e)
+        }
+      }
+      
+      return null
+    }
+    
+    // 生成sessionId：基于用户ID，如果未登录则使用默认会话
+    const getSessionId = () => {
+      const userId = getUserId()
+      if (userId) {
+        return `user-${userId}-session`
+      }
+      return 'guest-session'
+    }
+    
+    const sessionId = getSessionId()
     
     function toggleOpen() {
       open.value = !open.value
@@ -79,8 +117,8 @@
         buttonPosition.value.x = window.innerWidth - buttonSize - 24
         buttonPosition.value.y = window.innerHeight - buttonSize - 24
         
-        const width = 320   // 和 .chat-float-window 的宽度对应
-        const height = 420  // 和 .chat-float-window 的高度对应
+        const width = 450   // 和 .chat-float-window 的宽度对应
+        const height = 600  // 和 .chat-float-window 的高度对应
         position.value.x = window.innerWidth - width - 24
         position.value.y = window.innerHeight - height - 90
       }
@@ -151,8 +189,8 @@
       position.value.y = event.clientY - dragOffset.y
       
       // 限制在屏幕内
-      const width = 320
-      const height = 420
+      const width = 450
+      const height = 600
       const maxX = window.innerWidth - width
       const maxY = window.innerHeight - height
       position.value.x = Math.max(0, Math.min(position.value.x, maxX))
@@ -176,12 +214,14 @@
       loading.value = true
     
       try {
-    const { data } = await axios.post('http://localhost:3000/api/chat/ask', {
-      sessionId,
-      userMessage: text,
-    })
-    const reply = data?.data?.reply || data?.reply || '机器人没有返回内容'
-    messages.value.push({ from: 'bot', text: reply })
+        const userId = getUserId()
+        const { data } = await axios.post('http://localhost:3000/api/chat/ask', {
+          sessionId: getSessionId(),
+          userMessage: text,
+          userId: userId, // 传递用户ID，用于个性化推荐
+        })
+        const reply = data?.data?.reply || data?.reply || '机器人没有返回内容'
+        messages.value.push({ from: 'bot', text: reply })
       } catch (e) {
         console.error(e)
         messages.value.push({ from: 'bot', text: '出错了，请稍后再试。' })
@@ -204,7 +244,7 @@
     /* 不再使用 right/bottom，改用 left/top 通过 JS 控制 */
     width: 56px;
     height: 56px;
-    background-color: #409eff;
+    background-color: #b6b9bc;
     color: #fff;
     border-radius: 50%;
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
@@ -228,8 +268,8 @@
   /* 悬浮窗口 */
   .chat-float-window {
     position: fixed;
-    width: 320px;
-    height: 420px;
+    width: 450px;
+    height: 600px;
     background: #fff;
     border-radius: 10px;
     box-shadow: 0 4px 16px rgba(0,0,0,0.2);
@@ -241,7 +281,7 @@
   
   .chat-header {
     height: 40px;
-    background: #409eff;
+    background: #b498a4;
     color: #fff;
     display: flex;
     align-items: center;
@@ -277,7 +317,7 @@
   
   .msg.user {
     margin-left: auto;
-    background: #409eff;
+    background: #9a7377;
     color: #fff;
   }
   
@@ -309,7 +349,7 @@
     font-size: 13px;
     border-radius: 4px;
     border: none;
-    background: #409eff;
+    background: #9a7377;
     color: #fff;
     cursor: pointer;
   }

@@ -207,7 +207,8 @@ const upcomingCount = computed(() => events.value.filter(e => e.status === 'upco
   max-width: 1100px; /* 限制宽度防止内容向右拉伸 */
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+  height: calc(100vh - 120px); /* 确保有足够高度显示内容 */
 }
 
 /* --- 看板组件：去除硬边框 --- */
@@ -218,6 +219,13 @@ const upcomingCount = computed(() => events.value.filter(e => e.status === 'upco
   padding: 24px 30px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+/* 标题盒子固定定位 */
+.dashboard-header {
+  position: sticky;
+  top: -680px;
+  z-index: 10;
 }
 
 .header-top {
@@ -271,21 +279,22 @@ const upcomingCount = computed(() => events.value.filter(e => e.status === 'upco
 .scroll-viewport {
   flex: 1;
   overflow-y: auto;
-  padding-bottom: 30px;
+  padding-bottom: 20px;
+  min-height: 0; /* 确保flex子元素可以缩小 */
   scrollbar-width: none; /* Firefox */
 }
 .scroll-viewport::-webkit-scrollbar { width: 0; display: none; } /* Chrome 隐藏滚动条增强沉浸感 */
 
 .cards-layout {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
 }
 
 /* --- 紧凑卡片设计 --- */
 .event-card-compact {
   background: white;
-  border-radius: 20px;
+  border-radius: 16px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.8);
   transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
@@ -293,29 +302,29 @@ const upcomingCount = computed(() => events.value.filter(e => e.status === 'upco
 }
 
 .event-card-compact:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 20px 40px rgba(15, 42, 66, 0.06);
+  transform: translateY(-4px);
+  box-shadow: 0 16px 32px rgba(15, 42, 66, 0.06);
 }
 
-.thumb-box { position: relative; height: 150px; }
+.thumb-box { position: relative; height: 120px; }
 .thumb-box img { width: 100%; height: 100%; object-fit: cover; }
 
-.tag-overlay { position: absolute; top: 12px; right: 12px; }
+.tag-overlay { position: absolute; top: 8px; right: 8px; }
 .status-pill {
-  font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 8px;
+  font-size: 9px; font-weight: 800; padding: 3px 8px; border-radius: 6px;
   background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(4px); color: #1e293b;
 }
 .status-pill[data-status="open"] { color: #10b981; border: 1px solid rgba(16, 185, 129, 0.1); }
 
-.content-box { padding: 16px; }
-.event-name { font-size: 17px; margin: 0 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #1e293b; }
-.event-meta { font-size: 12px; color: #94a3b8; display: flex; align-items: center; gap: 6px; margin-bottom: 14px; }
-.card-action { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f8fafc; padding-top: 12px; }
-.date-tag { font-size: 12px; color: #10b981; font-weight: 700; }
+.content-box { padding: 12px; }
+.event-name { font-size: 15px; margin: 0 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #1e293b; font-weight: 700; }
+.event-meta { font-size: 11px; color: #94a3b8; display: flex; align-items: center; gap: 4px; margin-bottom: 10px; }
+.card-action { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f8fafc; padding-top: 10px; }
+.date-tag { font-size: 11px; color: #10b981; font-weight: 700; }
 
 .cta-mini-btn {
-  background: #f0fdf4; color: #10b981; border: none; padding: 6px 14px;
-  border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; transition: 0.2s;
+  background: #f0fdf4; color: #10b981; border: none; padding: 5px 12px;
+  border-radius: 6px; font-size: 10px; font-weight: 700; cursor: pointer; transition: 0.2s;
 }
 .cta-mini-btn:hover { background: #10b981; color: white; }
 

@@ -1,5 +1,5 @@
-const sequelize = require('../config/database')
-const { QueryTypes } = require('sequelize')
+const { Announcement, User, AnnouncementConfirmation } = require('../models')
+const { Op } = require('sequelize')
 const { success, error } = require('../utils/response')
 
 // 管理员：直接发布公告
@@ -12,16 +12,16 @@ exports.createAnnouncement = async (req, res) => {
       return error(res, '标题和内容不能为空', 400)
     }
 
-    const sql = `
-      INSERT INTO announcements (title, content, publisher_id, publisher_type, status, published_at)
-      VALUES (?, ?, ?, 'admin', 1, NOW())
-    `
-    const [announcementId] = await sequelize.query(sql, {
-      replacements: [title, content, adminId],
-      type: QueryTypes.INSERT
+    const announcement = await Announcement.create({
+      title,
+      content,
+      publisherId: adminId,
+      publisherType: 'admin',
+      status: 1,
+      publishedAt: new Date()
     })
 
-    success(res, { announcementId }, '公告发布成功')
+    success(res, { announcementId: announcement.announcementId }, '公告发布成功')
   } catch (err) {
     console.error('发布公告错误:', err)
     error(res, '服务器错误', 500)
@@ -38,16 +38,16 @@ exports.applyAnnouncement = async (req, res) => {
       return error(res, '标题和内容不能为空', 400)
     }
 
-    const sql = `
-      INSERT INTO announcements (title, content, publisher_id, publisher_type, status, admin_check)
-      VALUES (?, ?, ?, 'organizer', 0, 0)
-    `
-    const [announcementId] = await sequelize.query(sql, {
-      replacements: [title, content, organizerId],
-      type: QueryTypes.INSERT
+    const announcement = await Announcement.create({
+      title,
+      content,
+      publisherId: organizerId,
+      publisherType: 'organizer',
+      status: 0,
+      adminCheck: 0
     })
 
-    success(res, { announcementId }, '公告申请已提交，等待管理员审核')
+    success(res, { announcementId: announcement.announcementId }, '公告申请已提交，等待管理员审核')
   } catch (err) {
     console.error('申请公告错误:', err)
     error(res, '服务器错误', 500)
@@ -57,25 +57,37 @@ exports.applyAnnouncement = async (req, res) => {
 // 管理员：获取待审核公告列表
 exports.getPendingAnnouncements = async (req, res) => {
   try {
-    const sql = `
-      SELECT 
-        a.announcement_id AS id,
-        a.title,
-        a.content,
-        a.created_at,
-        u.username AS publisher_name,
-        u.user_id AS publisher_id
-      FROM announcements a
-      INNER JOIN users u ON a.publisher_id = u.user_id
-      WHERE a.status = 0 AND a.admin_check = 0
-      ORDER BY a.created_at DESC
-    `
-
-    const list = await sequelize.query(sql, {
-      type: QueryTypes.SELECT
+    const list = await Announcement.findAll({
+      attributes: [
+        ['announcement_id', 'id'],
+        'title',
+        'content',
+        'createdAt',
+        ['created_at', 'created_at']
+      ],
+      include: [{
+        model: User,
+        as: 'publisher',
+        attributes: ['username', ['user_id', 'publisher_id']],
+        required: true
+      }],
+      where: {
+        status: 0,
+        adminCheck: 0
+      },
+      order: [['createdAt', 'DESC']]
     })
 
-    success(res, list)
+    const formattedList = list.map(item => ({
+      id: item.announcementId,
+      title: item.title,
+      content: item.content,
+      created_at: item.createdAt,
+      publisher_name: item.publisher?.username,
+      publisher_id: item.publisher?.userId
+    }))
+
+    success(res, formattedList)
   } catch (err) {
     console.error('获取待审核公告错误:', err)
     error(res, '服务器错误', 500)
@@ -88,15 +100,7 @@ exports.approveAnnouncement = async (req, res) => {
     const adminId = req.user.id
     const { id } = req.params
 
-    const checkSql = `
-      SELECT announcement_id, status, admin_check
-      FROM announcements
-      WHERE announcement_id = ?
-    `
-    const [announcement] = await sequelize.query(checkSql, {
-      replacements: [id],
-      type: QueryTypes.SELECT
-    })
+    const announcement = await Announcement.findByPk(id)
 
     if (!announcement) {
       return error(res, '公告不存在', 404)
@@ -106,19 +110,12 @@ exports.approveAnnouncement = async (req, res) => {
       return success(res, null, '该公告已发布')
     }
 
-    const updateSql = `
-      UPDATE announcements
-      SET status = 1,
-          admin_check = 1,
-          checked_by = ?,
-          checked_at = NOW(),
-          published_at = NOW()
-      WHERE announcement_id = ?
-    `
-
-    await sequelize.query(updateSql, {
-      replacements: [adminId, id],
-      type: QueryTypes.UPDATE
+    await announcement.update({
+      status: 1,
+      adminCheck: 1,
+      checkedBy: adminId,
+      checkedAt: new Date(),
+      publishedAt: new Date()
     })
 
     success(res, null, '公告审核通过')
@@ -135,15 +132,7 @@ exports.rejectAnnouncement = async (req, res) => {
     const { id } = req.params
     const { remark } = req.body
 
-    const checkSql = `
-      SELECT announcement_id, status, admin_check
-      FROM announcements
-      WHERE announcement_id = ?
-    `
-    const [announcement] = await sequelize.query(checkSql, {
-      replacements: [id],
-      type: QueryTypes.SELECT
-    })
+    const announcement = await Announcement.findByPk(id)
 
     if (!announcement) {
       return error(res, '公告不存在', 404)
@@ -153,19 +142,12 @@ exports.rejectAnnouncement = async (req, res) => {
       return success(res, null, '该公告已被驳回')
     }
 
-    const updateSql = `
-      UPDATE announcements
-      SET status = 2,
-          admin_check = 2,
-          checked_by = ?,
-          checked_at = NOW(),
-          check_remark = ?
-      WHERE announcement_id = ?
-    `
-
-    await sequelize.query(updateSql, {
-      replacements: [adminId, remark || null, id],
-      type: QueryTypes.UPDATE
+    await announcement.update({
+      status: 2,
+      adminCheck: 2,
+      checkedBy: adminId,
+      checkedAt: new Date(),
+      checkRemark: remark || null
     })
 
     success(res, null, '公告已驳回')
@@ -182,40 +164,45 @@ exports.getPublishedAnnouncements = async (req, res) => {
     const offset = (parseInt(page, 10) - 1) * parseInt(pageSize, 10)
     const limit = parseInt(pageSize, 10)
 
-    const listSql = `
-      SELECT 
-        a.announcement_id AS id,
-        a.title,
-        a.content,
-        a.created_at,
-        a.published_at,
-        u.username AS publisher_name,
-        a.publisher_type
-      FROM announcements a
-      INNER JOIN users u ON a.publisher_id = u.user_id
-      WHERE a.status = 1
-      ORDER BY a.published_at DESC
-      LIMIT ? OFFSET ?
-    `
-
-    const countSql = `
-      SELECT COUNT(*) AS total
-      FROM announcements
-      WHERE status = 1
-    `
-
-    const [countResult] = await sequelize.query(countSql, {
-      type: QueryTypes.SELECT
+    const { count, rows } = await Announcement.findAndCountAll({
+      attributes: [
+        ['announcement_id', 'id'],
+        'title',
+        'content',
+        'createdAt',
+        ['created_at', 'created_at'],
+        'publishedAt',
+        ['published_at', 'published_at'],
+        'publisherType',
+        ['publisher_type', 'publisher_type']
+      ],
+      include: [{
+        model: User,
+        as: 'publisher',
+        attributes: ['username'],
+        required: true
+      }],
+      where: {
+        status: 1
+      },
+      order: [['publishedAt', 'DESC']],
+      limit,
+      offset
     })
 
-    const list = await sequelize.query(listSql, {
-      replacements: [limit, offset],
-      type: QueryTypes.SELECT
-    })
+    const list = rows.map(item => ({
+      id: item.announcementId,
+      title: item.title,
+      content: item.content,
+      created_at: item.createdAt,
+      published_at: item.publishedAt,
+      publisher_name: item.publisher?.username,
+      publisher_type: item.publisherType
+    }))
 
     success(res, {
       list,
-      total: countResult.total,
+      total: count,
       page: parseInt(page, 10),
       pageSize: parseInt(pageSize, 10)
     })
@@ -232,15 +219,7 @@ exports.confirmAnnouncement = async (req, res) => {
     const { id } = req.params
 
     // 检查公告是否存在且已发布
-    const checkSql = `
-      SELECT announcement_id, status
-      FROM announcements
-      WHERE announcement_id = ?
-    `
-    const [announcement] = await sequelize.query(checkSql, {
-      replacements: [id],
-      type: QueryTypes.SELECT
-    })
+    const announcement = await Announcement.findByPk(id)
 
     if (!announcement) {
       return error(res, '公告不存在', 404)
@@ -251,14 +230,11 @@ exports.confirmAnnouncement = async (req, res) => {
     }
 
     // 检查是否已确认
-    const checkConfirmSql = `
-      SELECT confirmation_id
-      FROM announcement_confirmations
-      WHERE announcement_id = ? AND user_id = ?
-    `
-    const [existing] = await sequelize.query(checkConfirmSql, {
-      replacements: [id, userId],
-      type: QueryTypes.SELECT
+    const existing = await AnnouncementConfirmation.findOne({
+      where: {
+        announcementId: id,
+        userId: userId
+      }
     })
 
     if (existing) {
@@ -266,13 +242,10 @@ exports.confirmAnnouncement = async (req, res) => {
     }
 
     // 插入确认记录
-    const insertSql = `
-      INSERT INTO announcement_confirmations (announcement_id, user_id)
-      VALUES (?, ?)
-    `
-    await sequelize.query(insertSql, {
-      replacements: [id, userId],
-      type: QueryTypes.INSERT
+    await AnnouncementConfirmation.create({
+      announcementId: id,
+      userId: userId,
+      confirmedAt: new Date()
     })
 
     success(res, null, '确认成功')
@@ -288,14 +261,11 @@ exports.checkConfirmation = async (req, res) => {
     const userId = req.user.id
     const { id } = req.params
 
-    const sql = `
-      SELECT confirmation_id
-      FROM announcement_confirmations
-      WHERE announcement_id = ? AND user_id = ?
-    `
-    const [confirmation] = await sequelize.query(sql, {
-      replacements: [id, userId],
-      type: QueryTypes.SELECT
+    const confirmation = await AnnouncementConfirmation.findOne({
+      where: {
+        announcementId: id,
+        userId: userId
+      }
     })
 
     success(res, { confirmed: !!confirmation })
@@ -308,24 +278,50 @@ exports.checkConfirmation = async (req, res) => {
 // 管理员：获取所有公告的确认数统计
 exports.getAdminConfirmationStats = async (req, res) => {
   try {
-    const sql = `
-      SELECT 
-        a.announcement_id AS id,
-        a.title,
-        a.published_at,
-        u.username AS publisher_name,
-        COUNT(ac.confirmation_id) AS confirmation_count
-      FROM announcements a
-      INNER JOIN users u ON a.publisher_id = u.user_id
-      LEFT JOIN announcement_confirmations ac ON a.announcement_id = ac.announcement_id
-      WHERE a.status = 1
-      GROUP BY a.announcement_id
-      ORDER BY a.published_at DESC
-    `
-
-    const list = await sequelize.query(sql, {
-      type: QueryTypes.SELECT
+    const announcements = await Announcement.findAll({
+      attributes: [
+        ['announcement_id', 'id'],
+        'title',
+        'publishedAt',
+        ['published_at', 'published_at']
+      ],
+      include: [
+        {
+          model: User,
+          as: 'publisher',
+          attributes: ['username'],
+          required: true
+        },
+        {
+          model: AnnouncementConfirmation,
+          as: 'confirmations',
+          attributes: [],
+          required: false
+        }
+      ],
+      where: {
+        status: 1
+      },
+      group: ['Announcement.announcement_id', 'publisher.user_id'],
+      order: [['publishedAt', 'DESC']]
     })
+
+    // 获取每个公告的确认数
+    const list = await Promise.all(announcements.map(async (announcement) => {
+      const count = await AnnouncementConfirmation.count({
+        where: {
+          announcementId: announcement.announcementId
+        }
+      })
+
+      return {
+        id: announcement.announcementId,
+        title: announcement.title,
+        published_at: announcement.publishedAt,
+        publisher_name: announcement.publisher?.username,
+        confirmation_count: count
+      }
+    }))
 
     success(res, list)
   } catch (err) {
@@ -339,26 +335,31 @@ exports.getOrganizerConfirmationStats = async (req, res) => {
   try {
     const organizerId = req.user.id
 
-    const sql = `
-      SELECT 
-        a.announcement_id AS id,
-        a.title,
-        a.published_at,
-        a.status,
-        a.admin_check,
-        a.check_remark,
-        COUNT(ac.confirmation_id) AS confirmation_count
-      FROM announcements a
-      LEFT JOIN announcement_confirmations ac ON a.announcement_id = ac.announcement_id
-      WHERE a.publisher_id = ? AND a.publisher_type = 'organizer'
-      GROUP BY a.announcement_id
-      ORDER BY a.created_at DESC
-    `
-
-    const list = await sequelize.query(sql, {
-      replacements: [organizerId],
-      type: QueryTypes.SELECT
+    const announcements = await Announcement.findAll({
+      where: {
+        publisherId: organizerId,
+        publisherType: 'organizer'
+      },
+      order: [['createdAt', 'DESC']]
     })
+
+    const list = await Promise.all(announcements.map(async (announcement) => {
+      const count = await AnnouncementConfirmation.count({
+        where: {
+          announcementId: announcement.announcementId
+        }
+      })
+
+      return {
+        id: announcement.announcementId,
+        title: announcement.title,
+        published_at: announcement.publishedAt,
+        status: announcement.status,
+        admin_check: announcement.adminCheck,
+        check_remark: announcement.checkRemark,
+        confirmation_count: count
+      }
+    }))
 
     success(res, list)
   } catch (err) {
@@ -372,23 +373,29 @@ exports.getUnconfirmedCount = async (req, res) => {
   try {
     const userId = req.user.id
 
-    const sql = `
-      SELECT COUNT(*) AS unconfirmedCount
-      FROM announcements a
-      WHERE a.status = 1
-        AND a.announcement_id NOT IN (
-          SELECT announcement_id
-          FROM announcement_confirmations
-          WHERE user_id = ?
-        )
-    `
-
-    const [result] = await sequelize.query(sql, {
-      replacements: [userId],
-      type: QueryTypes.SELECT
+    // 获取所有已发布的公告ID
+    const publishedAnnouncements = await Announcement.findAll({
+      attributes: ['announcementId'],
+      where: {
+        status: 1
+      }
     })
 
-    success(res, { count: result?.unconfirmedCount || 0 })
+    const publishedIds = publishedAnnouncements.map(a => a.announcementId)
+
+    // 获取用户已确认的公告ID
+    const confirmed = await AnnouncementConfirmation.findAll({
+      attributes: ['announcementId'],
+      where: {
+        userId: userId,
+        announcementId: { [Op.in]: publishedIds }
+      }
+    })
+
+    const confirmedIds = confirmed.map(c => c.announcementId)
+    const unconfirmedCount = publishedIds.length - confirmedIds.length
+
+    success(res, { count: unconfirmedCount })
   } catch (err) {
     console.error('获取未确认公告数量错误:', err)
     error(res, '服务器错误', 500)
@@ -402,54 +409,65 @@ exports.getAllAnnouncements = async (req, res) => {
     const offset = (parseInt(page, 10) - 1) * parseInt(pageSize, 10)
     const limit = parseInt(pageSize, 10)
 
-    let whereClause = 'WHERE 1=1'
-    const replacements = []
-
+    const where = {}
     if (status !== undefined) {
-      whereClause += ' AND a.status = ?'
-      replacements.push(status)
+      where.status = parseInt(status, 10)
     }
 
-    const listSql = `
-      SELECT 
-        a.announcement_id AS id,
-        a.title,
-        a.content,
-        a.status,
-        a.admin_check,
-        a.check_remark,
-        a.created_at,
-        a.published_at,
-        u.username AS publisher_name,
-        a.publisher_type,
-        checker.username AS checker_name
-      FROM announcements a
-      INNER JOIN users u ON a.publisher_id = u.user_id
-      LEFT JOIN users checker ON a.checked_by = checker.user_id
-      ${whereClause}
-      ORDER BY a.created_at DESC
-      LIMIT ? OFFSET ?
-    `
-
-    const countSql = `
-      SELECT COUNT(*) AS total
-      FROM announcements a
-      ${whereClause}
-    `
-
-    const [countResult] = await sequelize.query(countSql, {
-      replacements: replacements.slice(0, replacements.length),
-      type: QueryTypes.SELECT
+    const { count, rows } = await Announcement.findAndCountAll({
+      attributes: [
+        ['announcement_id', 'id'],
+        'title',
+        'content',
+        'status',
+        'adminCheck',
+        ['admin_check', 'admin_check'],
+        'checkRemark',
+        ['check_remark', 'check_remark'],
+        'createdAt',
+        ['created_at', 'created_at'],
+        'publishedAt',
+        ['published_at', 'published_at'],
+        'publisherType',
+        ['publisher_type', 'publisher_type']
+      ],
+      include: [
+        {
+          model: User,
+          as: 'publisher',
+          attributes: ['username'],
+          required: true
+        },
+        {
+          model: User,
+          as: 'checker',
+          attributes: ['username'],
+          required: false
+        }
+      ],
+      where,
+      order: [['createdAt', 'DESC']],
+      limit,
+      offset
     })
 
-    const list = await sequelize.query(listSql, {
-      replacements: [...replacements, limit, offset],
-      type: QueryTypes.SELECT
-    })
+    const list = rows.map(item => ({
+      id: item.announcementId,
+      title: item.title,
+      content: item.content,
+      status: item.status,
+      admin_check: item.adminCheck,
+      check_remark: item.checkRemark,
+      created_at: item.createdAt,
+      published_at: item.publishedAt,
+      publisher_name: item.publisher?.username,
+      publisher_type: item.publisherType,
+      checker_name: item.checker?.username
+    }))
 
     success(res, {
       list,
-      total: countResult.total,
+      total: count,
       page: parseInt(page, 10),
       pageSize: parseInt(pageSize, 10)
     })

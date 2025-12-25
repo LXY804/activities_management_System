@@ -135,8 +135,11 @@ exports.getMySummary = async (req, res) => {
       { replacements: [userId], type: QueryTypes.SELECT }
     )
 
+    // 确保积分不为负数（如果计算结果是负数，显示为0）
+    const totalPoints = Math.max(0, pointRow?.total || 0)
+
     success(res, {
-      totalPoints: pointRow?.total || 0,
+      totalPoints,
       recentTransactions: transactions,
       recentOrders: orders
     })
@@ -394,9 +397,11 @@ exports.redeemGift = async (req, res) => {
     const totalCost = gift.points_cost * qty
     const currentPoints = await getUserPointTotal(req.user.id, t)
 
-    if (currentPoints < totalCost) {
+    // 确保当前积分不为负数，并且有足够积分兑换
+    const availablePoints = Math.max(0, currentPoints)
+    if (availablePoints < totalCost) {
       await t.rollback()
-      return error(res, '积分不足', 400)
+      return error(res, `积分不足。当前可用积分：${availablePoints}，需要：${totalCost}`, 400)
     }
 
     const insertOrderSql = `
@@ -591,6 +596,14 @@ exports.adjustPoints = async (req, res) => {
 
     if (!userId || !Number.isFinite(delta) || delta === 0) {
       return error(res, '请提供有效的用户与积分变动值', 400)
+    }
+
+    // 如果调整后会导致负数，先检查当前积分
+    if (delta < 0) {
+      const currentPoints = await getUserPointTotal(userId, null)
+      if (currentPoints + delta < 0) {
+        return error(res, `调整后积分不能为负数。当前积分：${currentPoints}，调整值：${delta}，调整后：${currentPoints + delta}`, 400)
+      }
     }
 
     const actionType = delta > 0 ? 'earn' : 'adjust'

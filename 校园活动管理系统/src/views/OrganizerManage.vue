@@ -91,52 +91,26 @@
                 </div>
               </div>
 
-              <div class="bento-item">
+              <div class="bento-item span-2">
                 <h4 class="bento-title">时间与地点</h4>
-                <div class="input-group">
-                  <label>活动地点</label>
-                  <input v-model="form.location" type="text" placeholder="请输入举办地点" />
-                </div>
-                <div class="input-group">
-                  <label>开始时间 <span>*</span></label>
-                  <input v-model="form.startTime" type="datetime-local" required />
-                </div>
-                <div class="input-group">
-                  <label>结束时间 <span>*</span></label>
-                  <input v-model="form.endTime" type="datetime-local" required />
-                </div>
-                <div class="input-group">
-                  <label>报名截止日期</label>
-                  <input v-model="form.registrationDeadline" type="datetime-local" />
-                </div>
-              </div>
-
-              <div class="bento-item">
-                <h4 class="bento-title">人数与策略</h4>
-                <div class="toggle-group">
-                  <label class="toggle-card">
-                    <input type="checkbox" v-model="form.needApproval" />
-                    <div class="toggle-content">
-                      <span class="t-title">审核报名</span>
-                      <span class="t-desc">开启后需组织者审批方可参加</span>
-                    </div>
-                  </label>
-                  <label class="toggle-card">
-                    <input type="checkbox" v-model="form.enableWaitlist" />
-                    <div class="toggle-content">
-                      <span class="t-title">候补策略</span>
-                      <span class="t-desc">报名满额后允许学生排队候补</span>
-                    </div>
-                  </label>
-                </div>
-                <div class="form-row-2 mt-15">
+                <div class="form-row">
                   <div class="input-group">
-                    <label>人数上限 (0不限)</label>
-                    <input v-model.number="form.maxParticipants" type="number" min="0" />
+                    <label>活动地点</label>
+                    <input v-model="form.location" type="text" placeholder="请输入举办地点" />
                   </div>
-                  <div class="input-group" v-if="form.enableWaitlist">
-                    <label>候补人数上限</label>
-                    <input v-model.number="form.waitlistLimit" type="number" min="0" />
+                  <div class="input-group">
+                    <label>活动开始时间 <span>*</span></label>
+                    <input v-model="form.startTime" type="datetime-local" required />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="input-group">
+                    <label>活动结束时间 <span>*</span></label>
+                    <input v-model="form.endTime" type="datetime-local" required />
+                  </div>
+                  <div class="input-group">
+                    <label>报名截止日期 <span>*</span></label>
+                    <input v-model="form.registrationDeadline" type="datetime-local" required />
                   </div>
                 </div>
               </div>
@@ -387,7 +361,7 @@
     <div v-if="selectedActivity" class="bento-modal-overlay" @click.self="closeReviewPanel">
       <div class="bento-modal">
         <div class="modal-header">
-          <h3>报名名单 - {{ selectedActivity.title }}</h3>
+          <h3>待审核名单 - {{ selectedActivity.title }}</h3>
           <button class="btn-close-circle" @click="closeReviewPanel">×</button>
         </div>
         <div class="modal-body custom-scrollbar">
@@ -398,12 +372,12 @@
               <span class="app-date">{{ formatDateTime(app.applyTime) }}</span>
             </div>
             <div :class="['app-status-tag', app.status]">{{ getStatusText(app.status) }}</div>
-            <div class="app-actions" v-if="app.status === 'pending'">
+            <div class="app-actions">
               <button class="btn-app-approve" @click="handleApprove(app)" :disabled="isUpdating(app.id)">通过</button>
               <button class="btn-app-reject" @click="handleReject(app)" :disabled="isUpdating(app.id)">拒绝</button>
             </div>
           </div>
-          <div v-if="currentApplications.length === 0" class="empty-mini">暂无报名记录</div>
+          <div v-if="currentApplications.length === 0" class="empty-mini">暂无待审核的报名记录</div>
         </div>
       </div>
     </div>
@@ -419,6 +393,7 @@ import {
   fetchActivityApplications,
   updateApplicationStatus
 } from '@/api/organizer'
+import { fetchColleges } from '@/api/user'
 import {
   fetchManagedGifts,
   createGift as createRewardGift,
@@ -533,7 +508,7 @@ const ruleForm = reactive({
 })
 
 const activityTypes = ['学术讲座', '文体活动', '志愿服务', '竞赛比赛', '社团活动']
-const collegeOptions = ['计算机学院', '软件学院', '管理学院', '艺术设计学院', '经济学院']
+const collegeOptions = ref([]) // 从数据库动态加载
 const gradeOptions = ['大一', '大二', '大三', '大四', '研究生']
 
 const getDefaultForm = () => ({
@@ -547,10 +522,6 @@ const getDefaultForm = () => ({
   startTime: '',
   endTime: '',
   registrationDeadline: '',
-  maxParticipants: 0,
-  enableWaitlist: false,
-  waitlistLimit: 0,
-  needApproval: false,
   targetColleges: [],
   targetGrades: [],
   coverImage: '',
@@ -564,8 +535,22 @@ const DRAFT_KEY = 'organizer_publish_draft'
 const generatingDescription = ref(false)
 
 // --- 业务方法 ---
+// 加载学院列表
+const loadColleges = async () => {
+  try {
+    const data = await fetchColleges()
+    // API 返回格式: [{ id: 1, name: '计算机学院' }, ...]
+    collegeOptions.value = (data || []).map(college => college.name || college.college_name)
+  } catch (err) {
+    console.error('加载学院列表失败:', err)
+    // 如果加载失败，使用默认值作为后备
+    collegeOptions.value = ['计算机学院', '软件学院', '管理学院', '艺术设计学院', '经济学院']
+  }
+}
+
 onMounted(() => {
   loadActivities()
+  loadColleges() // 加载学院列表
   const stored = localStorage.getItem(DRAFT_KEY)
   if (stored) {
     const parsed = JSON.parse(stored)
@@ -887,10 +872,31 @@ const handleAttachmentUpload = (e) => {
 }
 
 const handleSubmit = async () => {
-  if (!form.title || !form.activityType || !form.startTime || !form.endTime) {
+  if (!form.title || !form.activityType || !form.startTime || !form.endTime || !form.registrationDeadline) {
     alert('请填写标有*号的必填项')
     return
   }
+  
+  // 验证报名截止日期不能晚于活动开始时间
+  if (form.registrationDeadline && form.startTime) {
+    const deadline = new Date(form.registrationDeadline)
+    const startTime = new Date(form.startTime)
+    if (deadline > startTime) {
+      alert('报名截止日期不能晚于活动开始时间，请重新选择')
+      return
+    }
+  }
+  
+  // 验证活动结束时间不能早于开始时间
+  if (form.startTime && form.endTime) {
+    const startTime = new Date(form.startTime)
+    const endTime = new Date(form.endTime)
+    if (endTime <= startTime) {
+      alert('活动结束时间必须晚于开始时间，请重新选择')
+      return
+    }
+  }
+  
   try {
     const formData = new FormData()
     Object.keys(form).forEach(key => {
@@ -953,10 +959,19 @@ const openReviewPanel = async (act) => {
   selectedActivity.value = act
   try {
     const list = await fetchActivityApplications(act.id)
-    currentApplications.value = list.map(i => ({
-      id: i.id, userName: i.user_name || '未知学号', applyTime: i.apply_time, status: i.status
-    }))
-  } catch (err) { alert('加载名单失败') }
+    // 只显示待审核的报名记录
+    currentApplications.value = list
+      .filter(i => i.status === 'pending')
+      .map(i => ({
+        id: i.id, 
+        userName: i.user_name || '未知学号', 
+        applyTime: i.apply_time, 
+        status: i.status
+      }))
+  } catch (err) { 
+    console.error('加载名单失败:', err)
+    alert('加载名单失败') 
+  }
 }
 
 const handleApprove = async (app) => {
@@ -1181,9 +1196,204 @@ onBeforeUnmount(() => {
 .btn-refresh { background: #f1f5f9; border: none; padding: 8px 16px; border-radius: 999px; font-weight: 600; cursor: pointer; }
 .btn-refresh.ghost { background: transparent; border: 1px dashed #c7d2fe; color: var(--primary); }
 
-.bento-modal { width: 500px; background: white; border-radius: 24px; max-height: 80vh; overflow: hidden; }
-.applicant-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: #f8fafc; border-radius: 12px; margin-bottom: 8px; }
-.app-avatar { width: 36px; height: 36px; background: var(--primary); color: white; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; }
+/* 弹窗样式 - 居中显示 */
+.bento-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+.bento-modal {
+  width: 500px;
+  max-width: 90vw;
+  background: white;
+  border-radius: 24px;
+  max-height: 80vh;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.btn-close-circle {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #f1f5f9;
+  border-radius: 50%;
+  font-size: 20px;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.btn-close-circle:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.modal-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.empty-mini {
+  text-align: center;
+  padding: 40px 20px;
+  color: #94a3b8;
+  font-size: 14px;
+}
+.applicant-item { 
+  display: flex; 
+  align-items: center; 
+  gap: 12px; 
+  padding: 12px; 
+  background: #f8fafc; 
+  border-radius: 12px; 
+  margin-bottom: 8px; 
+}
+
+.app-avatar { 
+  width: 36px; 
+  height: 36px; 
+  background: var(--primary); 
+  color: white; 
+  border-radius: 10px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  font-size: 14px; 
+  font-weight: 800; 
+  flex-shrink: 0;
+}
+
+.app-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.app-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.app-date {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.app-status-tag {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.app-status-tag.pending {
+  background: rgba(251, 191, 36, 0.2);
+  color: #d97706;
+}
+
+.app-status-tag.approved {
+  background: rgba(34, 197, 94, 0.2);
+  color: #15803d;
+}
+
+.app-status-tag.rejected {
+  background: rgba(239, 68, 68, 0.2);
+  color: #b91c1c;
+}
+
+.app-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn-app-approve,
+.btn-app-reject {
+  border: none;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-app-approve {
+  background: #10b981;
+  color: white;
+}
+
+.btn-app-approve:hover:not(:disabled) {
+  background: #059669;
+}
+
+.btn-app-reject {
+  background: #ef4444;
+  color: white;
+}
+
+.btn-app-reject:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.btn-app-approve:disabled,
+.btn-app-reject:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .empty-state-bento { text-align: center; padding: 40px; color: #cbd5e1; }
 
 .mt-15 { margin-top: 15px; }

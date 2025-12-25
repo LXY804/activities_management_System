@@ -1,5 +1,4 @@
-const sequelize = require('../config/database')
-const { QueryTypes } = require('sequelize')
+const { User, College } = require('../models')
 const bcrypt = require('bcrypt')
 const { generateToken } = require('../utils/jwt')
 const { success, error } = require('../utils/response')
@@ -14,21 +13,9 @@ exports.login = async (req, res) => {
       return error(res, '用户名和密码不能为空', 400)
     }
 
-    const sql = `
-      SELECT 
-        user_id AS id,
-        username,
-        password,
-        role,
-        email,
-        phone,
-        college_id
-      FROM users
-      WHERE username = ?
-    `
-    const [user] = await sequelize.query(sql, {
-      replacements: [username],
-      type: QueryTypes.SELECT
+    const user = await User.findOne({
+      where: { username },
+      attributes: ['userId', 'username', 'password', 'role', 'email', 'phone', 'collegeId']
     })
 
     // 用户不存在
@@ -54,10 +41,7 @@ exports.login = async (req, res) => {
       isMatch = true
       try {
         const newHash = await bcrypt.hash(password, SALT_ROUNDS)
-        await sequelize.query('UPDATE users SET password = ? WHERE user_id = ?', {
-          replacements: [newHash, user.id],
-          type: QueryTypes.UPDATE
-        })
+        await user.update({ password: newHash })
       } catch (e) {
         // 升级失败不影响本次登录
         console.warn('明文密码升级为哈希时出错:', e)
@@ -69,7 +53,7 @@ exports.login = async (req, res) => {
     }
 
     const token = generateToken({
-      userId: user.id,
+      userId: user.userId,
       username: user.username,
       role: user.role
     })
@@ -78,7 +62,7 @@ exports.login = async (req, res) => {
       res,
       {
         token,
-        userId: user.id,
+        userId: user.userId,
         username: user.username,
         role: user.role
       },
@@ -103,10 +87,9 @@ exports.register = async (req, res) => {
       return error(res, '密码长度不少于6位', 400)
     }
 
-    const checkSql = 'SELECT user_id FROM users WHERE username = ?'
-    const [existing] = await sequelize.query(checkSql, {
-      replacements: [username],
-      type: QueryTypes.SELECT
+    // 检查用户名是否存在
+    const existing = await User.findOne({
+      where: { username }
     })
 
     if (existing) {
@@ -119,28 +102,29 @@ exports.register = async (req, res) => {
     // 哈希密码
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS)
 
-    const insertUserSql = `
-      INSERT INTO users (username, phone, email, college_id, password, role, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, NOW())
-    `
-    const [userId] = await sequelize.query(insertUserSql, {
-      replacements: [username, phone, email || null, collegeId || null, hashedPassword, userRole],
-      type: QueryTypes.INSERT
+    // 创建用户
+    const user = await User.create({
+      username,
+      phone,
+      email: email || null,
+      collegeId: collegeId || null,
+      password: hashedPassword,
+      role: userRole
     })
 
     const token = generateToken({
-      userId,
-      username,
-      role: userRole
+      userId: user.userId,
+      username: user.username,
+      role: user.role
     })
 
     success(
       res,
       {
         token,
-        userId,
-        username,
-        role: userRole
+        userId: user.userId,
+        username: user.username,
+        role: user.role
       },
       '注册成功',
       201
@@ -167,47 +151,70 @@ exports.getCurrentUser = async (req, res) => {
   try {
     const userId = req.user.id
 
-    const sql = `
-      SELECT 
-        u.user_id AS id,
-        u.username,
-        u.role,
-        u.email,
-        u.phone,
-        u.college_id,
-        u.student_id,
-        u.real_name,
-        u.gender,
-        u.id_type,
-        u.id_number,
-        u.class_name,
-        u.image,
-        c.college_name
-      FROM users u
-      LEFT JOIN colleges c ON u.college_id = c.college_id
-      WHERE u.user_id = ?
-    `
-
-    const [user] = await sequelize.query(sql, {
-      replacements: [userId],
-      type: QueryTypes.SELECT
+    const user = await User.findByPk(userId, {
+      attributes: [
+        'userId',
+        ['user_id', 'id'],
+        'username',
+        'role',
+        'email',
+        'phone',
+        'collegeId',
+        ['college_id', 'college_id'],
+        'studentId',
+        ['student_id', 'student_id'],
+        'realName',
+        ['real_name', 'real_name'],
+        'gender',
+        'idType',
+        ['id_type', 'id_type'],
+        'idNumber',
+        ['id_number', 'id_number'],
+        'className',
+        ['class_name', 'class_name'],
+        'image'
+      ],
+      include: [{
+        model: College,
+        as: 'college',
+        attributes: ['collegeName'],
+        required: false
+      }]
     })
 
     if (!user) {
       return error(res, '用户不存在', 404)
     }
 
+    // 格式化返回数据
+    const userData = {
+      id: user.userId,
+      username: user.username,
+      role: user.role,
+      email: user.email,
+      phone: user.phone,
+      college_id: user.collegeId,
+      student_id: user.studentId,
+      real_name: user.realName,
+      gender: user.gender,
+      id_type: user.idType,
+      id_number: user.idNumber,
+      class_name: user.className,
+      image: user.image,
+      college_name: user.college?.collegeName || null
+    }
+
     // 检查用户信息完善度
     const missingFields = []
-    if (!user.student_id) missingFields.push('学号')
-    if (!user.real_name) missingFields.push('真实姓名')
-    if (!user.college_id) missingFields.push('学院')
+    if (!user.studentId) missingFields.push('学号')
+    if (!user.realName) missingFields.push('真实姓名')
+    if (!user.collegeId) missingFields.push('学院')
 
     // 添加信息完善状态
-    user.profileCompleted = missingFields.length === 0
-    user.missingFields = missingFields
+    userData.profileCompleted = missingFields.length === 0
+    userData.missingFields = missingFields
 
-    success(res, user)
+    success(res, userData)
   } catch (err) {
     console.error('获取用户信息错误:', err)
     error(res, '服务器错误', 500)

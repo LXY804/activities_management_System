@@ -258,74 +258,14 @@
           </div>
 
           <div class="reward-board">
-            <section class="sub-panel">
-              <div class="panel-head">
-                <div>
-                  <p class="eyebrow">礼品申请</p>
-                  <h3>待审核</h3>
-                </div>
-                <button class="ghost-link" @click="loadManagedGifts">刷新</button>
-              </div>
-              <div v-if="loadingManagedGifts" class="loading small">加载礼品中...</div>
-              <ul v-else-if="pendingGiftApplications.length" class="reward-list">
-                <li v-for="gift in pendingGiftApplications" :key="gift.id">
-                  <div>
-                    <h4>{{ gift.title }}</h4>
-                    <p>{{ gift.pointsCost }} 分 · 库存 {{ gift.stock }}</p>
-                  </div>
-                  <div class="reward-actions">
-                    <button class="btn-mini approve" @click="approveGift(gift)">通过</button>
-                    <button class="btn-mini reject" @click="rejectGift(gift)">驳回</button>
-                  </div>
-                </li>
-              </ul>
-              <p v-else class="empty">暂无待审核礼品</p>
-            </section>
-
-            <section class="sub-panel">
-              <div class="panel-head">
-                <div>
-                  <p class="eyebrow">礼品库维护</p>
-                  <h3>新增系统礼品</h3>
-                </div>
-                <button class="ghost-link" @click="resetGiftForm">清空</button>
-              </div>
-              <form class="stack-form" @submit.prevent="createSystemGift">
-                <label>
-                  礼品名称
-                  <input v-model.trim="newGiftForm.title" type="text" placeholder="如 校园周边礼包" required />
-                </label>
-                <label>
-                  礼品描述
-                  <textarea v-model.trim="newGiftForm.description" rows="2" placeholder="简单描述" />
-                </label>
-                <div class="inline-inputs">
-                  <label>
-                    积分成本
-                    <input v-model.number="newGiftForm.pointsCost" type="number" min="1" />
-                  </label>
-                  <label>
-                    库存
-                    <input v-model.number="newGiftForm.stock" type="number" min="1" />
-                  </label>
-                </div>
-                <label>
-                  交付方式
-                  <select v-model="newGiftForm.deliveryType">
-                    <option value="offline">线下领取</option>
-                    <option value="online">线上发放</option>
-                    <option value="both">线上/线下皆可</option>
-                  </select>
-                </label>
-                <label>
-                  封面图片
-                  <input v-model.trim="newGiftForm.coverImage" type="text" placeholder="/uploads/gift.jpg" />
-                </label>
-                <button class="btn" type="submit" :disabled="submittingGift">
-                  {{ submittingGift ? '提交中...' : '添加礼品' }}
-                </button>
-              </form>
-            </section>
+            <div class="reward-action-buttons">
+              <button class="btn btn-primary" @click="openGiftApplicationModal">
+                礼品申请审核
+              </button>
+              <button class="btn btn-primary" @click="openGiftMaintenanceModal">
+                礼品库维护
+              </button>
+            </div>
           </div>
 
           <section class="sub-panel full-width">
@@ -785,6 +725,94 @@
           </div>
         </div>
 
+        <!-- 礼品申请审核弹窗 -->
+        <div v-if="showGiftApplicationModal" class="modal-overlay" @click="closeGiftApplicationModal">
+          <div class="modal-content" @click.stop>
+            <div class="modal-header">
+              <h2>礼品申请审核</h2>
+              <button class="modal-close" @click="closeGiftApplicationModal">×</button>
+            </div>
+            <div class="modal-body">
+              <div class="panel-head" style="margin-bottom: 16px;">
+                <div>
+                  <p class="eyebrow">待审核</p>
+                </div>
+                <button class="ghost-link" @click="loadManagedGifts">刷新</button>
+              </div>
+              <div v-if="loadingManagedGifts" class="loading small">加载礼品中...</div>
+              <ul v-else-if="pendingGiftApplications.length" class="reward-list">
+                <li v-for="gift in pendingGiftApplications" :key="gift.id">
+                  <div>
+                    <h4>{{ gift.title }}</h4>
+                    <p>{{ gift.pointsCost }} 分 · 库存 {{ gift.stock }}</p>
+                  </div>
+                  <div class="reward-actions">
+                    <button class="btn-mini approve" @click="approveGift(gift)">通过</button>
+                    <button class="btn-mini reject" @click="rejectGift(gift)">驳回</button>
+                  </div>
+                </li>
+              </ul>
+              <p v-else class="empty">暂无待审核礼品</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 礼品库维护弹窗 -->
+        <div v-if="showGiftMaintenanceModal" class="modal-overlay" @click="closeGiftMaintenanceModal">
+          <div class="modal-content" @click.stop>
+            <div class="modal-header">
+              <h2>礼品库维护</h2>
+              <button class="modal-close" @click="closeGiftMaintenanceModal">×</button>
+            </div>
+            <div class="modal-body">
+              <div class="panel-head" style="margin-bottom: 16px;">
+                <div>
+                  <p class="eyebrow">新增系统礼品</p>
+                </div>
+                <button class="ghost-link" @click="resetGiftForm">清空</button>
+              </div>
+              <form class="stack-form" @submit.prevent="createSystemGift">
+                <label>
+                  礼品名称
+                  <input v-model.trim="newGiftForm.title" type="text" placeholder="如 校园周边礼包" required />
+                </label>
+                <label>
+                  礼品描述
+                  <textarea v-model.trim="newGiftForm.description" rows="2" placeholder="简单描述" />
+                </label>
+                <div class="inline-inputs">
+                  <label>
+                    积分成本
+                    <input v-model.number="newGiftForm.pointsCost" type="number" min="1" />
+                  </label>
+                  <label>
+                    库存
+                    <input v-model.number="newGiftForm.stock" type="number" min="1" />
+                  </label>
+                </div>
+                <label>
+                  交付方式
+                  <select v-model="newGiftForm.deliveryType">
+                    <option value="offline">线下领取</option>
+                    <option value="online">线上发放</option>
+                    <option value="both">线上/线下皆可</option>
+                  </select>
+                </label>
+                <label>
+                  封面图片
+                  <input v-model.trim="newGiftForm.coverImage" type="text" placeholder="/uploads/gift.jpg" />
+                </label>
+                <div class="form-actions" style="margin-top: 20px;">
+                  <button class="btn btn-secondary" @click="closeGiftMaintenanceModal">取消</button>
+                  <button class="btn btn-primary" type="submit" :disabled="submittingGift">
+                    {{ submittingGift ? '提交中...' : '添加礼品' }}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
         <!-- 论坛管理面板 -->
         <div v-if="activeMenu === 'forum'" class="forum-management-container">
           <article class="panel">
@@ -910,6 +938,8 @@ const giftImagePreview = ref(null)
 const giftsList = ref([])
 const showGiftForm = ref(false)
 const showAddStockModal = ref(false)
+const showGiftApplicationModal = ref(false)
+const showGiftMaintenanceModal = ref(false)
 const currentGift = ref(null)
 const addStockAmount = ref(0)
 
@@ -1535,6 +1565,7 @@ const createSystemGift = async () => {
     showNotification('✓ 礼品已添加并待上架', 'success')
     resetGiftForm()
     loadManagedGifts()
+    closeGiftMaintenanceModal()
   } catch (e) {
     console.error('创建礼品失败:', e)
     showNotification('添加礼品失败，请检查数据', 'warning')
@@ -1564,6 +1595,28 @@ const rejectGift = async (gift) => {
     console.error('驳回礼品失败:', e)
     showNotification('驳回操作失败，请稍后再试', 'warning')
   }
+}
+
+// 打开礼品申请审核弹窗
+const openGiftApplicationModal = () => {
+  showGiftApplicationModal.value = true
+  loadManagedGifts()
+}
+
+// 关闭礼品申请审核弹窗
+const closeGiftApplicationModal = () => {
+  showGiftApplicationModal.value = false
+}
+
+// 打开礼品库维护弹窗
+const openGiftMaintenanceModal = () => {
+  showGiftMaintenanceModal.value = true
+}
+
+// 关闭礼品库维护弹窗
+const closeGiftMaintenanceModal = () => {
+  showGiftMaintenanceModal.value = false
+  resetGiftForm()
 }
 
 const loadPointRules = async () => {
@@ -2036,11 +2089,10 @@ watch(activeMenu, (value) => {
   border: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow: 0 25px 60px rgba(53, 119, 103, 0.15);
   backdrop-filter: blur(18px);
-  position: sticky;
-  top: 0;
-  align-self: flex-start;
-  height: fit-content;
-  max-height: calc(100vh - 64px);
+  position: fixed;
+  top: 70px;
+  left: clamp(250px, 4vw, 48px);
+  height: calc(100vh - 64px);
   overflow-y: auto;
   pointer-events: auto;
   z-index: 10;
@@ -2106,6 +2158,7 @@ watch(activeMenu, (value) => {
   backdrop-filter: blur(18px);
   pointer-events: auto;
   z-index: 10;
+  margin-left: 265px;
 }
 
 .admin-header {
@@ -2268,26 +2321,73 @@ watch(activeMenu, (value) => {
 
 .reward-metrics {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
 }
 
 .metric-block {
   background: rgba(239, 250, 255, 0.85);
-  border-radius: 20px;
-  padding: 16px;
+  border-radius: 16px;
+  padding: 10px;
   border: 1px solid rgba(255, 255, 255, 0.6);
+  line-height: 1.3;
 }
 
 .metric-block strong {
-  font-size: 28px;
+  font-size: 22px;
   color: #173450;
+  display: block;
+  line-height: 1.2;
+  margin: 4px 0;
+}
+
+.metric-block p.metric-label {
+  font-size: 13px;
+  margin: 0 0 4px 0;
+  line-height: 1.2;
+}
+
+.metric-block small {
+  font-size: 11px;
+  display: block;
+  line-height: 1.2;
+  margin-top: 2px;
 }
 
 .reward-board {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 18px;
+}
+
+.reward-action-buttons {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.reward-action-buttons .btn {
+  padding: 12px 24px;
+  font-size: 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  font-weight: 500;
+}
+
+.reward-action-buttons .btn:last-child {
+  margin-left: auto;
+}
+
+.reward-action-buttons .btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+
+.reward-action-buttons .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
 .sub-panel {
@@ -2948,8 +3048,18 @@ watch(activeMenu, (value) => {
   }
 
   .sidebar {
+    position: relative;
     width: 100%;
+    top: auto;
+    left: auto;
+    height: auto;
+    max-height: none;
     flex-direction: row;
+  }
+
+  .admin-content {
+    margin-left: 0;
+    margin-top: 20px;
   }
 
   .review-container {
@@ -2965,7 +3075,15 @@ watch(activeMenu, (value) => {
   }
 
   .sidebar {
+    position: relative;
+    top: auto;
+    left: auto;
+    height: auto;
     padding: 24px;
+  }
+
+  .admin-content {
+    margin-left: 0;
   }
 }
 
@@ -3433,6 +3551,35 @@ watch(activeMenu, (value) => {
 
 .btn-secondary:hover {
   background: #777;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.eyebrow {
+  font-size: 12px;
+  color: rgba(15, 42, 66, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.empty {
+  text-align: center;
+  color: rgba(15, 42, 66, 0.5);
+  padding: 20px;
+  font-size: 14px;
 }
 </style>
 
