@@ -218,7 +218,6 @@ const handleLogout = () => {
 }
 
 let loginCheckInterval = null
-let msgCheckInterval = null // 新增一个用于消息轮询的定时器变量
 
 onMounted(() => {
   checkLoginStatus()
@@ -246,9 +245,9 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (loginCheckInterval) clearInterval(loginCheckInterval)
-  if (msgCheckInterval) clearInterval(msgCheckInterval) // 清除消息定时器
-  
+  if (loginCheckInterval) {
+    clearInterval(loginCheckInterval)
+  }
   window.removeEventListener('storage', checkLoginStatus)
   window.removeEventListener('focus', checkLoginStatus)
   document.body.classList.remove('has-side-nav-layout')

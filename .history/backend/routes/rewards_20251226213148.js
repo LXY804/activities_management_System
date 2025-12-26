@@ -131,11 +131,3 @@ router.post(
 router.get('/ranking/points', rewardController.getPointsRanking)
 
 module.exports = router
-// 在 rewards.js 中添加以下代码 (建议放在 router.get('/gifts', ...) 附近)
-
-// 获取积分排行榜 (建议需要登录)
-router.get(
-  '/ranking',
-  authenticate, 
-  rewardController.getPointsRanking
-)
