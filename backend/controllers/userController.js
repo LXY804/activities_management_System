@@ -40,7 +40,7 @@ exports.getProfile = async (req, res) => {
   }
 }
 
-// 上传头像（使用 users 表中的 image 字段）
+// 上传头像(使用 users 表中的 image 字段）
 exports.uploadAvatar = async (req, res) => {
   try {
     const userId = req.user.id
@@ -58,6 +58,7 @@ exports.uploadAvatar = async (req, res) => {
         replacements: [relativePath, userId],
         type: QueryTypes.UPDATE
       }
+
     )
 
     success(res, { image: relativePath }, '头像上传成功')
@@ -184,7 +185,7 @@ exports.getUserList = async (req, res) => {
     let whereClause = 'WHERE 1=1'
     const replacements = []
     
-    // 角色过滤
+   
     if (role && role !== '全部') {
       const roleMap = {
         '学生用户': 'student',
@@ -256,7 +257,7 @@ exports.getUserList = async (req, res) => {
   }
 }
 
-// 管理员：获取用户统计
+
 exports.getUserStats = async (req, res) => {
   try {
     const sql = `
@@ -284,7 +285,7 @@ exports.getUserStats = async (req, res) => {
   }
 }
 
-// 管理员：获取本月新增用户数
+
 exports.getNewUsersThisMonth = async (req, res) => {
   try {
     const sql = `

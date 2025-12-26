@@ -60,7 +60,7 @@ mysql -u root -p < backend/database/init.sql
 
 #### 2.2 配置环境变量
 
-在 `backend` 目录下创建 `.env` 文件（如果不存在），参考 `backend/.env.example`：
+在 `backend` 目录下创建 `.env` 文件（如果不存在），参考 `backend/.env.example`
 
 ```env
 # 数据库配置
