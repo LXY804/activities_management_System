@@ -1,391 +1,514 @@
 <template>
-  <div class="manage-layout page" :style="bgStyle">
-    <div class="bg-overlay"></div>
-    <div class="nav-bar-wrapper">
-      <NavBar />
-    </div>
-    <div class="layout-content">
-      <div class="manage-main">
-    <aside class="sidebar">
-      <div class="logo">活动管理</div>
-      <nav class="menu">
-        <a 
-          class="menu__item" 
-          :class="{ active: currentView === 'publish' }"
-          @click="currentView = 'publish'"
-        >发布活动</a>
-        <a 
-          class="menu__item" 
-          :class="{ active: currentView === 'review' }"
-          @click="currentView = 'review'"
-        >审核报名</a>
-        <a 
-          class="menu__item" 
-          :class="{ active: currentView === 'statistics' }"
-          @click="currentView = 'statistics'"
-        >查看统计</a>
-        <a 
-          class="menu__item" 
-          :class="{ active: currentView === 'checkin' }"
-          @click="currentView = 'checkin'"
-        >签到管理</a>
-      </nav>
-    </aside>
+  <div class="premium-manage-page">
+    <NavBar />
 
-    <main class="content">
-      <!-- 发布活动视图 -->
-      <div v-if="currentView === 'publish'">
-        <form class="publish-form" @submit.prevent="handleSubmit">
-          <section class="form-section">
-            <div class="section-header">
-              <h2>基本信息</h2>
-              <p>填写活动标题、副标题以及类型，以便学生快速了解活动</p>
-            </div>
-            <div class="form-grid">
-              <div class="form-field span-2">
-                <label>活动名称 <span>*</span></label>
-                <input v-model="form.title" type="text" placeholder="请输入活动名称" required />
-              </div>
-              <div class="form-field span-2">
-                <label>副标题</label>
-                <input v-model="form.subtitle" type="text" placeholder="例如：打造校园创新氛围" />
-              </div>
-              <div class="form-field span-2">
-                <label>活动简介</label>
-                <textarea v-model="form.description" rows="3" placeholder="简要介绍活动亮点与目标"></textarea>
-              </div>
-              <div class="form-field">
-                <label>活动类型 <span>*</span></label>
-                <select v-model="form.activityType" required>
-                  <option disabled value="">请选择类型</option>
-                  <option v-for="type in activityTypes" :key="type" :value="type">{{ type }}</option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label>所属学院</label>
-                <select v-model="form.belongCollege">
-                  <option value="">请选择学院</option>
-                  <option v-for="college in collegeOptions" :key="college" :value="college">
-                    {{ college }}
-                  </option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label>开始时间 <span>*</span></label>
-                <input v-model="form.startTime" type="datetime-local" required />
-              </div>
-              <div class="form-field">
-                <label>结束时间 <span>*</span></label>
-                <input v-model="form.endTime" type="datetime-local" required />
-              </div>
-              <div class="form-field">
-                <label>活动地点</label>
-                <input v-model="form.location" type="text" placeholder="请输入活动举办地点" />
-              </div>
-              <div class="form-field">
-                <label>报名截止时间</label>
-                <input v-model="form.registrationDeadline" type="datetime-local" />
-              </div>
-            </div>
-          </section>
+    <div class="manage-wrapper">
+      <aside class="bento-sidebar">
+        <div class="sidebar-header">
+          <div class="brand-icon">✨</div>
+          <h3>活动工作台</h3>
+        </div>
+        
+        <nav class="sidebar-nav">
+          <a class="nav-item" :class="{ active: currentView === 'publish' }" @click="currentView = 'publish'">
+            <span class="icon">✍️</span> 发布活动
+          </a>
+          <a class="nav-item" :class="{ active: currentView === 'review' }" @click="currentView = 'review'">
+            <span class="icon">⚖️</span> 审核报名
+          </a>
+          <a class="nav-item" :class="{ active: currentView === 'statistics' }" @click="currentView = 'statistics'">
+            <span class="icon">📊</span> 查看统计
+          </a>
+          <a class="nav-item" :class="{ active: currentView === 'checkin' }" @click="currentView = 'checkin'">
+            <span class="icon">📍</span> 签到管理
+          </a>
+          <a class="nav-item" :class="{ active: currentView === 'rewards' }" @click="openRewardsView">
+            <span class="icon">🎁</span> 积分礼品
+          </a>
+        </nav>
 
-          <section class="form-section">
-            <div class="section-header">
-              <h2>容量控制</h2>
-              <p>设置参与人数以及候补策略，匹配活动场地与秩序</p>
-            </div>
-            <div class="form-grid">
-              <div class="form-field">
-                <label>人数上限</label>
-                <input v-model.number="form.maxParticipants" type="number" min="0" placeholder="0 表示不限制" />
-                <small>若不限制人数，可保持为 0</small>
-              </div>
-              <div class="form-field">
-                <label>候补策略</label>
-                <div class="toggle-row">
-                  <input id="waitlist" type="checkbox" v-model="form.enableWaitlist" />
-                  <label for="waitlist">开启候补</label>
-                </div>
-              </div>
-              <div class="form-field" v-if="form.enableWaitlist">
-                <label>候补人数上限</label>
-                <input v-model.number="form.waitlistLimit" type="number" min="0" placeholder="请输入候补上限" />
-              </div>
-              <div class="form-field">
-                <label>是否需要审核报名</label>
-                <div class="toggle-row">
-                  <input id="needApproval" type="checkbox" v-model="form.needApproval" />
-                  <label for="needApproval">需要审核</label>
-                </div>
-                <small>开启后，报名需组织者审批后方可参加</small>
-              </div>
-            </div>
-          </section>
+        <div class="sidebar-footer">
+          <p>组织者管理模式</p>
+        </div>
+      </aside>
 
-          <section class="form-section">
-            <div class="section-header">
-              <h2>报名限制条件</h2>
-              <p>控制面向的学院与年级人群，精准推送活动</p>
-            </div>
-            <div class="form-grid span-2-grid">
-              <div class="form-field multi-field">
-                <label>面向学院</label>
-                <div class="checkbox-group">
-                  <label v-for="college in collegeOptions" :key="college">
-                    <input type="checkbox" :value="college" v-model="form.targetColleges" />
-                    {{ college }}
-                  </label>
-                </div>
+      <main class="manage-content">
+        <div v-if="currentView === 'publish'" class="view-container">
+          <form class="bento-grid-form" @submit.prevent="handleSubmit">
+            <header class="view-header">
+              <div class="header-text">
+                <h2>新建活动计划</h2>
+                <p>填写活动详情，系统将精准推送给目标学生</p>
               </div>
-              <div class="form-field multi-field">
-                <label>面向年级</label>
-                <div class="checkbox-group">
-                  <label v-for="grade in gradeOptions" :key="grade">
-                    <input type="checkbox" :value="grade" v-model="form.targetGrades" />
-                    {{ grade }}
-                  </label>
-                </div>
+              <div class="header-actions">
+                <button type="button" class="btn-secondary" @click="handleSaveDraft">保存草稿</button>
+                <button type="submit" class="btn-primary-vibe">提交审核 ↗</button>
               </div>
-            </div>
-          </section>
+            </header>
 
-          <section class="form-section">
-            <div class="section-header">
-              <h2>内容与媒体</h2>
-              <p>上传封面并完善活动详情，提升吸引力</p>
-            </div>
-            <div class="form-grid">
-              <div class="form-field span-2">
-                <label>活动详情</label>
-                <textarea v-model="form.detailRichText" rows="6" placeholder="支持图文描述，若需插图可后续接入富文本编辑器"></textarea>
-              </div>
-              <div class="form-field">
-                <label>封面图片</label>
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  @change="handleCoverUpload" 
-                  ref="coverImageInput"
-                />
-                <div v-if="coverImagePreview" class="cover-preview">
-                  <img :src="coverImagePreview" alt="封面预览" />
-                  <button type="button" class="remove-cover-btn" @click="removeCoverImage">移除</button>
-                </div>
-                <small v-if="form.coverImage && !coverImagePreview">已选择：{{ form.coverImage }}</small>
-                <small v-else-if="!coverImagePreview" class="upload-hint">请通过文件选择器上传图片（不支持直接输入路径）</small>
-              </div>
-              <div class="form-field">
-                <label>附件上传</label>
-                <input type="file" multiple @change="handleAttachmentUpload" />
-                <small v-if="form.attachments.length">已上传 {{ form.attachments.length }} 个附件</small>
-              </div>
-            </div>
-          </section>
-
-          <section class="form-section">
-            <div class="section-header">
-              <h2>状态说明</h2>
-              <p>活动提交后将进入待审核，审核通过后学生即可报名</p>
-            </div>
-            <ul class="status-list">
-              <li>提交审核：状态变更为「待审核」</li>
-              <li>管理员通过后：「已发布」且报名开放</li>
-              <li>如需调整：编辑后再次提交审核</li>
-            </ul>
-          </section>
-
-          <div class="form-actions">
-            <button type="button" class="btn secondary" @click="handleSaveDraft">保存草稿</button>
-            <button type="submit" class="btn primary">提交审核</button>
-          </div>
-        </form>
-      </div>
-
-      <!-- 审核报名视图 -->
-      <div v-if="currentView === 'review'">
-        <!-- 活动列表 -->
-        <div class="activities-container">
-          <div class="activities-list">
-            <div v-if="activitiesLoading" class="empty-state">
-              <p>加载活动中...</p>
-            </div>
-            <div v-else-if="activitiesError" class="empty-state">
-              <p>{{ activitiesError }}</p>
-            </div>
-            <template v-else>
-              <div 
-                v-for="activity in myActivities" 
-                :key="activity.id"
-                class="activity-card"
-              >
-                <div class="activity-card__header">
-                  <span>活动编号：{{ activity.code || activity.id }}</span>
-                  <span class="activity-card__status">{{ getActivityStatusText(activity) }}</span>
-                </div>
-                <div class="activity-card__body">
-                  <div class="activity-card__cover">
-                    <img :src="buildImageUrl(activity.coverUrl)" alt="活动封面" />
-                    <span class="status-tag">{{ formatStatus(activity.status || 'open') }}</span>
+            <div class="form-layout">
+              <div class="bento-item span-2">
+                <h4 class="bento-title">基本信息</h4>
+                <div class="form-row">
+                  <div class="input-group">
+                    <label>活动名称 <span>*</span></label>
+                    <input v-model="form.title" type="text" placeholder="请输入活动名称" required />
                   </div>
-                  <div class="activity-card__info">
-                    <h3>{{ activity.title || '未命名活动' }}</h3>
-                    <p class="activity-card__meta">
-                      <span>学院：{{ activity.belongCollege || '未设置' }}</span>
-                      <span>地点：{{ activity.location || '未设置' }}</span>
-                      <span>时间：{{ formatDateRange(activity.startTime, activity.endTime) }}</span>
-                    </p>
-                    <div class="activity-card__stats">
-                      <span>总报名：{{ activity.totalApplications }}</span>
-                      <span>待审核：{{ activity.pendingApplications }}</span>
-                      <span>已通过：{{ activity.approvedApplications }}</span>
+                  <div class="input-group">
+                    <label>活动类型 <span>*</span></label>
+                    <select v-model="form.activityType" required>
+                      <option disabled value="">选择类型</option>
+                      <option v-for="type in activityTypes" :key="type" :value="type">{{ type }}</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="input-group">
+                    <label>副标题</label>
+                    <input v-model="form.subtitle" type="text" placeholder="例如：打造校园创新氛围" />
+                  </div>
+                  <div class="input-group">
+                    <label>主办学院</label>
+                    <select v-model="form.belongCollege">
+                      <option value="">请选择学院</option>
+                      <option v-for="college in collegeOptions" :key="college" :value="college">{{ college }}</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="input-group">
+                  <label>
+                    活动简介
+                    <button 
+                      type="button" 
+                      class="btn-ai-generate" 
+                      @click="generateDescription"
+                      :disabled="generatingDescription"
+                    >
+                      {{ generatingDescription ? '生成中...' : '🤖 AI生成' }}
+                    </button>
+                  </label>
+                  <textarea v-model="form.description" rows="2" placeholder="简要介绍活动亮点与目标"></textarea>
+                </div>
+              </div>
+
+              <div class="bento-item span-2">
+                <h4 class="bento-title">时间与地点</h4>
+                <div class="form-row">
+                  <div class="input-group">
+                    <label>活动地点</label>
+                    <input v-model="form.location" type="text" placeholder="请输入举办地点" />
+                  </div>
+                  <div class="input-group">
+                    <label>活动开始时间 <span>*</span></label>
+                    <input v-model="form.startTime" type="datetime-local" required />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="input-group">
+                    <label>活动结束时间 <span>*</span></label>
+                    <input v-model="form.endTime" type="datetime-local" required />
+                  </div>
+                  <div class="input-group">
+                    <label>报名截止日期 <span>*</span></label>
+                    <input v-model="form.registrationDeadline" type="datetime-local" required />
+                  </div>
+                </div>
+              </div>
+
+              <div class="bento-item span-2">
+                <h4 class="bento-title">报名条件限制</h4>
+                <div class="condition-grid">
+                  <div class="check-section">
+                    <label class="check-label">面向学院</label>
+                    <div class="check-group-bento">
+                      <label v-for="college in collegeOptions" :key="college" class="bento-checkbox">
+                        <input type="checkbox" :value="college" v-model="form.targetColleges" />
+                        <span class="check-tile">{{ college }}</span>
+                      </label>
                     </div>
                   </div>
-                  <div class="activity-card__action">
-                    <button class="btn-detail" @click="openReviewPanel(activity)">报名详情</button>
+                  <div class="check-section">
+                    <label class="check-label">面向年级</label>
+                    <div class="check-group-bento">
+                      <label v-for="grade in gradeOptions" :key="grade" class="bento-checkbox">
+                        <input type="checkbox" :value="grade" v-model="form.targetGrades" />
+                        <span class="check-tile">{{ grade }}</span>
+                      </label>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div v-if="myActivities.length === 0" class="empty-state">
-                <p>📭 暂无发布的活动</p>
-                <p class="empty-state__hint">先去发布一个活动吧！</p>
+              <div class="bento-item span-2">
+                <h4 class="bento-title">内容与媒体</h4>
+                <div class="media-flex">
+                  <div class="media-left">
+                    <label class="inner-label">封面图片</label>
+                    <div class="cover-uploader" @click="$refs.coverInput.click()">
+                      <img v-if="coverImagePreview" :src="coverImagePreview" />
+                      <div v-else class="upload-hint">
+                        <span class="hint-icon">🖼️</span>
+                        <p>点击上传</p>
+                      </div>
+                    </div>
+                    <input type="file" ref="coverInput" hidden accept="image/*" @change="handleCoverUpload" />
+                    <button v-if="coverImagePreview" type="button" class="btn-remove-lite" @click.stop="removeCoverImage">移除封面</button>
+                    
+                    <div class="attachment-box mt-20">
+                      <label class="inner-label">附件上传</label>
+                      <div class="file-upload-container">
+                        <input type="file" multiple ref="attachmentInput" hidden @change="handleAttachmentUpload" />
+                        <button type="button" class="btn-upload-trigger" @click="$refs.attachmentInput.click()">
+                          <span class="icon">📎</span>
+                          <span>选择相关附件...</span>
+                        </button>
+                        <div class="file-count-tip" v-if="form.attachments.length">
+                          <span class="check-icon">✅</span> 已成功选择 {{ form.attachments.length }} 个文件
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="rich-desc">
+                    <label class="inner-label">详细描述</label>
+                    <textarea v-model="form.detailRichText" placeholder="支持填写详细的活动流程、规则等内容..."></textarea>
+                  </div>
+                </div>
               </div>
-            </template>
+
+              <div class="bento-item span-2 status-notice-card">
+                <h4 class="bento-title">流程说明</h4>
+                <div class="status-steps">
+                  <div class="step-item"><span>1</span> 提交审核：状态变更为「待审核」</div>
+                  <div class="step-item"><span>2</span> 管理员通过：状态变为「已发布」并开放报名</div>
+                  <div class="step-item"><span>3</span> 动态调整：编辑内容后需重新提交审核</div>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div v-if="currentView === 'review'" class="view-container">
+          <header class="view-header">
+            <div class="header-text">
+              <h2>审核中心</h2>
+              <p>及时处理报名申请，提升活动参与体验</p>
+            </div>
+              <button class="btn-refresh" @click="loadActivities">刷新数据</button>
+          </header>
+
+          <div class="activity-radar-grid">
+            <div v-for="act in myActivities" :key="act.id" class="mini-activity-card">
+              <div class="card-thumb">
+                <img :src="buildImageUrl(act.coverUrl)" />
+                <span class="status-pill">{{ formatStatus(act.status) }}</span>
+              </div>
+              <div class="card-body">
+                <div class="card-main">
+                  <h4>{{ act.title }}</h4>
+                  <p>📍 {{ act.location || '待定' }}</p>
+                </div>
+                <div class="card-stats-row">
+                  <div class="stat-unit">
+                    <span class="s-label">待审</span>
+                    <span class="s-val">{{ act.pendingApplications }}</span>
+                  </div>
+                  <div class="stat-unit">
+                    <span class="s-label">已过</span>
+                    <span class="s-val highlight">{{ act.approvedApplications }}</span>
+                  </div>
+                </div>
+                <button class="btn-manage-mini" @click="openReviewPanel(act)">管理名单 ↗</button>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="myActivities.length === 0" class="empty-state-bento">
+             <div class="empty-icon">📭</div>
+             <p>暂无活动，快去发布一个吧！</p>
           </div>
         </div>
 
-        <!-- 报名详情抽屉 -->
-        <div 
-          v-if="selectedActivity" 
-          class="review-panel"
-          @click.self="closeReviewPanel"
-        >
-          <div class="review-panel__content">
-            <div class="review-panel__header">
-              <h2>{{ selectedActivity.title }} - 报名列表</h2>
-              <button class="btn-close" @click="closeReviewPanel">×</button>
+        <div v-if="currentView === 'rewards'" class="view-container rewards-panel">
+          <header class="view-header">
+            <div class="header-text">
+              <h2>积分与礼品</h2>
+              <p>管理礼品上架、制定积分规则，并查看活动激励数据</p>
             </div>
-            
-            <div class="applications-list">
-              <div v-if="applicationsLoading" class="empty-applications">
-                <p>报名数据加载中...</p>
-              </div>
-              <div v-else-if="applicationsError" class="empty-applications">
-                <p>{{ applicationsError }}</p>
-              </div>
+            <button class="btn-refresh" @click="refreshOrganizerRewards">刷新数据</button>
+          </header>
+
+          <div v-if="loadingOrganizerAnalytics" class="reward-loading">加载积分概览...</div>
+          <div v-else class="reward-summary">
+            <div class="summary-card">
+              <p>累计发放</p>
+              <strong>{{ organizerAnalytics.totalPointsIssued }}</strong>
+              <small>本组织活动产生的积分</small>
+            </div>
+            <div class="summary-card">
+              <p>待审核礼品</p>
+              <strong>{{ organizerAnalytics.pendingGifts }}</strong>
+              <small>等待管理员审批</small>
+            </div>
+            <div class="summary-card">
+              <p>热门兑换</p>
+              <strong>{{ organizerAnalytics.giftHeat.length }}</strong>
+              <small>近期开启兑换的礼品</small>
+            </div>
+          </div>
+
+          <section class="organizer-reward-grid">
+            <article class="reward-card">
+              <h3>{{ giftForm.id ? '编辑礼品' : '申请上架新礼品' }}</h3>
+              <p class="card-tip">提交后需管理员审核，审核通过即会上架</p>
+              <form class="reward-form" @submit.prevent="submitGiftForm">
+                <label>礼品名称 <span>*</span>
+                  <input v-model.trim="giftForm.title" type="text" placeholder="如 校园限定帆布包" required />
+                </label>
+                <label>礼品描述
+                  <textarea v-model.trim="giftForm.description" rows="2" placeholder="简单介绍礼品亮点"></textarea>
+                </label>
+                <div class="two-cols">
+                  <label>所需积分 <span>*</span>
+                    <input v-model.number="giftForm.pointsCost" type="number" min="1" required />
+                  </label>
+                  <label>库存数量 <span>*</span>
+                    <input v-model.number="giftForm.stock" type="number" min="1" required />
+                  </label>
+                </div>
+                <label>交付方式
+                  <select v-model="giftForm.deliveryType">
+                    <option value="offline">线下领取</option>
+                    <option value="online">线上发放</option>
+                    <option value="both">线上/线下皆可</option>
+                  </select>
+                </label>
+                <label class="gift-cover-field">封面图片
+                  <input
+                    ref="giftCoverInput"
+                    type="file"
+                    accept="image/*"
+                    @change="handleGiftCoverChange"
+                  />
+                  <small>支持 JPG/PNG，大小不超过 5MB</small>
+                  <div
+                    v-if="giftCoverPreview || giftForm.coverImage"
+                    class="gift-cover-preview"
+                  >
+                    <img
+                      :src="giftCoverPreview || giftForm.coverImage"
+                      alt="gift-cover"
+                    />
+                    <button type="button" class="btn-remove-lite" @click="clearGiftCover">
+                      移除图片
+                    </button>
+                  </div>
+                </label>
+                <div class="form-actions">
+                  <button type="button" class="btn-secondary" v-if="giftForm.id" @click="resetGiftForm">取消编辑</button>
+                  <button type="submit" class="btn-primary-vibe" :disabled="savingGift">
+                    {{ savingGift ? '提交中...' : (giftForm.id ? '保存修改' : '提交审核') }}
+                  </button>
+                </div>
+              </form>
+            </article>
+
+            <article class="reward-card">
+              <h3>我的礼品</h3>
+              <div class="card-tip">查看状态，快速上下架或编辑库存</div>
+              <div v-if="loadingGiftList" class="reward-loading">加载礼品中...</div>
               <template v-else>
-                <div 
-                  v-for="app in currentApplications" 
-                  :key="app.id"
-                  class="application-item"
-                >
-                  <div class="application-item__info">
-                    <div class="application-item__name">{{ app.userName }}</div>
-                    <div class="application-item__meta">
-                      报名时间：{{ formatDateTime(app.applyTime) }}
+                <ul v-if="rewardGifts.length" class="gift-list">
+                  <li v-for="gift in rewardGifts" :key="gift.id">
+                    <div class="gift-info">
+                      <img :src="gift.coverImage" alt="gift" />
+                      <div>
+                        <h4>{{ gift.title }}</h4>
+                        <p>{{ gift.pointsCost }} 分 · 库存 {{ gift.stock }}</p>
+                        <small>{{ formatGiftStatus(gift.status) }} · {{ mapDeliveryLabel(gift.deliveryType) }}</small>
+                      </div>
                     </div>
-                  </div>
-                  <div class="application-item__status">
-                    <span 
-                      class="status-badge"
-                      :class="app.status"
-                    >
-                      {{ getStatusText(app.status) }}
-                    </span>
-                  </div>
-                  <div class="application-item__actions">
-                    <button 
-                      v-if="app.status === 'pending'"
-                      class="btn-approve"
-                      :disabled="isUpdating(app.id)"
-                      @click="handleApprove(app)"
-                    >
-                      {{ isUpdating(app.id) ? '处理中...' : '通过' }}
-                    </button>
-                    <button 
-                      v-if="app.status === 'pending'"
-                      class="btn-reject"
-                      :disabled="isUpdating(app.id)"
-                      @click="handleReject(app)"
-                    >
-                      {{ isUpdating(app.id) ? '处理中...' : '拒绝' }}
-                    </button>
-                  </div>
-                </div>
-
-                <div v-if="currentApplications.length === 0" class="empty-applications">
-                  <p>📭 暂无报名记录</p>
-                </div>
+                    <div class="gift-actions">
+                      <button class="btn-mini" @click="editGift(gift)">编辑</button>
+                      <button
+                        class="btn-mini ghost"
+                        v-if="gift.status === 'active'"
+                        @click="toggleGiftStatus(gift, 'inactive')"
+                      >下架</button>
+                      <button
+                        class="btn-mini ghost"
+                        v-else-if="gift.status === 'inactive'"
+                        @click="toggleGiftStatus(gift, 'active')"
+                      >上架</button>
+                      <span class="status-tag" :class="gift.status">{{ gift.status }}</span>
+                    </div>
+                  </li>
+                </ul>
+                <p v-else class="empty">暂无礼品记录，提交一个吧</p>
               </template>
-            </div>
+            </article>
+          </section>
+        </div>
+
+        <div v-if="['statistics', 'checkin'].includes(currentView)" class="view-container">
+          <div class="empty-state-bento">
+            <div class="loader-vibe"></div>
+            <h3>正在打磨功能...</h3>
           </div>
         </div>
-      </div>
+      </main>
+    </div>
 
-      <!-- 查看统计视图 -->
-      <div v-if="currentView === 'statistics'">
-        <div class="empty-state">
-          <p>功能开发中...</p>
+    <div v-if="selectedActivity" class="bento-modal-overlay" @click.self="closeReviewPanel">
+      <div class="bento-modal">
+        <div class="modal-header">
+          <h3>待审核名单 - {{ selectedActivity.title }}</h3>
+          <button class="btn-close-circle" @click="closeReviewPanel">×</button>
         </div>
-      </div>
-
-      <!-- 签到管理视图 -->
-      <div v-if="currentView === 'checkin'">
-        <div class="empty-state">
-          <p>功能开发中...</p>
+        <div class="modal-body custom-scrollbar">
+          <div v-for="app in currentApplications" :key="app.id" class="applicant-item">
+            <div class="app-avatar">{{ app.userName.charAt(0) }}</div>
+            <div class="app-info">
+              <span class="app-name">{{ app.userName }}</span>
+              <span class="app-date">{{ formatDateTime(app.applyTime) }}</span>
+            </div>
+            <div :class="['app-status-tag', app.status]">{{ getStatusText(app.status) }}</div>
+            <div class="app-actions">
+              <button class="btn-app-approve" @click="handleApprove(app)" :disabled="isUpdating(app.id)">通过</button>
+              <button class="btn-app-reject" @click="handleReject(app)" :disabled="isUpdating(app.id)">拒绝</button>
+            </div>
+          </div>
+          <div v-if="currentApplications.length === 0" class="empty-mini">暂无待审核的报名记录</div>
         </div>
-      </div>
-    </main>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, watch } from 'vue'
 import NavBar from '@/components/NavBar.vue'
-import libraryImg from '@/assets/图书馆.webp'
-import { createEvent } from '@/api/event'
+import { createEvent, generateEventCopy } from '@/api/event'
 import {
   fetchMyActivities as fetchOrganizerActivities,
   fetchActivityApplications,
   updateApplicationStatus
 } from '@/api/organizer'
+import { fetchColleges } from '@/api/user'
+import {
+  fetchManagedGifts,
+  createGift as createRewardGift,
+  updateGift,
+  updateGiftStatus,
+  fetchPointRules,
+  savePointRule,
+  deletePointRule,
+  fetchOrganizerRewardStats
+} from '@/api/reward'
 
-const API_ORIGIN = (
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
-).replace(/\/api\/?$/, '')
+// --- 【核心修改：显式导入本地资产图片】 ---
+import imgCup from '@/assets/校园定制水杯.jpg'
+import imgPack from '@/assets/活动加油礼包.jpg'
+import imgMusic from '@/assets/线上音乐会门票.jpg'
+import imgBag from '@/assets/珞狮校园帆布包.jpg'
+import imgBadge from '@/assets/余区纪念微章套装.jpg'
+import imgBoat from '@/assets/龙舟体验券.jpg'
+import imgHand from '@/assets/夜游科普手账.jpg'
+import imgVip from '@/assets/材料实验室VIP参观券.jpg'
+import imgCoffee from '@/assets/校园咖啡券.jpg'
 
+// --- API 基础处理 ---
+const API_ORIGIN = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/api\/?$/, '')
 const DEFAULT_COVER = `${API_ORIGIN}/uploads/3b72bdb5a6ca17d85131e816c9fdd0b1.jpg`
 
-const buildImageUrl = (coverUrl) => {
-  if (!coverUrl || coverUrl === '' || coverUrl === 'null' || coverUrl === 'undefined') {
-    return DEFAULT_COVER
-  }
-  if (coverUrl.startsWith('http://') || coverUrl.startsWith('https://')) {
-    return coverUrl
-  }
-  let normalized = coverUrl.replace(/\\/g, '/')
-  if (!normalized.startsWith('/')) {
-    normalized = '/' + normalized
-  }
-  return API_ORIGIN + normalized
+// 建立规范化的资产映射表
+const normalizeAssetKey = (value = '') =>
+  value
+    .toString()
+    .trim()
+    .replace(/\.[^/.]+$/, '') // 移除后缀
+    .replace(/[\s·\-()（）]/g, '') // 移除空格和特殊字符
+    .toLowerCase()
+
+const giftAssetMap = {
+  [normalizeAssetKey('校园定制水杯')]: imgCup,
+  [normalizeAssetKey('活动加油礼包')]: imgPack,
+  [normalizeAssetKey('线上音乐会门票')]: imgMusic,
+  [normalizeAssetKey('珞狮校园帆布包')]: imgBag,
+  [normalizeAssetKey('余区纪念徽章套装')]: imgBadge,
+  [normalizeAssetKey('余区纪念微章套装')]: imgBadge, // 处理错别字
+  [normalizeAssetKey('龙舟体验券')]: imgBoat,
+  [normalizeAssetKey('夜游科普手账')]: imgHand,
+  [normalizeAssetKey('材料实验室VIP参观券')]: imgVip,
+  [normalizeAssetKey('材料实验室 VIP 参观券')]: imgVip,
+  [normalizeAssetKey('校园咖啡券')]: imgCoffee
 }
 
-const bgStyle = {
-  backgroundImage: `url(${libraryImg})`,
-  backgroundSize: 'cover',
-  backgroundPosition: 'center top',
-  backgroundRepeat: 'no-repeat',
-  backgroundAttachment: 'fixed',
-  minHeight: '100vh'
+const sanitizeGiftCoverPath = (value) => {
+  if (!value) return ''
+  const normalized = value.toString().trim()
+  return normalized && normalized !== 'null' ? normalized : ''
 }
+
+const resolveAssetCover = (gift) => {
+  const coverPath = sanitizeGiftCoverPath(gift.coverImage || gift.cover_image)
+  // 1. 优先通过标题匹配映射表
+  const fromTitle = giftAssetMap[normalizeAssetKey(gift.title || '')]
+  if (fromTitle) return fromTitle
+  // 2. 尝试通过文件名匹配（防止数据库只存了文件名）
+  const fileName = coverPath.split('/').pop() || ''
+  return giftAssetMap[normalizeAssetKey(fileName)] || null
+}
+
+const buildImageUrl = (url) => {
+  if (!url || url === '' || url === 'null') return DEFAULT_COVER
+  if (url.startsWith('http')) return url
+  return API_ORIGIN + (url.startsWith('/') ? '' : '/') + url.replace(/\\/g, '/')
+}
+
+// --- 数据定义 ---
 const currentView = ref('publish')
 const selectedActivity = ref(null)
 const currentApplications = ref([])
+const myActivities = ref([])
+const updatingApplicationId = ref(null)
+
+const rewardViewInitialized = ref(false)
+const organizerAnalytics = ref({
+  totalPointsIssued: 0,
+  pendingGifts: 0,
+  giftHeat: []
+})
+const loadingOrganizerAnalytics = ref(false)
+const rewardGifts = ref([])
+const loadingGiftList = ref(false)
+const savingGift = ref(false)
+const organizerRules = ref([])
+const loadingRules = ref(false)
+const savingRule = ref(false)
+
+const giftForm = reactive({
+  id: null,
+  title: '',
+  description: '',
+  pointsCost: 100,
+  stock: 20,
+  deliveryType: 'offline',
+  coverImage: ''
+})
+const giftCoverFile = ref(null)
+const giftCoverPreview = ref('')
+const giftCoverInput = ref(null)
+
+const ruleForm = reactive({
+  activityId: '',
+  actionLabel: '',
+  pointsValue: '',
+  description: '',
+  isActive: true
+})
 
 const activityTypes = ['学术讲座', '文体活动', '志愿服务', '竞赛比赛', '社团活动']
-const collegeOptions = ['计算机学院', '软件学院', '管理学院', '艺术设计学院', '经济学院']
+const collegeOptions = ref([]) // 从数据库动态加载
 const gradeOptions = ['大一', '大二', '大三', '大四', '研究生']
 
 const getDefaultForm = () => ({
@@ -399,924 +522,959 @@ const getDefaultForm = () => ({
   startTime: '',
   endTime: '',
   registrationDeadline: '',
-  maxParticipants: 0,
-  enableWaitlist: false,
-  waitlistLimit: 0,
-  needApproval: false,
   targetColleges: [],
   targetGrades: [],
   coverImage: '',
   attachments: []
 })
 
-// 表单数据
 const form = reactive(getDefaultForm())
-
-// 我的活动列表
-const myActivities = ref([])
-const activitiesLoading = ref(false)
-const activitiesError = ref('')
-const applicationsLoading = ref(false)
-const applicationsError = ref('')
-const updatingApplicationId = ref(null)
-
-// 封面图片相关
 const coverImageFile = ref(null)
 const coverImagePreview = ref(null)
-const coverImageInput = ref(null)
-
 const DRAFT_KEY = 'organizer_publish_draft'
+const generatingDescription = ref(false)
 
-// 初始化数据
-onMounted(() => {
-  loadActivities()
-  restoreDraft()
-})
-
-const mapActivity = (item) => ({
-  id: item.id,
-  code: item.code,
-  title: item.title || '未命名活动',
-  location: item.location || '',
-  startTime: item.start_time,
-  endTime: item.end_time,
-  capacity: item.capacity || 0,
-  belongCollege: item.target_college_name || '',
-  coverUrl: item.cover_url || '',
-  workflowStatus: item.workflow_status || 'published',
-  status: item.status || 'open',
-  totalApplications: Number(item.total_applications) || 0,
-  pendingApplications: Number(item.pending_applications) || 0,
-  approvedApplications: Number(item.approved_applications) || 0
-})
-
-// 加载活动列表
-const loadActivities = async () => {
-  activitiesLoading.value = true
-  activitiesError.value = ''
+// --- 业务方法 ---
+// 加载学院列表
+const loadColleges = async () => {
   try {
-    const list = await fetchOrganizerActivities()
-    myActivities.value = Array.isArray(list) ? list.map(mapActivity) : []
+    const data = await fetchColleges()
+    // API 返回格式: [{ id: 1, name: '计算机学院' }, ...]
+    collegeOptions.value = (data || []).map(college => college.name || college.college_name)
   } catch (err) {
-    activitiesError.value = err?.message || '加载活动失败'
-    myActivities.value = []
-  } finally {
-    activitiesLoading.value = false
+    console.error('加载学院列表失败:', err)
+    // 如果加载失败，使用默认值作为后备
+    collegeOptions.value = ['计算机学院', '软件学院', '管理学院', '艺术设计学院', '经济学院']
   }
 }
 
-// 提交活动表单
-const handleSubmit = async () => {
-  // 验证必填字段
-  if (!form.title || !form.activityType || !form.startTime || !form.endTime) {
-    window.alert('请填写必填字段')
+onMounted(() => {
+  loadActivities()
+  loadColleges() // 加载学院列表
+  const stored = localStorage.getItem(DRAFT_KEY)
+  if (stored) {
+    const parsed = JSON.parse(stored)
+    Object.assign(form, parsed)
+  }
+})
+
+const loadActivities = async () => {
+  try {
+    const list = await fetchOrganizerActivities()
+    myActivities.value = Array.isArray(list) ? list.map(item => ({
+      id: item.id,
+      title: item.title,
+      location: item.location,
+      status: item.status || 'published',
+      coverUrl: item.cover_url,
+      pendingApplications: Number(item.pending_applications) || 0,
+      approvedApplications: Number(item.approved_applications) || 0
+    })) : []
+  } catch (err) { console.error(err) }
+}
+
+const ensureRewardsReady = () => {
+  if (!rewardViewInitialized.value) {
+    rewardViewInitialized.value = true
+    refreshOrganizerRewards()
+  }
+}
+
+const openRewardsView = () => {
+  currentView.value = 'rewards'
+  ensureRewardsReady()
+}
+
+const refreshOrganizerRewards = () => {
+  loadOrganizerAnalytics()
+  loadOrganizerGifts()
+  loadOrganizerRules()
+}
+
+const revokeGiftCoverPreview = () => {
+  if (giftCoverPreview.value && giftCoverPreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(giftCoverPreview.value)
+  }
+}
+
+const setGiftCoverPreview = (src = '') => {
+  revokeGiftCoverPreview()
+  giftCoverPreview.value = src
+}
+
+const resetGiftCover = () => {
+  setGiftCoverPreview('')
+  giftCoverFile.value = null
+  if (giftCoverInput.value) {
+    giftCoverInput.value.value = ''
+  }
+}
+
+const handleGiftCoverChange = (event) => {
+  const file = event.target.files && event.target.files[0]
+  if (!file) return
+  if (!file.type.startsWith('image/')) {
+    alert('请上传图片文件')
+    event.target.value = ''
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    alert('图片大小需小于 5MB')
+    event.target.value = ''
+    return
+  }
+  giftCoverFile.value = file
+  setGiftCoverPreview(URL.createObjectURL(file))
+}
+
+const clearGiftCover = () => {
+  resetGiftCover()
+  giftForm.coverImage = ''
+}
+
+const loadOrganizerAnalytics = async () => {
+  loadingOrganizerAnalytics.value = true
+  try {
+    const data = await fetchOrganizerRewardStats()
+    organizerAnalytics.value = {
+      totalPointsIssued: data?.totalPointsIssued || 0,
+      pendingGifts: data?.pendingGifts || 0,
+      giftHeat: data?.giftHeat || []
+    }
+  } catch (err) {
+    console.error('加载组织者积分概览失败', err)
+  } finally {
+    loadingOrganizerAnalytics.value = false
+  }
+}
+
+const normalizeGift = (gift) => {
+  const coverPath = sanitizeGiftCoverPath(gift.coverImage || gift.cover_image)
+  const assetCover = resolveAssetCover(gift)
+  const coverImageUrl = assetCover
+    ? assetCover
+    : (coverPath ? buildImageUrl(coverPath) : DEFAULT_COVER)
+  
+  return {
+    id: gift.id,
+    title: gift.title,
+    description: gift.description,
+    pointsCost: gift.pointsCost ?? gift.points_cost ?? 0,
+    stock: gift.stock ?? 0,
+    status: gift.status,
+    deliveryType: gift.deliveryType || gift.delivery_type || 'offline',
+    coverImage: coverImageUrl,
+    rawCover: coverPath
+  }
+}
+
+const loadOrganizerGifts = async () => {
+  loadingGiftList.value = true
+  try {
+    const list = await fetchManagedGifts()
+    rewardGifts.value = Array.isArray(list) ? list.map(normalizeGift) : []
+  } catch (err) {
+    console.error('加载礼品失败', err)
+    rewardGifts.value = []
+  } finally {
+    loadingGiftList.value = false
+  }
+}
+
+const resetGiftForm = () => {
+  giftForm.id = null
+  giftForm.title = ''
+  giftForm.description = ''
+  giftForm.pointsCost = 100
+  giftForm.stock = 20
+  giftForm.deliveryType = 'offline'
+  giftForm.coverImage = ''
+  resetGiftCover()
+}
+
+const editGift = (gift) => {
+  giftForm.id = gift.id
+  giftForm.title = gift.title
+  giftForm.description = gift.description || ''
+  giftForm.pointsCost = gift.pointsCost
+  giftForm.stock = gift.stock
+  giftForm.deliveryType = gift.deliveryType
+  giftForm.coverImage = gift.rawCover || ''
+  giftCoverFile.value = null
+  setGiftCoverPreview(gift.coverImage || '')
+  if (giftCoverInput.value) {
+    giftCoverInput.value.value = ''
+  }
+}
+
+const submitGiftForm = async () => {
+  if (!giftForm.title || !giftForm.pointsCost || !giftForm.stock) {
+    alert('请填写完整的礼品信息')
     return
   }
 
+  if (!giftForm.id && !giftCoverFile.value) {
+    alert('请上传礼品封面图片')
+    return
+  }
+
+  const buildPayload = () => {
+    const base = {
+      title: giftForm.title.trim(),
+      description: giftForm.description,
+      pointsCost: Number(giftForm.pointsCost),
+      stock: Number(giftForm.stock),
+      deliveryType: giftForm.deliveryType
+    }
+
+    if (giftCoverFile.value) {
+      const formData = new FormData()
+      Object.entries(base).forEach(([key, value]) => {
+        formData.append(key, value)
+      })
+      formData.append('coverImage', giftCoverFile.value)
+      return formData
+    }
+
+    return {
+      ...base,
+      coverImage: giftForm.coverImage
+    }
+  }
+
+  const payload = buildPayload()
+  savingGift.value = true
+
   try {
-    const formData = new FormData()
-    formData.append('title', form.title)
-    formData.append('description', form.description || form.detailRichText || '')
-    formData.append('activityType', form.activityType)
-    formData.append('belongCollege', form.belongCollege || '')
-    formData.append('location', form.location || '')
-    formData.append('startTime', form.startTime)
-    formData.append('endTime', form.endTime)
-    formData.append('maxParticipants', form.maxParticipants || 0)
-
-    if (coverImageFile.value) {
-      formData.append('coverImage', coverImageFile.value)
+    if (giftForm.id) {
+      await updateGift(giftForm.id, payload)
+      alert('礼品信息已更新')
+    } else {
+      await createRewardGift(payload)
+      alert('礼品申请已提交，等待管理员审核')
     }
-
-    await createEvent(formData)
-    window.alert('活动已提交，请等待管理员审核')
-    await loadActivities()
-    currentView.value = 'review'
-    resetForm()
-    clearDraft()
+    resetGiftForm()
+    refreshOrganizerRewards()
   } catch (err) {
-    window.alert(err?.message || '提交失败，请重试')
+    console.error('提交礼品失败', err)
+    alert(err?.response?.data?.message || '礼品保存失败')
+  } finally {
+    savingGift.value = false
   }
 }
 
-const handleSaveDraft = () => {
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(form))
-  window.alert('已保存草稿')
-}
-
-const resetForm = () => {
-  // 释放预览URL
-  if (coverImagePreview.value) {
-    URL.revokeObjectURL(coverImagePreview.value)
-  }
-  coverImagePreview.value = null
-  coverImageFile.value = null
-  if (coverImageInput.value) {
-    coverImageInput.value.value = ''
-  }
-  Object.assign(form, getDefaultForm())
-}
-
-const restoreDraft = () => {
-  const stored = localStorage.getItem(DRAFT_KEY)
-  if (stored) {
-    Object.assign(form, getDefaultForm(), JSON.parse(stored))
+const toggleGiftStatus = async (gift, status) => {
+  if (!confirm(`确认将「${gift.title}」${status === 'active' ? '重新上架' : '下架'}？`)) return
+  try {
+    await updateGiftStatus(gift.id, { status, reviewNote: '组织者调整' })
+    refreshOrganizerRewards()
+  } catch (err) {
+    console.error('更新礼品状态失败', err)
+    alert('更新礼品状态失败，请稍后再试')
   }
 }
 
-const clearDraft = () => {
-  localStorage.removeItem(DRAFT_KEY)
+const mapDeliveryLabel = (type) => {
+  if (type === 'online') return '线上'
+  if (type === 'both') return '线上/线下'
+  return '线下'
 }
 
-const handleCoverUpload = (event) => {
-  const file = event.target.files && event.target.files[0]
+const formatGiftStatus = (status) => {
+  const dict = {
+    pending: '待审核',
+    active: '已上架',
+    inactive: '已下架',
+    rejected: '已驳回'
+  }
+  return dict[status] || status
+}
+
+const loadOrganizerRules = async () => {
+  loadingRules.value = true
+  try {
+    const list = await fetchPointRules()
+    organizerRules.value = Array.isArray(list) ? list : []
+  } catch (err) {
+    console.error('加载积分规则失败', err)
+    organizerRules.value = []
+  } finally {
+    loadingRules.value = false
+  }
+}
+
+const submitRuleForm = async () => {
+  if (!ruleForm.activityId || !ruleForm.actionLabel || !ruleForm.pointsValue) {
+    alert('请完善规则信息')
+    return
+  }
+  savingRule.value = true
+  try {
+    await savePointRule({
+      activityId: ruleForm.activityId,
+      actionLabel: ruleForm.actionLabel.trim(),
+      pointsValue: Number(ruleForm.pointsValue),
+      description: ruleForm.description,
+      isActive: ruleForm.isActive
+    })
+    alert('积分规则已保存')
+    loadOrganizerRules()
+  } catch (err) {
+    console.error('保存积分规则失败', err)
+    alert(err?.response?.data?.message || '保存失败')
+  } finally {
+    savingRule.value = false
+  }
+}
+
+const editRule = (rule) => {
+  ruleForm.activityId = rule.activityId
+  ruleForm.actionLabel = rule.actionLabel
+  ruleForm.pointsValue = rule.pointsValue
+  ruleForm.description = rule.description || ''
+  ruleForm.isActive = !!rule.isActive
+}
+
+const handleDeleteRule = async (ruleId) => {
+  if (!confirm('确定要删除这条积分规则吗？')) {
+    return
+  }
+  
+  try {
+    await deletePointRule(ruleId)
+    alert('积分规则已删除')
+    loadOrganizerRules()
+  } catch (err) {
+    console.error('删除积分规则失败', err)
+    alert(err?.response?.data?.message || '删除失败，请稍后重试')
+  }
+}
+
+const handleCoverUpload = (e) => {
+  const file = e.target.files[0]
   if (file) {
-    // 验证文件类型
-    if (!file.type.startsWith('image/')) {
-      window.alert('请选择图片文件')
-      event.target.value = '' // 清空选择
-      return
-    }
-    
-    // 验证文件大小（5MB）
-    if (file.size > 5 * 1024 * 1024) {
-      window.alert('图片大小不能超过 5MB')
-      event.target.value = '' // 清空选择
-      return
-    }
-    
-    form.coverImage = file.name
     coverImageFile.value = file
-    
-    // 创建预览URL
-    if (coverImagePreview.value) {
-      URL.revokeObjectURL(coverImagePreview.value)
-    }
     coverImagePreview.value = URL.createObjectURL(file)
+    form.coverImage = file.name
   }
 }
 
 const removeCoverImage = () => {
-  // 释放预览URL
-  if (coverImagePreview.value) {
-    URL.revokeObjectURL(coverImagePreview.value)
-  }
+  if (coverImagePreview.value) URL.revokeObjectURL(coverImagePreview.value)
   coverImagePreview.value = null
   coverImageFile.value = null
   form.coverImage = ''
-  if (coverImageInput.value) {
-    coverImageInput.value.value = ''
-  }
 }
 
-const handleAttachmentUpload = (event) => {
-  const files = Array.from(event.target.files || [])
+const handleAttachmentUpload = (e) => {
+  const files = Array.from(e.target.files || [])
   form.attachments = files.map(file => file.name)
 }
 
-const loadApplications = async (activityId) => {
-  if (!activityId) return
-  applicationsLoading.value = true
-  applicationsError.value = ''
-  currentApplications.value = []
+const handleSubmit = async () => {
+  if (!form.title || !form.activityType || !form.startTime || !form.endTime || !form.registrationDeadline) {
+    alert('请填写标有*号的必填项')
+    return
+  }
+  
+  // 验证报名截止日期不能晚于活动开始时间
+  if (form.registrationDeadline && form.startTime) {
+    const deadline = new Date(form.registrationDeadline)
+    const startTime = new Date(form.startTime)
+    if (deadline > startTime) {
+      alert('报名截止日期不能晚于活动开始时间，请重新选择')
+      return
+    }
+  }
+  
+  // 验证活动结束时间不能早于开始时间
+  if (form.startTime && form.endTime) {
+    const startTime = new Date(form.startTime)
+    const endTime = new Date(form.endTime)
+    if (endTime <= startTime) {
+      alert('活动结束时间必须晚于开始时间，请重新选择')
+      return
+    }
+  }
+  
   try {
-    const list = await fetchActivityApplications(activityId)
-    currentApplications.value = Array.isArray(list)
-      ? list.map((item) => ({
-          id: item.id,
-          userId: item.user_id,
-          userName: item.user_name || '未命名',
-          applyTime: item.apply_time,
-          status: item.status || 'pending'
-        }))
-      : []
+    const formData = new FormData()
+    Object.keys(form).forEach(key => {
+      if (Array.isArray(form[key])) {
+        formData.append(key, JSON.stringify(form[key]))
+      } else {
+        formData.append(key, form[key])
+      }
+    })
+    if (coverImageFile.value) formData.append('coverImage', coverImageFile.value)
+
+    await createEvent(formData)
+    alert('发布成功！活动已进入审核队列')
+    loadActivities()
+    currentView.value = 'review'
+    localStorage.removeItem(DRAFT_KEY)
+    Object.assign(form, getDefaultForm())
+    coverImagePreview.value = null
+  } catch (err) { alert(err.message || '提交失败') }
+}
+
+const handleSaveDraft = () => {
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(form))
+  alert('草稿已保存至本地')
+}
+
+const generateDescription = async () => {
+  if (!form.title) {
+    alert('请先填写活动名称')
+    return
+  }
+  
+  generatingDescription.value = true
+  try {
+    const response = await generateEventCopy({
+      title: form.title,
+      activityType: form.activityType || '',
+      location: form.location || '',
+      startTime: form.startTime || '',
+      endTime: form.endTime || '',
+      belongCollege: form.belongCollege || '',
+      description: form.description || ''
+    })
+    
+    if (response && response.copy) {
+      form.description = response.copy
+      alert('活动简介已生成！')
+    } else {
+      alert('生成失败，请稍后重试')
+    }
   } catch (err) {
-    applicationsError.value = err?.message || '加载报名数据失败'
-    currentApplications.value = []
+    console.error('生成活动简介失败:', err)
+    alert(err?.response?.data?.message || '生成失败，请稍后重试')
   } finally {
-    applicationsLoading.value = false
+    generatingDescription.value = false
   }
 }
 
-const openReviewPanel = async (activity) => {
-  selectedActivity.value = activity
-  await loadApplications(activity.id)
-}
-
-const closeReviewPanel = () => {
-  selectedActivity.value = null
-  currentApplications.value = []
-  applicationsError.value = ''
-}
-
-const refreshApplications = async () => {
-  if (selectedActivity.value) {
-    await loadApplications(selectedActivity.value.id)
+const openReviewPanel = async (act) => {
+  selectedActivity.value = act
+  try {
+    const list = await fetchActivityApplications(act.id)
+    // 只显示待审核的报名记录
+    currentApplications.value = list
+      .filter(i => i.status === 'pending')
+      .map(i => ({
+        id: i.id, 
+        userName: i.user_name || '未知学号', 
+        applyTime: i.apply_time, 
+        status: i.status
+      }))
+  } catch (err) { 
+    console.error('加载名单失败:', err)
+    alert('加载名单失败') 
   }
 }
 
 const handleApprove = async (app) => {
-  if (app.status !== 'pending') return
   updatingApplicationId.value = app.id
   try {
     await updateApplicationStatus(app.id, 'approved')
     app.status = 'approved'
-    await loadActivities()
-    window.alert('已通过该报名申请')
-  } catch (err) {
-    window.alert(err?.message || '操作失败')
-  } finally {
-    updatingApplicationId.value = null
-    await refreshApplications()
-  }
+    loadActivities()
+  } finally { updatingApplicationId.value = null }
 }
 
 const handleReject = async (app) => {
-  if (app.status !== 'pending') return
-  if (!window.confirm('确定要拒绝该报名申请吗？')) {
-    return
-  }
+  if(!confirm('拒绝该学生的申请？')) return
   updatingApplicationId.value = app.id
   try {
     await updateApplicationStatus(app.id, 'rejected')
     app.status = 'rejected'
-    await loadActivities()
-    window.alert('已拒绝该报名申请')
-  } catch (err) {
-    window.alert(err?.message || '操作失败')
-  } finally {
-    updatingApplicationId.value = null
-    await refreshApplications()
-  }
-}
-
-// 格式化日期
-const formatDate = (dateStr) => {
-  if (!dateStr) return '未设置'
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
-// 格式化日期时间
-const formatDateTime = (dateStr) => {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
-// 状态文本
-const getStatusText = (status) => {
-  const map = {
-    pending: '待审核',
-    approved: '已通过',
-    rejected: '已拒绝'
-  }
-  return map[status] || status
-}
-
-const formatDateRange = (start, end) => {
-  if (!start && !end) return '未设置'
-  const fmt = dateStr => new Date(dateStr).toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })
-  return `${start ? fmt(start) : '未设置'} - ${end ? fmt(end) : '未设置'}`
-}
-
-const formatStatus = (status) => {
-  const map = {
-    pending_review: '待审核',
-    draft: '草稿',
-    rejected: '已驳回',
-    published: '已发布',
-    open: '进行中',
-    ongoing: '进行中',
-    upcoming: '未开始',
-    ended: '已结束',
-    finished: '已结束'
-  }
-  return map[status] || '未知状态'
-}
-
-const getActivityStatusText = (activity) => {
-  if (activity.workflowStatus === 'pending_review' || activity.workflowStatus === 'draft' || activity.workflowStatus === 'rejected') {
-    return formatStatus(activity.workflowStatus)
-  }
-  return formatStatus(activity.status || 'open')
+    loadActivities()
+  } finally { updatingApplicationId.value = null }
 }
 
 const isUpdating = (id) => updatingApplicationId.value === id
+const closeReviewPanel = () => { selectedActivity.value = null }
+const formatStatus = (s) => ({ published:'进行中', draft:'草稿' }[s] || '审核中')
+const getStatusText = (s) => ({ pending:'待审核', approved:'已通过', rejected:'已拒绝' }[s])
+const formatDateTime = (d) => d ? new Date(d).toLocaleString() : '未知'
+
+watch(currentView, (view) => {
+  if (view === 'rewards') {
+    ensureRewardsReady()
+  }
+})
+
+watch(myActivities, (list) => {
+  if (!ruleForm.activityId && Array.isArray(list) && list.length) {
+    ruleForm.activityId = list[0].id
+  }
+})
+
+onBeforeUnmount(() => {
+  revokeGiftCoverPreview()
+})
 </script>
 
 <style scoped>
-.manage-layout.page{
-  position:relative;
-  min-height:100vh;
-  color:#2c2c2c;
-  overflow:auto;
-}
-.manage-layout .layout-content{
-  position:relative;
-  z-index:2;
-  display:flex;
-  flex-direction:column;
-  width:100%;
-  min-height:100vh;
-  gap:16px;
-  padding-top:0;
-  padding-bottom:40px;
-}
-.nav-bar-wrapper{
-  position:fixed;
-  top:0;
-  left:0;
-  width:100%;
-  z-index:20;
-  background:rgba(255,255,255,0.95);
-  box-shadow:0 2px 10px rgba(0,0,0,0.08);
-  backdrop-filter:blur(6px);
-}
-.manage-main{
-  display:flex;
-  width:100%;
-  margin-top:51px;
-}
-.bg-overlay{
-  position:absolute;
-  inset:0;
-  background:rgba(255,255,255,0.6);
-  backdrop-filter:blur(2px);
-  pointer-events:none;
-}
-.sidebar{
-  width:200px;
-  background:rgba(255,255,255,0.78);
-  backdrop-filter:blur(12px);
-  padding:26px 22px;
-  box-shadow:0 25px 40px rgba(15,35,95,0.18);
-  border:1px solid rgba(255,255,255,0.35);
-  border-radius:28px;
-  position:fixed;
-  top:80px;
-  left:24px;
-  height:calc(100vh - 140px);
-  overflow-y:auto;
-}
-.logo{
-  font-weight:700;
-  font-size:25px;
-  color:#0a0a1c;
-  margin-bottom:30px;
-}
-.menu{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.menu__item{
-  padding:14px 18px;
-  border-radius:18px;
-  font-size:18px;
-  color:#1f2a37;
-  text-decoration:none;
-  cursor:pointer;
-  transition:all .2s;
-  font-weight:600;
-}
-.menu__item.active,
-.menu__item:hover{
-  background:linear-gradient(135deg,#1f5fd1,#1347a8);
-  color:#fff;
-  box-shadow:0 10px 20px rgba(31,95,209,0.35);
-}
-.content{
-  flex:1;
-  padding:32px;
-  margin-left:248px;
-}
-.page-header{
-  margin-bottom:24px;
-}
-.page-header__icon{
-  font-size:26px;
-  margin-bottom:8px;
-}
-.page-header h1{
-  font-size:24px;
-  margin-bottom:6px;
-}
-.page-header__desc{
-  color:#777777;
-  font-size:14px;
-}
-.publish-form{
-  background:#fff;
-  border-radius:20px;
-  padding:32px;
-  box-shadow:0 10px 30px rgba(0,0,0,.05);
-  display:flex;
-  flex-direction:column;
-  gap:22px;
-  max-width:1100px;
-  margin:0 auto;
-}
-.form-section{
-  border:1px solid #f0f0f5;
-  border-radius:18px;
-  padding:24px;
-  background:#ffffff;
-  display:flex;
-  flex-direction:column;
-  gap:18px;
-}
-.section-header h2{
-  font-size:18px;
-  margin-bottom:6px;
-  color:#161832;
-}
-.section-header p{
-  color:#7b7d91;
-  font-size:14px;
-}
-.form-grid{
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:20px 24px;
-}
-.form-grid.span-2-grid{
-  grid-template-columns:repeat(2,minmax(0,1fr));
-}
-.form-field.span-2{
-  grid-column:span 2;
-}
-.form-field{
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
-.multi-field{
-  background:#fff;
-  padding:16px;
-  border-radius:12px;
-  border:1px dashed #dfe3f1;
-}
-.checkbox-group{
-  display:flex;
-  flex-wrap:wrap;
-  gap:12px 24px;
-  font-size:14px;
-}
-.checkbox-group label{
-  display:flex;
-  align-items:center;
-  gap:6px;
-  color:#4b4f68;
-}
-.form-row{
-  display:grid;
-    grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:20px;
-}
-.form-field label{
-  font-weight:600;
-  color:#333;
-  display:flex;
-  align-items:center;
-  gap:4px;
-}
-.form-field label span{
-  color:#f03d3d;
-}
-.form-field input,
-.form-field textarea,
-.form-field select{
-  border:1px solid #e0e0e0;
-  border-radius:10px;
-  padding:12px 14px;
-  font-size:15px;
-  transition:border .2s, box-shadow .2s;
-}
-.form-field input:focus,
-.form-field textarea:focus,
-.form-field select:focus{
-  outline:none;
-  border-color:#22a46d;
-  box-shadow:0 0 0 3px rgba(34,164,109,.15);
-}
-.form-field small{
-  color:#888;
-  font-size:13px;
-}
-.toggle-row{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  font-weight:600;
-  color:#2f3152;
-}
-.toggle-row input[type="checkbox"]{
-  width:18px;
-  height:18px;
-}
-.form-actions{
-  display:flex;
-  justify-content:flex-end;
-  gap:16px;
-  margin-top:12px;
-}
-.btn{
-  border:none;
-  border-radius:12px;
-  padding:12px 28px;
-  font-size:15px;
-  font-weight:600;
-  cursor:pointer;
-  transition:transform .2s, box-shadow .2s;
-}
-.btn.primary{
-  background:#1c9b60;
-  color:#fff;
-  box-shadow:0 10px 20px rgba(28,155,96,.25);
-}
-.btn.primary:hover{
-  transform:translateY(-1px);
-}
-.btn.secondary{
-  background:#fff;
-  border:1px solid #dcdcdc;
-  color:#333;
-}
-.btn.secondary:hover{
-  background:#f5f5f5;
+/* 样式部分完全保留，不作改动 */
+.premium-manage-page {
+  --accent: #2dd4bf;
+  --primary: #6366f1;
+  --bg-main: #f8fafc;
+  --text-dark: #0f172a;
+  --text-light: #64748b;
+  --bento-bg: #ffffff;
+  --bento-border: rgba(0, 0, 0, 0.05);
+  min-height: 100vh;
+  background-color: var(--bg-main);
+  padding-top: 60px;
 }
 
-/* 活动列表样式 */
-.activities-container{
-  max-width:1100px;
-  margin:0 auto;
-  background:rgba(255,255,255,0.9);
-  border-radius:12px;
-  padding:20px 18px 30px;
-  box-shadow:0 15px 35px rgba(0,0,0,0.08);
-}
-.activities-list {
+.manage-wrapper {
+  max-width: 1400px;
+  margin: 0 auto;
   display: flex;
-  flex-direction: column;
   gap: 20px;
-  padding:0;
+  padding: 24px;
 }
 
-.activity-card {
-  border:1px solid #dbe4f5;
-  border-radius:12px;
-  background:#f6fbff;
-  width:100%;
-}
-
-.activity-card__header{
-  background:#e8f3ff;
-  padding:12px 18px;
-  border-top-left-radius:12px;
-  border-top-right-radius:12px;
-  display:flex;
-  justify-content:space-between;
-  font-weight:600;
-  color:#1c3a63;
-}
-
-.activity-card__body{
-  display:flex;
-  gap:18px;
-  padding:18px 18px 20px;
-  align-items:center;
-  background:rgba(255,255,255,0.9);
-  border-bottom-left-radius:12px;
-  border-bottom-right-radius:12px;
-}
-
-.activity-card__cover{
-  width:160px;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-
-.activity-card__cover img{
-  width:140px;
-  height:100px;
-  object-fit:cover;
-  border-radius:6px;
-  background:#a8bed8;
-}
-
-.activity-card__info {
-  flex: 1;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-
-.activity-card__info h3{
-  margin:0;
-  font-size:18px;
-}
-
-.activity-card__meta{
-  display:flex;
-  gap:18px;
-  color:#444;
-  font-size:14px;
-  flex-wrap:wrap;
-}
-
-.activity-card__stats{
-  display:flex;
-  gap:24px;
-  color:#555;
-}
-
-.activity-card__action{
-  width:140px;
-  display:flex;
-  justify-content:flex-end;
-}
-
-.btn-detail{
-  background:#66bb33;
-  color:#fff;
-  border:0;
-  border-radius:8px;
-  padding:10px 18px;
-  font-weight:700;
-  cursor:pointer;
-}
-
-/* 审核面板样式 */
-.review-panel {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-}
-
-.review-panel__content {
-  background: #fff;
-  border-radius: 20px;
-  width: 100%;
-  max-width: 800px;
-  max-height: 80vh;
+.bento-sidebar {
+  width: 220px;
+  background: var(--bento-bg);
+  border-radius: 24px;
+  border: 1px solid var(--bento-border);
+  padding: 24px 12px;
+  height: fit-content;
+  position: sticky;
+  top: 84px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.02);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
 }
-
-.review-panel__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24px;
-  border-bottom: 1px solid #eee;
+.sidebar-header { display: flex; align-items: center; gap: 8px; padding: 0 12px 24px; }
+.brand-icon { font-size: 20px; }
+.sidebar-header h3 { font-size: 15px; font-weight: 800; margin: 0; }
+.sidebar-nav { display: flex; flex-direction: column; gap: 4px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+  border-radius: 12px; color: var(--text-light); font-weight: 600;
+  cursor: pointer; transition: 0.2s; font-size: 13px;
 }
+.nav-item:hover, .nav-item.active { background: #f1f5f9; color: var(--primary); }
 
-.review-panel__header h2 {
-  font-size: 20px;
-  color: #333;
+.sidebar-footer { 
+  margin-top: 40px; 
+  padding: 0 16px 12px; 
+}
+.sidebar-footer p {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+  letter-spacing: 0.5px;
   margin: 0;
 }
 
-.btn-close {
-  background: none;
+.manage-content { flex: 1; min-width: 0; }
+.view-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+.header-text h2 { font-size: 22px; font-weight: 800; margin: 0; }
+
+.form-layout { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; }
+.span-2 { grid-column: span 2; }
+.bento-item {
+  background: var(--bento-bg); border-radius: 20px;
+  border: 1px solid var(--bento-border); padding: 20px;
+}
+.bento-title { font-size: 14px; font-weight: 800; margin: 0 0 18px 0; color: #1e293b; border-left: 3px solid var(--accent); padding-left: 10px; }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-row-2 { display: flex; gap: 16px; }
+.input-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; flex: 1; }
+.input-group label, .inner-label { font-size: 12px; font-weight: 700; color: var(--text-light); display: flex; align-items: center; justify-content: space-between; }
+.input-group label span { color: #f43f5e; }
+.btn-ai-generate {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
   border: none;
-  font-size: 32px;
-  color: #999;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
   cursor: pointer;
-  line-height: 1;
-  width: 32px;
-  height: 32px;
+  transition: all 0.2s;
+  margin-left: auto;
+}
+.btn-ai-generate:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+.btn-ai-generate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.input-group input, .input-group select, .input-group textarea {
+  border: 1px solid #f1f5f9; background: #f8fafc; border-radius: 10px;
+  padding: 10px; font-size: 13px; transition: 0.2s;
+}
+.input-group input:focus { outline: none; border-color: var(--accent); background: white; }
+
+.toggle-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.toggle-card {
+  display: flex; gap: 10px; padding: 12px; background: #f8fafc; border-radius: 12px; cursor: pointer; border: 1px solid transparent;
+}
+.toggle-card:has(input:checked) { border-color: var(--accent); background: white; }
+.t-title { display: block; font-weight: 700; font-size: 13px; }
+.t-desc { font-size: 10px; color: var(--text-light); }
+
+.condition-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.check-label { font-size: 12px; font-weight: 700; color: var(--text-light); margin-bottom: 10px; display: block; }
+.check-group-bento { display: flex; flex-wrap: wrap; gap: 8px; }
+.bento-checkbox input { display: none; }
+.check-tile {
+  padding: 6px 12px; border-radius: 8px; background: #f1f5f9; font-size: 11px;
+  font-weight: 600; cursor: pointer; transition: 0.2s;
+}
+.bento-checkbox input:checked + .check-tile { background: var(--accent); color: white; }
+
+.media-flex { display: flex; gap: 24px; }
+.media-left { width: 220px; }
+.cover-uploader {
+  width: 100%; height: 130px; background: #f8fafc; border: 2px dashed #e2e8f0;
+  border-radius: 16px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; overflow: hidden; margin-top: 6px;
+}
+.cover-uploader img { width: 100%; height: 100%; object-fit: cover; }
+.upload-hint { text-align: center; color: #94a3b8; font-size: 12px; }
+.hint-icon { font-size: 24px; display: block; margin-bottom: 4px; }
+.rich-desc { flex: 1; display: flex; flex-direction: column; }
+.rich-desc textarea { flex: 1; margin-top: 6px; border: 1px solid #f1f5f9; border-radius: 12px; padding: 12px; background: #f8fafc; min-height: 180px; }
+
+.btn-upload-trigger {
+  display: flex; align-items: center; gap: 8px; padding: 10px 16px;
+  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;
+  color: var(--text-light); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s; width: fit-content;
+  margin-top: 6px;
+}
+.btn-upload-trigger:hover {
+  background: white; border-color: var(--accent); color: var(--accent);
+  box-shadow: 0 4px 12px rgba(45, 212, 191, 0.1);
+}
+.file-count-tip {
+  margin-top: 8px; font-size: 12px; color: var(--accent); font-weight: 600;
+  display: flex; align-items: center;
+}
+.check-icon { margin-right: 4px; }
+
+.btn-primary-vibe {
+  background: linear-gradient(135deg, var(--accent), var(--primary));
+  color: white; border: none; padding: 10px 24px; border-radius: 100px;
+  font-weight: 800; cursor: pointer; transition: 0.2s;
+}
+.btn-secondary { background: white; border: 1px solid #e2e8f0; padding: 10px 24px; border-radius: 100px; font-weight: 600; cursor: pointer; }
+.btn-remove-lite { background: none; border: none; color: #ef4444; font-size: 11px; margin-top: 6px; cursor: pointer; }
+
+.status-steps { display: flex; justify-content: space-between; gap: 20px; }
+.step-item { flex: 1; font-size: 12px; color: var(--text-light); display: flex; align-items: center; gap: 8px; }
+.step-item span { width: 18px; height: 18px; background: #e2e8f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #1e293b; }
+
+.activity-radar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.mini-activity-card {
+  background: white; border-radius: 20px; border: 1px solid var(--bento-border);
+  padding: 12px; display: flex; gap: 12px; transition: 0.2s;
+}
+.card-thumb { width: 80px; height: 80px; border-radius: 12px; overflow: hidden; position: relative; flex-shrink: 0; }
+.card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.status-pill { position: absolute; bottom: 4px; left: 4px; background: rgba(0,0,0,0.6); color: white; font-size: 9px; padding: 2px 6px; border-radius: 5px; }
+.card-body { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+.card-main h4 { margin: 0; font-size: 14px; font-weight: 800; }
+.card-stats-row { display: flex; gap: 12px; margin-bottom: 4px; }
+.stat-unit { display: flex; align-items: center; gap: 4px; }
+.s-label { font-size: 10px; color: #94a3b8; }
+.s-val { font-size: 12px; font-weight: 800; }
+.btn-manage-mini { background: #f1f5f9; border: none; padding: 5px 10px; border-radius: 7px; font-size: 11px; font-weight: 700; cursor: pointer; }
+.btn-refresh { background: #f1f5f9; border: none; padding: 8px 16px; border-radius: 999px; font-weight: 600; cursor: pointer; }
+.btn-refresh.ghost { background: transparent; border: 1px dashed #c7d2fe; color: var(--primary); }
+
+/* 弹窗样式 - 居中显示 */
+.bento-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+.bento-modal {
+  width: 500px;
+  max-width: 90vw;
+  background: white;
+  border-radius: 24px;
+  max-height: 80vh;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.btn-close-circle {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #f1f5f9;
   border-radius: 50%;
-  transition: background 0.2s;
+  font-size: 20px;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  line-height: 1;
 }
 
-.btn-close:hover {
-  background: #f5f5f5;
+.btn-close-circle:hover {
+  background: #e2e8f0;
+  color: #0f172a;
 }
 
-.applications-list {
-  padding: 24px;
+.modal-body {
+  padding: 20px 24px;
   overflow-y: auto;
   flex: 1;
 }
 
-.application-item {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px;
-  border: 1px solid #eee;
-  border-radius: 12px;
-  margin-bottom: 12px;
-  transition: border-color 0.2s;
+.empty-mini {
+  text-align: center;
+  padding: 40px 20px;
+  color: #94a3b8;
+  font-size: 14px;
+}
+.applicant-item { 
+  display: flex; 
+  align-items: center; 
+  gap: 12px; 
+  padding: 12px; 
+  background: #f8fafc; 
+  border-radius: 12px; 
+  margin-bottom: 8px; 
 }
 
-.application-item:hover {
-  border-color: #764ba2;
+.app-avatar { 
+  width: 36px; 
+  height: 36px; 
+  background: var(--primary); 
+  color: white; 
+  border-radius: 10px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  font-size: 14px; 
+  font-weight: 800; 
+  flex-shrink: 0;
 }
 
-.application-item__info {
+.app-info {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 
-.application-item__name {
+.app-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.app-date {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.app-status-tag {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
   font-weight: 600;
-  color: #333;
-  margin-bottom: 4px;
-  font-size: 15px;
-}
-
-.application-item__meta {
-  font-size: 13px;
-  color: #999;
-}
-
-.status-badge {
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 600;
+  text-transform: capitalize;
   white-space: nowrap;
 }
 
-.status-badge.pending {
-  background: #fef3c7;
+.app-status-tag.pending {
+  background: rgba(251, 191, 36, 0.2);
   color: #d97706;
 }
 
-.status-badge.approved {
-  background: #d1fae5;
-  color: #059669;
+.app-status-tag.approved {
+  background: rgba(34, 197, 94, 0.2);
+  color: #15803d;
 }
 
-.status-badge.rejected {
-  background: #f8f8f8;
-  color: #dc2626;
+.app-status-tag.rejected {
+  background: rgba(239, 68, 68, 0.2);
+  color: #b91c1c;
 }
 
-.application-item__actions {
+.app-actions {
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
 }
 
-.btn-approve,
-.btn-reject {
+.btn-app-approve,
+.btn-app-reject {
   border: none;
+  padding: 6px 14px;
   border-radius: 8px;
-  padding: 8px 16px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
-  font-size: 14px;
-  transition: opacity 0.2s;
+  transition: all 0.2s;
 }
 
-.btn-approve:hover,
-.btn-reject:hover {
-  opacity: 0.9;
-}
-
-.btn-approve {
+.btn-app-approve {
   background: #10b981;
-  color: #fff;
+  color: white;
 }
 
-.btn-reject {
-  background: #ef4444;
-  color: #fff;
+.btn-app-approve:hover:not(:disabled) {
+  background: #059669;
 }
 
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: #999;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-}
-
-.empty-state p {
-  font-size: 16px;
-  margin: 8px 0;
-}
-
-.empty-state__hint {
-  font-size: 14px;
-  color: #bbb;
-}
-
-.empty-applications {
-  text-align: center;
-  padding: 40px 20px;
-  color: #999;
-}
-.status-list{
-  list-style:disc;
-  padding-left:22px;
-  color:#555;
-  line-height:1.6;
-}
-
-.upload-hint {
-  color: #999;
-  font-style: italic;
-}
-
-.cover-preview {
-  margin-top: 12px;
-  position: relative;
-  display: inline-block;
-}
-
-.cover-preview img {
-  max-width: 200px;
-  max-height: 150px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  object-fit: cover;
-}
-
-.remove-cover-btn {
-  margin-top: 8px;
-  padding: 6px 12px;
+.btn-app-reject {
   background: #ef4444;
   color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: background 0.2s;
 }
 
-.remove-cover-btn:hover {
+.btn-app-reject:hover:not(:disabled) {
   background: #dc2626;
 }
 
-@media (max-width: 768px) {
-  .manage-main{
-    flex-direction:column;
-  }
-  .sidebar{
-    position:static;
-    width:100%;
-    height:auto;
-  }
-  .content{
-    margin-left:0;
-  }
-  .form-grid,
-  .form-grid.span-2-grid{
-    grid-template-columns:1fr;
-  }
-  .form-grid{
-    grid-template-columns:1fr;
-  }
-  .form-field.span-2{
-    grid-column:span 1;
-  }
-  .activity-card {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 16px;
-  }
-  
-  .btn-detail {
-    width: 100%;
-  }
-  
-  .application-item {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .application-item__actions {
-    width: 100%;
-    justify-content: flex-end;
-  }
+.btn-app-approve:disabled,
+.btn-app-reject:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.empty-state-bento { text-align: center; padding: 40px; color: #cbd5e1; }
+
+.mt-15 { margin-top: 15px; }
+.mt-20 { margin-top: 20px; }
+
+.custom-scrollbar::-webkit-scrollbar { width: 5px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+
+.rewards-panel { display: flex; flex-direction: column; gap: 20px; }
+.reward-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.summary-card { background: #fff; border-radius: 18px; padding: 18px; border: 1px solid var(--bento-border); box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); }
+.summary-card p { margin: 0; color: var(--text-light); font-size: 12px; }
+.summary-card strong { display: block; font-size: 28px; margin: 8px 0; color: var(--text-dark); }
+.summary-card small { color: #94a3b8; font-size: 11px; }
+.organizer-reward-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.reward-card { background: #fff; border-radius: 20px; border: 1px solid var(--bento-border); padding: 20px; box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06); }
+.reward-card.span-2 { grid-column: span 2; }
+.reward-form { display: flex; flex-direction: column; gap: 12px; }
+.reward-form label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--text-light); }
+.reward-form input,
+.reward-form textarea,
+.reward-form select { border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 12px; font-size: 13px; background: #f8fafc; }
+.reward-form textarea { min-height: 80px; }
+.gift-cover-field small { display: block; margin-top: 4px; color: #94a3b8; }
+.gift-cover-field input[type="file"] { margin-top: 6px; font-size: 12px; }
+.gift-cover-preview { margin-top: 10px; display: flex; align-items: center; gap: 12px; }
+.gift-cover-preview img { width: 64px; height: 64px; border-radius: 12px; object-fit: cover; border: 1px solid #e2e8f0; }
+.form-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 6px; }
+.two-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.card-tip { font-size: 12px; color: #94a3b8; margin-bottom: 12px; }
+.reward-loading { padding: 16px 0; text-align: center; color: #94a3b8; font-size: 13px; }
+.gift-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.gift-list li { display: flex; justify-content: space-between; gap: 12px; padding: 12px; border-radius: 14px; background: #f8fafc; border: 1px solid #eef2ff; align-items: center; }
+.gift-info { display: flex; gap: 10px; align-items: center; }
+.gift-info img { width: 48px; height: 48px; object-fit: cover; border-radius: 12px; }
+.gift-info h4 { margin: 0; font-size: 14px; }
+.gift-info p { margin: 2px 0; font-size: 12px; }
+.gift-info small { color: #94a3b8; font-size: 11px; }
+.gift-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.btn-mini { border: none; border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; background: #e2e8f0; color: #0f172a; }
+.btn-mini.ghost { background: rgba(99, 102, 241, 0.12); color: var(--primary); }
+.status-tag { padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; text-transform: capitalize; background: #e2e8f0; color: #475569; }
+.status-tag.active { background: rgba(34, 197, 94, 0.2); color: #15803d; }
+.status-tag.inactive { background: rgba(248, 113, 113, 0.2); color: #b91c1c; }
+.heat-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.heat-list li { display: flex; justify-content: space-between; padding: 10px 12px; border-radius: 12px; background: #f8fafc; }
+.rule-form { display: flex; flex-direction: column; gap: 12px; margin: 16px 0; }
+.rule-form label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--text-light); }
+.rule-form input,
+.rule-form select,
+.rule-form textarea { border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 12px; font-size: 13px; background: #f8fafc; }
+.rule-form textarea { min-height: 70px; }
+.rule-list ul { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.rule-list li { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 12px; background: #f8fafc; }
+.btn-delete-rule {
+  background: #f44336;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 4px 10px;
+  font-size: 18px;
+  line-height: 1;
+  transition: all 0.2s;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-delete-rule:hover {
+  background: #d32f2f;
+  transform: scale(1.1);
+}
+.rule-list strong { display: block; font-size: 13px; }
+.empty { text-align: center; color: #94a3b8; font-size: 13px; padding: 12px 0; }
+
+@media (max-width: 1024px) {
+  .manage-wrapper { flex-direction: column; }
+  .bento-sidebar { width: 100%; position: static; }
+  .form-layout { grid-template-columns: 1fr; }
+  .condition-grid { grid-template-columns: 1fr; }
 }
 </style>

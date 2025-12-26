@@ -1,185 +1,69 @@
 <template>
   <div class="auth-container">
-    <!-- 切换标签页 -->
     <div class="tab-switcher">
       <button 
-        class="tab-button"
-        :class="{ active: isLogin }"
+        class="tab-item" 
+        :class="{ active: isLogin }" 
         @click="isLogin = true"
-      >
-        登录
-      </button>
+      >登录</button>
       <button 
-        class="tab-button"
-        :class="{ active: !isLogin }"
+        class="tab-item" 
+        :class="{ active: !isLogin }" 
         @click="isLogin = false"
-      >
-        注册
-      </button>
+      >注册</button>
+      <div class="active-bg" :style="{ transform: isLogin ? 'translateX(0)' : 'translateX(100%)' }"></div>
     </div>
 
-    <!-- 登录表单 -->
-    <form v-show="isLogin" class="auth-form login-form" @submit.prevent="handleLogin">
-      <div class="form-group">
-        <div class="input-wrapper">
-          <svg class="input-icon" viewBox="0 0 24 24">
-            <path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-          </svg>
-          <input 
-            v-model="loginForm.username" 
-            type="text" 
-            placeholder="用户名"
-            required
-          />
-        </div>
-      </div>
+    <div class="form-scroll-area">
+      <transition name="page-fade" mode="out-in">
+        <form :key="isLogin ? 'login' : 'reg'" @submit.prevent="isLogin ? handleLogin() : handleRegister()">
+          
+          <div class="input-group">
+            <div class="field">
+              <span class="icon-wrap">👤</span>
+              <input v-model="currentForm.username" type="text" placeholder="用户名" required />
+            </div>
 
-      <div class="form-group">
-        <div class="input-wrapper">
-          <svg class="input-icon" viewBox="0 0 24 24">
-            <path fill="currentColor" d="M18 8h-1V6c0-2.76-2.24-5-5-5s-5 2.24-5 5v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/>
-          </svg>
-          <input 
-            v-model="loginForm.password" 
-            type="password" 
-            placeholder="密码"
-            required
-          />
-        </div>
-      </div>
+            <div v-if="!isLogin" class="field">
+              <span class="icon-wrap">📞</span>
+              <input v-model="registerForm.phone" type="tel" placeholder="手机号码" required />
+            </div>
 
-      <div class="form-group">
-        <label class="role-label">选择身份</label>
-        <div class="role-options">
-          <label class="radio-option">
-            <input 
-              v-model="loginForm.role" 
-              type="radio" 
-              value="student"
-            />
-            <span>学生</span>
-          </label>
-          <label class="radio-option">
-            <input 
-              v-model="loginForm.role" 
-              type="radio" 
-              value="admin"
-            />
-            <span>管理员</span>
-          </label>
-          <label class="radio-option">
-            <input 
-              v-model="loginForm.role" 
-              type="radio" 
-              value="organizer"
-            />
-            <span>组织者</span>
-          </label>
-        </div>
-      </div>
+            <div class="field">
+              <span class="icon-wrap">🔒</span>
+              <input v-model="currentForm.password" type="password" placeholder="密码" required />
+            </div>
 
-      <button type="submit" class="submit-btn" :disabled="loading">
-        {{ loading ? '处理中...' : '登录' }}
-      </button>
-    </form>
+            <div v-if="!isLogin" class="field">
+              <span class="icon-wrap">🛡️</span>
+              <input v-model="registerForm.confirmPassword" type="password" placeholder="确认密码" required />
+            </div>
+          </div>
 
-    <!-- 注册表单 -->
-    <form v-show="!isLogin" class="auth-form register-form" @submit.prevent="handleRegister">
-      <div class="form-group">
-        <div class="input-wrapper">
-          <svg class="input-icon" viewBox="0 0 24 24">
-            <path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-          </svg>
-          <input 
-            v-model="registerForm.username" 
-            type="text" 
-            placeholder="用户名"
-            required
-          />
-        </div>
-      </div>
+          <div class="role-selector">
+            <p class="label">选择身份空间</p>
+            <div class="role-chips">
+              <label v-for="r in ['student', 'organizer', 'admin']" :key="r" class="chip">
+                <input type="radio" :value="r" v-model="currentForm.role" />
+                <span class="chip-text">
+                  {{ r === 'student' ? '学生' : r === 'organizer' ? '组织者' : '管理员' }}
+                </span>
+              </label>
+            </div>
+          </div>
 
-      <div class="form-group">
-        <div class="input-wrapper">
-          <svg class="input-icon" viewBox="0 0 24 24">
-            <path fill="currentColor" d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
-          </svg>
-          <input 
-            v-model="registerForm.phone" 
-            type="tel" 
-            placeholder="电话号码"
-            required
-          />
-        </div>
-      </div>
-
-      <div class="form-group">
-        <div class="input-wrapper">
-          <svg class="input-icon" viewBox="0 0 24 24">
-            <path fill="currentColor" d="M18 8h-1V6c0-2.76-2.24-5-5-5s-5 2.24-5 5v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/>
-          </svg>
-          <input 
-            v-model="registerForm.password" 
-            type="password" 
-            placeholder="密码"
-            required
-          />
-        </div>
-      </div>
-
-      <div class="form-group">
-        <div class="input-wrapper">
-          <svg class="input-icon" viewBox="0 0 24 24">
-            <path fill="currentColor" d="M18 8h-1V6c0-2.76-2.24-5-5-5s-5 2.24-5 5v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/>
-          </svg>
-          <input 
-            v-model="registerForm.confirmPassword" 
-            type="password" 
-            placeholder="确认密码"
-            required
-          />
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label class="role-label">选择身份</label>
-        <div class="role-options">
-          <label class="radio-option">
-            <input 
-              v-model="registerForm.role" 
-              type="radio" 
-              value="student"
-            />
-            <span>学生</span>
-          </label>
-          <label class="radio-option">
-            <input 
-              v-model="registerForm.role" 
-              type="radio" 
-              value="admin"
-            />
-            <span>管理员</span>
-          </label>
-          <label class="radio-option">
-            <input 
-              v-model="registerForm.role" 
-              type="radio" 
-              value="organizer"
-            />
-            <span>组织者</span>
-          </label>
-        </div>
-      </div>
-
-      <button type="submit" class="submit-btn" :disabled="loading">
-        {{ loading ? '处理中...' : '注册' }}
-      </button>
-    </form>
+          <button type="submit" class="submit-btn" :disabled="loading">
+            <span v-if="loading" class="loading-spinner"></span>
+            {{ loading ? '同步中...' : (isLogin ? '开启元气之旅' : '加入宇宙') }}
+          </button>
+        </form>
+      </transition>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { login, register } from '@/api/auth'
 
@@ -187,19 +71,10 @@ const router = useRouter()
 const isLogin = ref(true)
 const loading = ref(false)
 
-const loginForm = ref({
-  username: '',
-  password: '',
-  role: 'student'
-})
+const loginForm = ref({ username: '', password: '', role: 'student' })
+const registerForm = ref({ username: '', phone: '', password: '', confirmPassword: '', role: 'student' })
 
-const registerForm = ref({
-  username: '',
-  phone: '',
-  password: '',
-  confirmPassword: '',
-  role: 'student'
-})
+const currentForm = computed(() => isLogin.value ? loginForm.value : registerForm.value)
 
 const persistSession = (payload, fallbackRole = 'student', fallbackUsername = '') => {
   if (!payload) return
@@ -207,60 +82,36 @@ const persistSession = (payload, fallbackRole = 'student', fallbackUsername = ''
   localStorage.setItem('isLoggedIn', 'true')
   localStorage.setItem('username', payload.username || fallbackUsername)
   localStorage.setItem('userRole', payload.role || fallbackRole)
-  localStorage.setItem('userId', payload.userId || '')
+  if (payload.userId) {
+    localStorage.setItem('userId', String(payload.userId))
+  }
 }
 
 const handleLogin = async () => {
-  const { username, password, role } = loginForm.value
-
-  if (!username || !password) {
-    alert('请填写用户名和密码')
-    return
-  }
-
   loading.value = true
   try {
-    const data = await login({ username, password, role })
-    persistSession(data, role, data.username || username)
-    alert('登录成功')
+    const data = await login(loginForm.value)
+    persistSession(data, loginForm.value.role, loginForm.value.username)
     router.push('/')
   } catch (err) {
-    const errorMessage = err?.message || err?.response?.data?.message || '登录失败，请稍后再试'
-    alert(errorMessage)
-    console.error('登录错误详情:', err)
-    console.error('错误响应数据:', err?.response?.data)
+    alert(err?.message || '登录失败，请检查账号密码')
   } finally {
     loading.value = false
   }
 }
 
 const handleRegister = async () => {
-  const { username, phone, password, confirmPassword, role } = registerForm.value
-
-  if (!username || !phone || !password || !confirmPassword) {
-    alert('请填写所有字段')
-    return
-  }
-
-  if (password !== confirmPassword) {
+  if (registerForm.value.password !== registerForm.value.confirmPassword) {
     alert('两次输入的密码不一致')
     return
   }
-
-  if (password.length < 6) {
-    alert('密码长度不少于6位')
-    return
-  }
-
   loading.value = true
   try {
-    const data = await register({ username, phone, password, role })
-    persistSession(data, 'student', username)
-    localStorage.setItem('userPhone', phone)
-    alert('注册成功，已自动登录')
+    const data = await register(registerForm.value)
+    persistSession(data, 'student', registerForm.value.username)
     router.push('/')
   } catch (err) {
-    alert(err?.message || '注册失败，请稍后再试')
+    alert(err?.message || '注册失败')
   } finally {
     loading.value = false
   }
@@ -268,140 +119,158 @@ const handleRegister = async () => {
 </script>
 
 <style scoped>
+/* 核心配色变量 */
 .auth-container {
+  --fresh-primary: #0db18c;
+  --fresh-primary-light: #34d399;
+  --fresh-bg: #f0fdfa;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
   width: 100%;
 }
 
+/* 切换器：胶囊设计 */
 .tab-switcher {
+  position: relative;
   display: flex;
-  gap: 8px;
-  margin-bottom: 30px;
-  background: #f5f5f5;
+  background: rgba(15, 23, 42, 0.04);
+  border-radius: 16px;
   padding: 4px;
-  border-radius: 8px;
+  margin-bottom: 32px;
 }
-
-.tab-button {
+.tab-item {
   flex: 1;
-  padding: 10px 16px;
+  z-index: 2;
+  padding: 12px;
   border: none;
-  background: transparent;
-  font-size: 16px;
-  font-weight: 600;
+  background: none;
+  font-weight: 700;
+  font-size: 15px;
   cursor: pointer;
-  border-radius: 6px;
+  color: var(--text-muted);
   transition: all 0.3s ease;
-  color: #666;
 }
-
-.tab-button.active {
+.tab-item.active {
+  color: var(--fresh-primary);
+}
+.active-bg {
+  position: absolute;
+  top: 4px; left: 4px;
+  width: calc(50% - 4px);
+  height: calc(100% - 8px);
   background: white;
-  color: #667eea;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
 }
 
-.auth-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.input-wrapper {
+/* 输入框组合 */
+.input-group { display: flex; flex-direction: column; gap: 16px; }
+.field {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 12px;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  background: white;
+  background: var(--fresh-bg);
+  padding: 4px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(13, 177, 140, 0.1);
   transition: all 0.3s ease;
 }
-
-.input-wrapper:focus-within {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+.field:focus-within {
+  background: white;
+  border-color: var(--fresh-primary);
+  box-shadow: 0 0 0 4px rgba(13, 177, 140, 0.08);
+  transform: translateY(-1px);
 }
-
-.input-icon {
-  width: 20px;
-  height: 20px;
-  color: #999;
-  flex-shrink: 0;
+.icon-wrap {
+  font-size: 18px;
+  margin-right: 12px;
+  filter: grayscale(0.2);
 }
-
-.input-wrapper input {
+.field input {
   flex: 1;
-  border: none;
   padding: 12px 0;
-  font-size: 14px;
-  background: transparent;
+  border: none;
   outline: none;
-  color: #000;
-}
-
-.input-wrapper input::placeholder {
-  color: #ccc;
-}
-
-.role-label {
-  font-size: 14px;
-  color: #333;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.role-options {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.radio-option {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.radio-option input[type="radio"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: #667eea;
-}
-
-.radio-option span {
-  font-size: 14px;
-  color: #333;
+  background: transparent;
+  font-size: 15px;
+  color: var(--text-main);
   font-weight: 500;
 }
+.field input::placeholder {
+  color: #94a3b8;
+}
 
-.submit-btn {
-  padding: 12px;
-  background: linear-gradient(135deg, #3b54c6 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
+/* 身份选择器 */
+.role-selector { margin-top: 28px; }
+.role-selector .label { 
+  font-size: 13px; 
+  font-weight: 800; 
+  color: var(--text-muted); 
+  margin-bottom: 12px;
+  letter-spacing: 0.5px;
+}
+.role-chips { display: flex; gap: 10px; }
+.chip { flex: 1; cursor: pointer; }
+.chip input { display: none; }
+.chip-text {
+  display: block;
+  text-align: center;
+  padding: 10px 4px;
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.03);
+  border-radius: 12px;
+  font-size: 13px;
   font-weight: 600;
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+}
+.chip:hover .chip-text {
+  background: var(--fresh-bg);
+}
+.chip input:checked + .chip-text {
+  background: var(--fresh-primary);
+  color: white;
+  border-color: var(--fresh-primary);
+  box-shadow: 0 4px 12px rgba(13, 177, 140, 0.3);
+}
+
+/* 提交按钮 */
+.submit-btn {
+  width: 100%;
+  margin-top: 32px;
+  padding: 16px;
+  border: none;
+  border-radius: 18px;
+  background: linear-gradient(135deg, var(--fresh-primary), var(--fresh-primary-light));
+  color: white;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 1px;
   cursor: pointer;
   transition: all 0.3s ease;
-  margin-top: 10px;
+  box-shadow: 0 10px 20px -5px rgba(13, 177, 140, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
 }
-
 .submit-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 15px 25px -5px rgba(13, 177, 140, 0.5);
+  filter: brightness(1.05);
+}
+.submit-btn:active { transform: translateY(0); }
+.submit-btn:disabled { 
+  background: #cbd5e1; 
+  box-shadow: none; 
+  cursor: not-allowed; 
 }
 
-.submit-btn:active {
-  transform: translateY(0);
+/* 动画效果 */
+.page-fade-enter-active, .page-fade-leave-active { 
+  transition: all 0.3s ease; 
 }
+.page-fade-enter-from { opacity: 0; transform: translateY(10px); }
+.page-fade-leave-to { opacity: 0; transform: translateY(-10px); }
 </style>

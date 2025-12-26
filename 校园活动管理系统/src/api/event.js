@@ -4,8 +4,22 @@ import request from './request'
 export const fetchEvents = (params) =>
   request.get('/events', { params })
 
+export const fetchEventHighlights = (params) =>
+  request.get('/events/highlights', { params })
+
+export const fetchWeeklyEvents = (params) =>
+  request.get('/events/week', { params })
+
 export const fetchEventDetail = (id) =>
   request.get(`/events/${id}`)
+
+// 推荐列表（按用户）
+export const fetchRecommendations = (params) =>
+  request.get('/recommendations', { params })
+
+// 相似活动（按活动）
+export const fetchSimilarActivities = (activityId) =>
+  request.get('/recommendations/similar', { params: { activity_id: activityId } })
 
 // 获取活动类型列表
 export const fetchActivityTypes = () =>
@@ -16,17 +30,17 @@ export const registerEvent = (id) =>
 
 // 组织者提交活动（进入审核队列）
 export const createEvent = (data) => {
-  // 如果 data 是 FormData，直接使用
   if (data instanceof FormData) {
     return request.post('/events', data, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
+      headers: { 'Content-Type': 'multipart/form-data' }
     })
   }
-  // 否则使用普通 JSON 提交
   return request.post('/events', data)
 }
+
+// 组织者：使用大模型生成活动文案
+export const generateEventCopy = (payload) =>
+  request.post('/events/generate-copy', payload)
 
 // 组织者：获取自己提交的活动及审核状态
 export const fetchOrganizerEvents = () =>

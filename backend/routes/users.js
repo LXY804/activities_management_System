@@ -77,6 +77,14 @@ router.put(
   userController.saveSystemConfig
 )
 
+// 管理员：删除用户（物理删除，依赖触发器清理关联报名/评论）
+router.delete(
+  '/:id',
+  authenticate,
+  authorize('admin'),
+  userController.deleteUser
+)
+
 // 管理员：获取活动统计
 router.get(
   '/stats/activities',

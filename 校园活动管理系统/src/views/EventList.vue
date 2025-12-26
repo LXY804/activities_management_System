@@ -1,81 +1,98 @@
 <template>
-  <div class="page events-list" :style="bgStyle">
-    <!-- 半透明遮罩，提升文字可读性 -->
-    <div class="bg-overlay"></div>
+  <div class="page events-dashboard">
+    <div class="background-atmosphere">
+      <div class="glow-orb orb-1"></div>
+      <div class="glow-orb orb-2"></div>
+    </div>
 
-    <div class="content">
-      <NavBar />
-
-      <div class="container">
-        <h2 class="page-title"></h2>
-        <!-- tabs -->
-        <div class="tabs">
-          <div class="tabs-left">
-            <div
-              v-for="(t, idx) in tabs"
-              :key="t"
-              class="tab"
-              :class="{ active: activeTab === idx }"
-              @click="setTab(idx)">
-              {{ t }}
+    <NavBar />
+    
+    <main class="dashboard-wrapper">
+      <div class="dashboard-inner">
+        <header class="dashboard-header glass-soft">
+          <div class="header-top">
+            <div class="brand-section">
+              <span class="hub-tag">🌱 Activity Hub</span>
+              <h1 class="page-title">清新活动<span class="accent-text">宇宙</span></h1>
+            </div>
+            
+            <div class="stats-overview">
+              <div class="stat-item">
+                <span class="stat-label">总量</span>
+                <span class="stat-num">{{ totalCount }}</span>
+              </div>
+              <div class="stat-item highlight">
+                <span class="stat-label">进行中</span>
+                <span class="stat-num">{{ liveCount }}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">未开始</span>
+                <span class="stat-num">{{ upcomingCount }}</span>
+              </div>
             </div>
           </div>
-          <!-- 活动分类筛选 -->
-          <div class="filter-section">
 
-            <select 
-              v-model="selectedTypeId" 
-              class="type-select"
-              @change="handleTypeChange"
-            >
-              <option value="">全部类型</option>
-              <option 
-                v-for="type in activityTypes" 
-                :key="type.id" 
-                :value="type.id"
+          <div class="header-filters">
+            <div class="tab-group">
+              <button
+                v-for="(t, idx) in tabs"
+                :key="t"
+                class="filter-tab"
+                :class="{ active: activeTab === idx }"
+                @click="setTab(idx)"
               >
-                {{ type.name }}
-              </option>
-            </select>
+                {{ t }}
+              </button>
+            </div>
+            <div class="select-wrapper">
+              <select v-model="selectedTypeId" class="minimal-select" @change="handleTypeChange">
+                <option value="">所有分类</option>
+                <option v-for="type in activityTypes" :key="type.id" :value="type.id">
+                  {{ type.name }}
+                </option>
+              </select>
+            </div>
           </div>
-        </div>
+        </header>
 
-        <div class="cards" v-if="!loading && !errorMsg && filteredEvents.length">
-          <div v-for="ev in filteredEvents" :key="ev.id" class="card">
-
-            <div class="card-bg" :style="cardBgStyle"></div>
-
-            <div class="card-header">活动编号：{{ ev.code }}</div>
-
-            <div class="card-body">
-              <div class="left" @click="open(ev.id)">
-                <img :src="ev.image" alt="活动图片" @error="handleImageError($event)" />
-                <div class="status">{{ ev.statusText }}</div>
-              </div>
-
-              <div class="center" @click="open(ev.id)">
-                <h3 class="title">{{ ev.title }}</h3>
-                <p class="meta">参与人数：{{ ev.signed_up }} </p>
-
-                <div class="bottom-meta">
-                  <span>学院：{{ ev.college }}</span>
-                  <span>关键字：{{ ev.keywords }}</span>
-                  <span>地点：{{ ev.location }}</span>
-                  <span>时间：{{ ev.time }}</span>
+        <section class="scroll-viewport">
+          <div class="cards-layout" v-if="!loading && filteredEvents.length">
+            <article 
+              v-for="ev in filteredEvents" 
+              :key="ev.id" 
+              class="event-card-compact glass-soft-hover"
+              @click="open(ev.id)"
+            >
+              <div class="thumb-box">
+                <img :src="ev.image" @error="handleImageError" />
+                <div class="tag-overlay">
+                  <span class="status-pill" :data-status="ev.status">{{ ev.statusText }}</span>
                 </div>
               </div>
-
-              <div class="right">
-                <button class="btn green" @click.prevent="cta(ev)">{{ ev.cta }}</button>
+              
+              <div class="content-box">
+                <h3 class="event-name">{{ ev.title }}</h3>
+                <div class="event-meta">
+                  <span>📍 {{ ev.location }}</span>
+                  <span class="dot">·</span>
+                  <span>👥 {{ ev.signed_up }}人参与</span>
+                </div>
+                <div class="card-action">
+                  <span class="date-tag">{{ ev.time.split(' ')[0] }}...</span>
+                  <button class="cta-mini-btn" @click.stop="cta(ev)">{{ ev.cta }}</button>
+                </div>
               </div>
-            </div>
+            </article>
           </div>
-        </div>
-        <div v-else-if="loading" class="loading">加载中...</div>
-        <div v-else-if="errorMsg" class="error">{{ errorMsg }}</div>
-        <div v-else class="loading">暂无活动数据</div>
+
+          <div v-else class="dashboard-state">
+            <div v-if="loading" class="pulse-loader">正在呼吸绿意...</div>
+            <div v-else-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
+            <div v-else class="empty-msg">暂时没有新活动，休息一下吧 🍃</div>
+          </div>
+        </section>
       </div>
-    </div>
+    </main>
   </div>
 </template>
 
@@ -83,229 +100,246 @@
 import NavBar from '@/components/NavBar.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import libraryImg from '@/assets/图书馆.webp'
 import { fetchEvents, fetchActivityTypes } from '@/api/event'
 
-// 后端基础地址，用于拼接封面图片等静态资源完整 URL
-const API_ORIGIN = (
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
-).replace(/\/api\/?$/, '')
-
+const API_ORIGIN = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/api\/?$/, '')
 const DEFAULT_COVER = `${API_ORIGIN}/uploads/3b72bdb5a6ca17d85131e816c9fdd0b1.jpg`
 
-// 构建图片URL
 const buildImageUrl = (coverUrl) => {
-  if (!coverUrl || coverUrl === '' || coverUrl === 'null' || coverUrl === 'undefined') {
-    return DEFAULT_COVER
-  }
-  // 如果已经是完整URL，直接返回
-  if (coverUrl.startsWith('http://') || coverUrl.startsWith('https://')) {
-    return coverUrl
-  }
-  // 兼容 Windows 反斜杠路径
-  let normalized = coverUrl.replace(/\\/g, '/')
-  if (!normalized.startsWith('/')) {
-    normalized = '/' + normalized
-  }
-  // 如果是相对路径，拼接API基础地址
-  return API_ORIGIN + normalized
-}
-
-const bgStyle = {
-  backgroundImage: `url(${libraryImg})`,
-  backgroundSize: 'cover',
-  backgroundPosition: 'center top',
-  backgroundRepeat: 'no-repeat',
-  backgroundAttachment: 'fixed',
-  minHeight: '100vh'
+  if (!coverUrl || coverUrl === '' || coverUrl === 'null') return DEFAULT_COVER
+  if (coverUrl.startsWith('http')) return coverUrl
+  return API_ORIGIN + (coverUrl.startsWith('/') ? coverUrl : '/' + coverUrl.replace(/\\/g, '/'))
 }
 
 const router = useRouter()
-
-// 标签页选项
-const tabs = ['全部', '进行中', '未开始',  '已结束']
-
-// 当前选中的标签页索引
+const tabs = ['全部', '进行中', '未开始', '已结束']
 const activeTab = ref(0)
-
 const events = ref([])
 const loading = ref(false)
 const errorMsg = ref('')
 const activityTypes = ref([])
 const selectedTypeId = ref('')
 
-const statusLabelMap = {
-  open: '进行中',
-  ongoing: '进行中',
-  upcoming: '未开始',
-  to_review: '待评价',
-  finished: '已结束',
-  ended: '已结束',
-  cancelled: '已取消'
-}
-
-const ctaMap = {
-  open: '点击报名',
-  ongoing: '点击报名',
-  upcoming: '查看详情',
-  finished: '去评价',
-  to_review: '去评价',
-  ended: '已结束，查看评价'
-}
-
-const formatTimeRange = (start, end) => {
-  if (!start) return ''
-  const startDate = new Date(start)
-  const endDate = end ? new Date(end) : null
-  const pad = (v) => String(v).padStart(2, '0')
-  const startStr = `${pad(startDate.getMonth() + 1)}月${pad(startDate.getDate())}日 ${pad(
-    startDate.getHours()
-  )}:${pad(startDate.getMinutes())}`
-  if (!endDate) return startStr
-  const endStr = `${pad(endDate.getMonth() + 1)}月${pad(endDate.getDate())}日 ${pad(
-    endDate.getHours()
-  )}:${pad(endDate.getMinutes())}`
-  return `${startStr} - ${endStr}`
-}
+const statusLabelMap = { open: '进行中', ongoing: '进行中', upcoming: '未开始', finished: '已结束', ended: '已结束' }
+const ctaMap = { open: '立即报名', upcoming: '查看详情', finished: '查看评价', ended: '已结束' }
 
 const loadEvents = async () => {
   loading.value = true
   errorMsg.value = ''
   try {
-    const params = {}
-    if (selectedTypeId.value) {
-      params.category_id = selectedTypeId.value
+    const data = await fetchEvents(selectedTypeId.value ? { category_id: selectedTypeId.value } : {})
+    events.value = data?.list?.map(item => ({
+      ...item,
+      image: buildImageUrl(item.cover_url),
+      statusText: statusLabelMap[item.status] || '进行中',
+      cta: ctaMap[item.status] || '查看',
+      time: formatTimeRange(item.start_time, item.end_time)
+    })) || []
+    
+    // 如果没有数据，显示提示
+    if (!events.value.length && !loading.value) {
+      errorMsg.value = '暂无活动数据'
     }
-    const data = await fetchEvents(params)
-    events.value =
-      data?.list?.map((item) => ({
-        id: item.id,
-        code: item.code,
-        title: item.title,
-        image: buildImageUrl(item.cover_url),
-        signed_up: item.signed_up || 0,
-        college: item.organizer_name || '校园活动中心',
-        keywords: item.excerpt || '',
-        location: item.location,
-        time: formatTimeRange(item.start_time, item.end_time),
-        status: item.status,
-        statusText: statusLabelMap[item.status] || '进行中',
-        cta: ctaMap[item.status] || '查看详情',
-        type_id: item.type_id
-      })) || []
-  } catch (err) {
-    console.error(err)
-    errorMsg.value = err?.message || '加载活动失败'
-  } finally {
-    loading.value = false
-  }
+  } catch (err) { 
+    console.error('加载活动列表失败:', err)
+    errorMsg.value = err?.message || err?.response?.data?.message || '加载失败，请检查网络连接或稍后重试'
+  } 
+  finally { loading.value = false }
 }
 
-const loadActivityTypes = async () => {
-  try {
-    const types = await fetchActivityTypes()
-    activityTypes.value = types || []
-  } catch (err) {
-    console.error('加载活动类型失败:', err)
-  }
-}
-
-const handleTypeChange = () => {
-  loadEvents()
-}
+const formatTimeRange = (start) => start ? `${new Date(start).getMonth() + 1}月${new Date(start).getDate()}日` : ''
 
 onMounted(() => {
-  loadActivityTypes()
+  fetchActivityTypes().then(res => activityTypes.value = res || [])
   loadEvents()
 })
 
-function open(id) {
-  router.push({ name: 'EventInfo', params: { id } }).catch(() => {})
-}
-
-function cta(ev) {
-  // 如果活动已结束，跳转到评论页面；否则跳转到详情页
-  if (ev.status === 'ended' || ev.status === 'finished') {
-    router.push({ name: 'EventComments', params: { id: ev.id } }).catch(() => {})
-  } else {
-    open(ev.id)
-  }
-}
-
-function setTab(idx) {
-  activeTab.value = idx
-}
-
-// 图片加载错误处理
-const handleImageError = (event) => {
-  // 如果图片加载失败，使用默认图片
-  if (event.target.src !== DEFAULT_COVER) {
-    event.target.src = DEFAULT_COVER
-  }
-}
-
-const statusMap = {
-  '进行中': 'open',
-  '未开始': 'upcoming',
-  '待评价': 'to_review',
-  '已结束': 'ended'
-}
+const handleTypeChange = () => loadEvents()
+const setTab = (idx) => activeTab.value = idx
+const open = (id) => router.push({ name: 'EventInfo', params: { id } })
+const handleImageError = (e) => e.target.src = DEFAULT_COVER
 
 const filteredEvents = computed(() => {
-  let result = events.value
-  // 按状态筛选
-  if (activeTab.value !== 0) {
-    const key = tabs[activeTab.value]
-    const status = statusMap[key]
-    if (status) {
-      result = result.filter(e => e.status === status)
-    }
-  }
-  return result
+  if (activeTab.value === 0) return events.value
+  const statusMatch = { 1: ['open', 'ongoing'], 2: ['upcoming'], 3: ['finished', 'ended'] }
+  return events.value.filter(e => statusMatch[activeTab.value].includes(e.status))
 })
 
-// 卡片背景样式（共用图）
-const cardBgStyle = {
-  backgroundImage: `url(${libraryImg})`,
-  backgroundSize: 'cover',
-  backgroundPosition: 'center',
-  backgroundRepeat: 'no-repeat',
-  transform: 'scale(1.02)'
-}
+const totalCount = computed(() => events.value.length)
+const liveCount = computed(() => events.value.filter(e => ['open', 'ongoing'].includes(e.status)).length)
+const upcomingCount = computed(() => events.value.filter(e => e.status === 'upcoming').length)
 </script>
 
 <style scoped>
-.container{max-width:1100px;margin:18px auto;padding:0 16px;background-color: rgba(255,255,255,0.8);border-radius:8px;padding-bottom:24px}
-.page-title{font-size:22px;margin:12px 0;font-weight:700;color:#333}
-.tabs{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 12px;background:rgba(255,255,255,0.9);border-radius:6px;margin-bottom:12px;flex-wrap:wrap}
-.tabs-left{display:flex;gap:28px;flex:1}
-.tab{padding:8px 10px;cursor:pointer;color:#233;border-bottom:3px solid transparent;font-weight:600}
-.tab.active{color:#0b4ea2;border-bottom-color:#0b4ea2}
-.type-select{padding:8px 12px;border:1px solid #ddd;border-radius:4px;background:#fff;font-size:15px;color:#333;cursor:pointer;min-width:150px;transition:border-color 0.2s}
-.type-select:focus{outline:none;border-color:#0b4ea2}
-.cards{display:flex;flex-direction:column;gap:18px;min-height:200px}
-.loading,.error{padding:40px;text-align:center;color:#666}
-.card{border:1px solid #e2e8f0;background:transparent}
-.card-header{background:#e8f3ff;padding:12px 16px;font-weight:600}
-.card-body{display:flex;gap:18px;align-items:center;padding:18px;background:rgba(255,255,255,0.9)}
-.left{width:160px;display:flex;flex-direction:column;align-items:flex-start;gap:10px;cursor:pointer}
-.left img{width:140px;height:100px;object-fit:cover;border-radius:4px;background:#a8bed8}
-.status{font-size:14px;color:#333}
-.center{flex:1;cursor:pointer}
-.title{margin:0 0 8px 0;font-size:18px}
-.meta{color:#333;margin:0 0 10px 0}
-.bottom-meta{display:flex;gap:18px;color:#444;font-size:14px;margin-top:8px;flex-wrap:wrap}
-.right{width:120px;display:flex;align-items:center;justify-content:center}
-.btn{padding:10px 18px;border-radius:8px;border:0;cursor:pointer}
-.btn.green{background:#66bb33;color:#fff;font-weight:700}
+/* --- 全局布局优化：修正偏移 & 消除分隔线 --- */
+.events-dashboard {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc; /* 底色保持纯净 */
+  position: relative;
+  overflow: hidden;
+}
 
-/* 背景与遮罩 */
-.page.events-list{position:relative}
-.bg-overlay{position:absolute;inset:0;background:rgba(255,255,255,0.6);pointer-events:none}
-.content{position:relative;z-index:2}
+/* 无缝背景光晕 */
+.background-atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: radial-gradient(at 0% 0%, #f0fdf4 0%, transparent 50%),
+              radial-gradient(at 100% 100%, #eff6ff 0%, transparent 50%);
+  pointer-events: none;
+}
 
-@media(max-width:800px){
-  .card-body{flex-direction:column;align-items:flex-start}
-  .right{width:100%;display:flex;justify-content:flex-end}
+.glow-orb {
+  position: absolute;
+  filter: blur(100px);
+  border-radius: 50%;
+  opacity: 0.4;
+}
+.orb-1 { width: 500px; height: 500px; background: #d1fae5; top: -100px; right: -100px; }
+.orb-2 { width: 400px; height: 400px; background: #e0f2fe; bottom: -50px; left: -50px; }
+
+/* 容器居中修正 */
+.dashboard-wrapper {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  justify-content: center; /* 内容水平居中 */
+  padding: 74px 24px 20px; /* 导航条高度64px + 间距10px = 74px */
+  overflow: hidden;
+}
+
+.dashboard-inner {
+  width: 100%;
+  max-width: 1100px; /* 限制宽度防止内容向右拉伸 */
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: calc(100vh - 120px); /* 确保有足够高度显示内容 */
+}
+
+/* --- 看板组件：去除硬边框 --- */
+.glass-soft {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 24px 30px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+/* 标题盒子固定定位 */
+.dashboard-header {
+  position: sticky;
+  top: -680px;
+  z-index: 10;
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 24px;
+}
+
+.hub-tag { font-size: 12px; font-weight: 800; color: #10b981; background: #f0fdf4; padding: 4px 12px; border-radius: 100px; }
+.page-title { font-size: 32px; margin: 8px 0 0; color: #1e293b; letter-spacing: -1px; }
+.accent-text { color: #10b981; margin-left: 4px; }
+
+.stats-overview { display: flex; gap: 32px; }
+.stat-item { text-align: right; }
+.stat-label { font-size: 12px; color: #94a3b8; display: block; }
+.stat-num { font-size: 26px; font-weight: 900; color: #1e293b; }
+.stat-item.highlight .stat-num { color: #10b981; }
+
+.header-filters {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 18px;
+  border-top: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.filter-tab {
+  padding: 8px 20px;
+  border-radius: 100px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s;
+}
+.filter-tab.active { background: #10b981; color: white; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2); }
+
+.minimal-select {
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: white;
+  font-size: 14px;
+  color: #1e293b;
+  outline: none;
+}
+
+/* --- 滚动区：局部滚动条美化 --- */
+.scroll-viewport {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 20px;
+  min-height: 0; /* 确保flex子元素可以缩小 */
+  scrollbar-width: none; /* Firefox */
+}
+.scroll-viewport::-webkit-scrollbar { width: 0; display: none; } /* Chrome 隐藏滚动条增强沉浸感 */
+
+.cards-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+/* --- 紧凑卡片设计 --- */
+.event-card-compact {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+  cursor: pointer;
+}
+
+.event-card-compact:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 32px rgba(15, 42, 66, 0.06);
+}
+
+.thumb-box { position: relative; height: 120px; }
+.thumb-box img { width: 100%; height: 100%; object-fit: cover; }
+
+.tag-overlay { position: absolute; top: 8px; right: 8px; }
+.status-pill {
+  font-size: 9px; font-weight: 800; padding: 3px 8px; border-radius: 6px;
+  background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(4px); color: #1e293b;
+}
+.status-pill[data-status="open"] { color: #10b981; border: 1px solid rgba(16, 185, 129, 0.1); }
+
+.content-box { padding: 12px; }
+.event-name { font-size: 15px; margin: 0 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #1e293b; font-weight: 700; }
+.event-meta { font-size: 11px; color: #94a3b8; display: flex; align-items: center; gap: 4px; margin-bottom: 10px; }
+.card-action { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f8fafc; padding-top: 10px; }
+.date-tag { font-size: 11px; color: #10b981; font-weight: 700; }
+
+.cta-mini-btn {
+  background: #f0fdf4; color: #10b981; border: none; padding: 5px 12px;
+  border-radius: 6px; font-size: 10px; font-weight: 700; cursor: pointer; transition: 0.2s;
+}
+.cta-mini-btn:hover { background: #10b981; color: white; }
+
+@media (max-width: 768px) {
+  .dashboard-wrapper { padding: 80px 16px 20px; }
+  .header-top { flex-direction: column; align-items: flex-start; gap: 16px; }
+  .stats-overview { width: 100%; justify-content: space-between; }
 }
 </style>

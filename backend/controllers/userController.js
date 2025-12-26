@@ -1,39 +1,84 @@
+const { User, College } = require('../models')
+const { Op, QueryTypes } = require('sequelize')
 const sequelize = require('../config/database')
-const { QueryTypes } = require('sequelize')
 const { success, error } = require('../utils/response')
 const path = require('path')
+
+// 管理员删除用户（物理删除，依赖触发器级联清理报名/评论）
+exports.deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params
+    if (!id) return error(res, '缺少用户ID', 400)
+
+    const user = await User.findByPk(id)
+    if (!user) return error(res, '用户不存在', 404)
+
+    await user.destroy()
+
+    success(res, null, '删除成功')
+  } catch (err) {
+    console.error('删除用户失败:', err)
+    error(res, '服务器错误', 500)
+  }
+}
 
 exports.getProfile = async (req, res) => {
   try {
     const userId = req.user.id
-    const sql = `
-      SELECT 
-        u.user_id AS id,
-        u.username,
-        u.email,
-        u.phone,
-        u.role,
-        u.college_id,
-        c.college_name,
-        -- 下面这些字段需要你已经在 users 表中通过 ALTER TABLE 添加
-        u.student_id,
-        u.real_name,
-        u.gender,
-        u.id_type,
-        u.id_number,
-        u.class_name,
-        u.image
-      FROM users u
-      LEFT JOIN colleges c ON u.college_id = c.college_id
-      WHERE u.user_id = ?
-    `
 
-    const [profile] = await sequelize.query(sql, {
-      replacements: [userId],
-      type: QueryTypes.SELECT
+    const user = await User.findByPk(userId, {
+      attributes: [
+        'userId',
+        ['user_id', 'id'],
+        'username',
+        'email',
+        'phone',
+        'role',
+        'collegeId',
+        ['college_id', 'college_id'],
+        'studentId',
+        ['student_id', 'student_id'],
+        'realName',
+        ['real_name', 'real_name'],
+        'gender',
+        'idType',
+        ['id_type', 'id_type'],
+        'idNumber',
+        ['id_number', 'id_number'],
+        'className',
+        ['class_name', 'class_name'],
+        'image'
+      ],
+      include: [{
+        model: College,
+        as: 'college',
+        attributes: ['collegeName'],
+        required: false
+      }]
     })
 
-    success(res, profile || {})
+    if (!user) {
+      return error(res, '用户不存在', 404)
+    }
+
+    const profile = {
+      id: user.userId,
+      username: user.username,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      college_id: user.collegeId,
+      college_name: user.college?.collegeName || null,
+      student_id: user.studentId,
+      real_name: user.realName,
+      gender: user.gender,
+      id_type: user.idType,
+      id_number: user.idNumber,
+      class_name: user.className,
+      image: user.image
+    }
+
+    success(res, profile)
   } catch (err) {
     console.error('获取个人资料失败:', err)
     error(res, '服务器错误', 500)
@@ -52,14 +97,12 @@ exports.uploadAvatar = async (req, res) => {
     // 这里假设静态资源挂在 /uploads，文件保存在 backend/uploads 目录
     const relativePath = path.posix.join('/uploads', req.file.filename)
 
-    await sequelize.query(
-      'UPDATE users SET image = ? WHERE user_id = ?',
-      {
-        replacements: [relativePath, userId],
-        type: QueryTypes.UPDATE
-      }
+    const user = await User.findByPk(userId)
+    if (!user) {
+      return error(res, '用户不存在', 404)
+    }
 
-    )
+    await user.update({ image: relativePath })
 
     success(res, { image: relativePath }, '头像上传成功')
   } catch (err) {
@@ -77,80 +120,73 @@ exports.updateProfile = async (req, res) => {
       collegeId,
       role,
       studentId,
+      username,
       realName,
       gender,
       idType,
       idNumber,
-      className
+      className,
+      image
     } = req.body
 
-    const fields = []
-    const replacements = []
-
-    if (typeof studentId !== 'undefined') {
-      fields.push('student_id = ?')
-      replacements.push(studentId || null)
-    }
-    if (typeof realName !== 'undefined') {
-      fields.push('real_name = ?')
-      replacements.push(realName || null)
-    }
-    if (typeof gender !== 'undefined') {
-      fields.push('gender = ?')
-      replacements.push(gender || null)
-    }
-    if (typeof idType !== 'undefined') {
-      fields.push('id_type = ?')
-      replacements.push(idType || null)
-    }
-    if (typeof idNumber !== 'undefined') {
-      fields.push('id_number = ?')
-      replacements.push(idNumber || null)
-    }
-    if (typeof className !== 'undefined') {
-      fields.push('class_name = ?')
-      replacements.push(className || null)
-    }
-
-    if (typeof phone !== 'undefined') {
-      fields.push('phone = ?')
-      replacements.push(phone || null)
-    }
-    if (typeof email !== 'undefined') {
-      fields.push('email = ?')
-      replacements.push(email || null)
-    }
-    if (typeof collegeId !== 'undefined') {
-      fields.push('college_id = ?')
-      replacements.push(collegeId || null)
-    }
-
-    if (role && req.user.role === 'admin') {
-      fields.push('role = ?')
-      replacements.push(role)
-    }
-
-    if (!fields.length) {
+    // 如果没有任何可更新字段，直接返回
+    if (
+      typeof phone === 'undefined' &&
+      typeof email === 'undefined' &&
+      typeof collegeId === 'undefined' &&
+      typeof studentId === 'undefined' &&
+      typeof username === 'undefined' &&
+      typeof realName === 'undefined' &&
+      typeof gender === 'undefined' &&
+      typeof idType === 'undefined' &&
+      typeof idNumber === 'undefined' &&
+      typeof className === 'undefined' &&
+      typeof image === 'undefined' &&
+      typeof role === 'undefined'
+    ) {
       return success(res, null, '无需更新')
     }
 
-    replacements.push(userId)
+    const user = await User.findByPk(userId)
+    if (!user) {
+      return error(res, '用户不存在', 404)
+    }
 
-    await sequelize.query(
-      `
-        UPDATE users
-        SET ${fields.join(', ')}
-        WHERE user_id = ?
-      `,
-      {
-        replacements,
-        type: QueryTypes.UPDATE
-      }
-    )
+    // 辅助函数：将空字符串转换为 null
+    const normalizeValue = (value) => {
+      if (value === '' || value === null) return null
+      return value
+    }
+
+    // 构建更新对象
+    const updateData = {}
+    
+    if (phone !== undefined) updateData.phone = normalizeValue(phone)
+    if (email !== undefined) updateData.email = normalizeValue(email)
+    if (collegeId !== undefined && collegeId !== null && collegeId !== '') {
+      updateData.collegeId = collegeId
+    }
+    if (studentId !== undefined) updateData.studentId = normalizeValue(studentId)
+    if (username !== undefined) updateData.username = normalizeValue(username)
+    if (realName !== undefined) updateData.realName = normalizeValue(realName)
+    if (gender !== undefined) updateData.gender = gender === '' ? null : gender
+    if (idType !== undefined) updateData.idType = normalizeValue(idType)
+    if (idNumber !== undefined) updateData.idNumber = normalizeValue(idNumber)
+    if (className !== undefined) updateData.className = normalizeValue(className)
+    if (image !== undefined) updateData.image = normalizeValue(image)
+    
+    if (Object.keys(updateData).length > 0) {
+      await user.update(updateData)
+    }
+
+    // 角色仍按原逻辑单独处理，只允许管理员修改
+    if (role && req.user.role === 'admin') {
+      await user.update({ role })
+    }
 
     success(res, null, '更新成功')
   } catch (err) {
-    console.error('更新个人资料失败:', err)
+    console.error('更新个人资料失败(存储过程):', err)
     error(res, '服务器错误', 500)
   }
 }
@@ -158,19 +194,15 @@ exports.updateProfile = async (req, res) => {
 // 获取学院列表（供前端下拉选择使用）
 exports.getColleges = async (req, res) => {
   try {
-    const sql = `
-      SELECT 
-        college_id AS id,
-        college_name AS name
-      FROM colleges
-      ORDER BY college_id
-    `
-
-    const list = await sequelize.query(sql, {
-      type: QueryTypes.SELECT
+    const colleges = await College.findAll({
+      attributes: [
+        ['college_id', 'id'],
+        ['college_name', 'name']
+      ],
+      order: [['collegeId', 'ASC']]
     })
 
-    success(res, list || [])
+    success(res, colleges || [])
   } catch (err) {
     console.error('获取学院列表失败:', err)
     error(res, '服务器错误', 500)
@@ -182,8 +214,7 @@ exports.getUserList = async (req, res) => {
   try {
     const { role, search, page = 1, pageSize = 20 } = req.query
     
-    let whereClause = 'WHERE 1=1'
-    const replacements = []
+    const where = {}
     
    
     if (role && role !== '全部') {
@@ -194,60 +225,59 @@ exports.getUserList = async (req, res) => {
       }
       const dbRole = roleMap[role]
       if (dbRole) {
-        whereClause += ' AND u.role = ?'
-        replacements.push(dbRole)
+        where.role = dbRole
       }
     }
     
     // 搜索过滤（用户名）
     if (search) {
-      whereClause += ' AND u.username LIKE ?'
-      replacements.push(`%${search}%`)
+      where.username = { [Op.like]: `%${search}%` }
     }
     
     const offset = (parseInt(page, 10) - 1) * parseInt(pageSize, 10)
     const limit = parseInt(pageSize, 10)
     
-    const sql = `
-      SELECT 
-        u.user_id AS id,
-        u.username AS name,
-        CASE u.role
-          WHEN 'student' THEN '学生用户'
-          WHEN 'organizer' THEN '组织者'
-          WHEN 'admin' THEN '管理员'
-          ELSE u.role
-        END AS role,
-        DATE_FORMAT(u.created_at, '%Y-%m-%d') AS joinDate,
-        u.email,
-        u.phone,
-        c.college_name AS college
-      FROM users u
-      LEFT JOIN colleges c ON u.college_id = c.college_id
-      ${whereClause}
-      ORDER BY u.created_at DESC
-      LIMIT ? OFFSET ?
-    `
-    
-    const countSql = `
-      SELECT COUNT(*) AS total
-      FROM users u
-      ${whereClause}
-    `
-    
-    const [countResult] = await sequelize.query(countSql, {
-      replacements,
-      type: QueryTypes.SELECT
+    const { count, rows } = await User.findAndCountAll({
+      attributes: [
+        ['user_id', 'id'],
+        ['username', 'name'],
+        'role',
+        'createdAt',
+        ['created_at', 'created_at'],
+        'email',
+        'phone'
+      ],
+      include: [{
+        model: College,
+        as: 'college',
+        attributes: [['college_name', 'college']],
+        required: false
+      }],
+      where,
+      order: [['createdAt', 'DESC']],
+      limit,
+      offset
     })
     
-    const list = await sequelize.query(sql, {
-      replacements: [...replacements, limit, offset],
-      type: QueryTypes.SELECT
-    })
+    const roleMap = {
+      'student': '学生用户',
+      'organizer': '组织者',
+      'admin': '管理员'
+    }
+    
+    const list = rows.map(user => ({
+      id: user.userId,
+      name: user.username,
+      role: roleMap[user.role] || user.role,
+      joinDate: user.createdAt ? user.createdAt.toISOString().split('T')[0] : null,
+      email: user.email,
+      phone: user.phone,
+      college: user.college?.collegeName || null
+    }))
     
     success(res, {
       list,
-      total: countResult.total,
+      total: count,
       page: parseInt(page, 10),
       pageSize: parseInt(pageSize, 10)
     })
@@ -269,7 +299,25 @@ exports.getUserStats = async (req, res) => {
       FROM users
     `
     
+    // 计算活跃用户数（最近30天有活动的用户：报名活动、发表评论、发帖等）
+    const activeUserSql = `
+      SELECT COUNT(DISTINCT user_id) AS active_count
+      FROM (
+        SELECT user_id FROM user_activity_apply WHERE applied_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        UNION
+        SELECT user_id FROM activity_comments WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        UNION
+        SELECT user_id FROM forum_posts WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        UNION
+        SELECT user_id FROM forum_comments WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+      ) AS active_users
+    `
+    
     const [stats] = await sequelize.query(sql, {
+      type: QueryTypes.SELECT
+    })
+    
+    const [activeResult] = await sequelize.query(activeUserSql, {
       type: QueryTypes.SELECT
     })
     
@@ -277,7 +325,8 @@ exports.getUserStats = async (req, res) => {
       total: stats.total || 0,
       students: stats.students || 0,
       organizers: stats.organizers || 0,
-      admins: stats.admins || 0
+      admins: stats.admins || 0,
+      active: activeResult?.active_count || 0
     })
   } catch (err) {
     console.error('获取用户统计错误:', err)
