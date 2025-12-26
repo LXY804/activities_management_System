@@ -90,11 +90,11 @@ exports.getMyActivities = async (req, res) => {
   }
 }
 
-// 获取某个活动的报名列表,仅限当前组织者的活动
+// 获取某个活动的报名列表（仅限当前组织者的活动）
 exports.getActivityApplications = async (req, res) => {
   try {
     const organizerId = req.user.id
-    const { id } = req.params 
+    const { id } = req.params // activity_id
 
     const sql = `
       SELECT 
