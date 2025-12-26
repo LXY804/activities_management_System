@@ -35,10 +35,10 @@ app.use(express.urlencoded({ extended: true }));
 // 静态资源
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// ==== 关键改动 1: 初始化数据库连接 ====
-const sequelize = require('./config/database'); // 引入数据库配置
+// ==== 关键改动: 初始化数据库连接 ====
+const sequelize = require('./config/database');
 
-// ✅ 关键改动 2: 使用 async/await 确保数据库测试完成
+// ✅ 使用 async/await 确保数据库测试完成
 (async () => {
   try {
     await sequelize.authenticate();
@@ -51,6 +51,13 @@ const sequelize = require('./config/database'); // 引入数据库配置
     app.use('/api/registrations', require('./routes/registrations'));
     app.use('/api/comments', require('./routes/comments'));
     app.use('/api/users', require('./routes/users'));
+    app.use('/api', require('./routes/recommendations'));
+    app.use('/api/admin', require('./routes/admin'));
+    app.use('/api', require('./routes/chat'));
+    app.use('/api/forum', require('./routes/forum'));
+    app.use('/api/announcements', require('./routes/announcements'));
+    app.use('/api/news', require('./routes/news'));
+    app.use('/api/gifts', require('./routes/gifts'));
     app.use('/api/rewards', require('./routes/rewards'));
 
     // 健康检查
@@ -78,4 +85,3 @@ const sequelize = require('./config/database'); // 引入数据库配置
     process.exit(1); // 如果数据库连接失败，退出进程
   }
 })();
-// ===================================

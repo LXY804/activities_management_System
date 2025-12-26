@@ -49,7 +49,12 @@
             <p class="row-content">{{ comment.content }}</p>
             <div class="row-footer">
               <span>评论时间 {{ comment.date || '——' }}</span>
-              <span :class="['status-pill', comment.statusType]">{{ comment.status }}</span>
+              <div style="display: flex; gap: 12px; align-items: center;">
+                <span :class="['status-pill', comment.statusType]">{{ comment.status }}</span>
+                <button class="delete-btn" @click="onDelete(comment.id)" :disabled="deletingId === comment.id">
+                  {{ deletingId === comment.id ? '删除中...' : '删除' }}
+                </button>
+              </div>
             </div>
           </li>
         </ul>
@@ -64,13 +69,14 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { fetchMyComments } from '@/api/comment'
+import { fetchMyComments, deleteMyComment } from '@/api/comment'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const comments = ref([])
 const loading = ref(false)
 const errorMsg = ref('')
+const deletingId = ref(null)
 
 const mapStatus = (value) => {
   if (value === 1) return { label: '已通过', type: 'approved' }
@@ -114,6 +120,25 @@ const loadComments = async () => {
     errorMsg.value = err?.message || '加载评论失败'
   } finally {
     loading.value = false
+  }
+}
+
+const onDelete = async (id) => {
+  if (!requireLogin()) return
+  if (!confirm('确认删除这条评论吗？删除后不可恢复。')) return
+  deletingId.value = id
+  try {
+    await deleteMyComment(id)
+    // 从列表中移除已删除的评论
+    comments.value = comments.value.filter(c => c.id !== id)
+    // 显示成功提示
+    alert('删除成功')
+  } catch (err) {
+    console.error('删除评论错误:', err)
+    const errorMsg = err?.response?.data?.message || err?.message || '删除失败，请稍后重试'
+    alert(errorMsg)
+  } finally {
+    deletingId.value = null
   }
 }
 
@@ -310,6 +335,28 @@ onMounted(loadComments)
 .status-pill.approved { background: rgba(13, 177, 140, 0.18); color: #047857; }
 .status-pill.pending { background: rgba(99, 102, 241, 0.18); color: #3730a3; }
 .status-pill.hidden { background: rgba(148, 163, 184, 0.25); color: #475569; }
+
+.delete-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.delete-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 @media (max-width: 768px) {
   .comment-intro { flex-direction: column; align-items: flex-start; }

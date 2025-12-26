@@ -22,6 +22,9 @@ export const fetchUserList = (params) => request.get('/users/list', { params })
 
 export const fetchUserStats = () => request.get('/users/stats')
 
+// 管理后台：删除用户
+export const deleteUser = (id) => request.delete(`/users/${id}`)
+
 export const fetchNewUsersThisMonth = () => request.get('/users/stats/new-users')
 
 // 管理后台：系统配置

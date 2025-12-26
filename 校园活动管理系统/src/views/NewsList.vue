@@ -23,25 +23,30 @@
           </ul>
         </section>
 
-        <section class="bento-item carousel-box glass-panel">
+        <section class="bento-item carousel-box glass-panel" v-if="newsList.length > 0">
           <div class="carousel-wrapper">
             <img :src="currentImage" alt="资讯图片" class="carousel-img" />
             <div class="carousel-overlay">
-              <div class="meta-tag">2025.10.12</div>
-              <h3>四、六级笔试将于 12 月 13 日举行</h3>
+              <div class="meta-tag">{{ currentNewsDate }}</div>
+              <h3>{{ currentNewsTitle }}</h3>
             </div>
-            <div class="carousel-nav">
+            <div class="carousel-nav" v-if="newsList.length > 1">
               <button @click="prevImage" class="nav-btn">‹</button>
               <button @click="nextImage" class="nav-btn">›</button>
             </div>
           </div>
         </section>
+        <section class="bento-item carousel-box glass-panel" v-else-if="loading">
+          <div class="carousel-wrapper" style="display: flex; align-items: center; justify-content: center;">
+            <p style="color: #64748b;">加载中...</p>
+          </div>
+        </section>
 
         <section class="bento-item board-box">
-          <div class="board-grid">
+          <div class="board-grid" v-if="cards.length > 0">
             <article 
               v-for="(card, idx) in cards" 
-              :key="idx" 
+              :key="card.id || idx" 
               class="news-card-mini glass-panel"
               :class="{ 'accent-card': idx === 1 }"
             >
@@ -53,6 +58,12 @@
               <button class="text-link">详情 →</button>
             </article>
           </div>
+          <div v-else-if="loading" style="padding: 40px; text-align: center; color: #64748b;">
+            加载中...
+          </div>
+          <div v-else style="padding: 40px; text-align: center; color: #64748b;">
+            暂无资讯
+          </div>
         </section>
 
       </div>
@@ -61,46 +72,97 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import NavBar from '../components/NavBar.vue'
+import { fetchNewsList } from '@/api/news'
 
-// 保持原有逻辑不变
-const images = [
-  new URL('../assets/carousel1.jpg', import.meta.url).href,
-  new URL('../assets/carousel2.jpg', import.meta.url).href,
-  new URL('../assets/carousel3.jpg', import.meta.url).href
-]
+const API_ORIGIN = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/api\/?$/, '')
 
-const cards = [
-  {
-    day: '12',
-    month: '2025.10',
-    text: '2025 年下半年全国大学英语四、六级考试笔试将于 12 月 13 日举行。'
-  },
-  {
-    day: '15',
-    month: '2025.10',
-    text: '雅思成绩正式纳入美国 O-1 杰出人才签证语言能力证明，权重进一步提升。'
-  },
-  {
-    day: '18',
-    month: '2025.10',
-    text: '2025 年英语专业八级拟于 3 月 29 日举行，请关注报名通知。'
+const newsList = ref([])
+const loading = ref(false)
+const currentIndex = ref(0)
+
+// 从数据库获取资讯列表
+const loadNews = async () => {
+  loading.value = true
+  try {
+    const data = await fetchNewsList({ page: 1, pageSize: 10 })
+    newsList.value = data?.list || []
+  } catch (err) {
+    console.error('加载资讯失败:', err)
+    newsList.value = []
+  } finally {
+    loading.value = false
   }
-]
+}
 
-const currentImage = ref(images[0])
-let currentIndex = 0
+// 构建图片URL
+const buildImageUrl = (imageUrl) => {
+  if (!imageUrl) return ''
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl
+  }
+  let normalized = imageUrl.replace(/\\/g, '/')
+  if (!normalized.startsWith('/')) {
+    normalized = '/' + normalized
+  }
+  return API_ORIGIN + normalized
+}
+
+// 当前轮播图（使用第一条资讯的图片，如果没有则使用默认图片）
+const currentImage = computed(() => {
+  if (newsList.value.length > 0 && newsList.value[currentIndex.value]?.image_url) {
+    return buildImageUrl(newsList.value[currentIndex.value].image_url)
+  }
+  // 如果没有图片，使用默认占位图
+  return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjQwMCIgZmlsbD0iI2Y4ZmFmYyIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IiM5NGExOGIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7lm77niYfliqDovb3lpLHotKU8L3RleHQ+PC9zdmc+'
+})
+
+// 轮播卡片数据（从数据库获取的资讯转换而来）
+const cards = computed(() => {
+  return newsList.value.slice(0, 3).map(news => {
+    const date = new Date(news.created_at)
+    const day = String(date.getDate()).padStart(2, '0')
+    const month = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}`
+    return {
+      day,
+      month,
+      text: news.title,
+      id: news.id
+    }
+  })
+})
+
+// 当前轮播显示的资讯标题
+const currentNewsTitle = computed(() => {
+  if (newsList.value.length > 0 && newsList.value[currentIndex.value]) {
+    return newsList.value[currentIndex.value].title
+  }
+  return '四、六级笔试将于 12 月 13 日举行'
+})
+
+// 当前轮播显示的资讯日期
+const currentNewsDate = computed(() => {
+  if (newsList.value.length > 0 && newsList.value[currentIndex.value]) {
+    const date = new Date(newsList.value[currentIndex.value].created_at)
+    return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`
+  }
+  return '2025.10.12'
+})
 
 const nextImage = () => {
-  currentIndex = (currentIndex + 1) % images.length
-  currentImage.value = images[currentIndex]
+  if (newsList.value.length === 0) return
+  currentIndex.value = (currentIndex.value + 1) % newsList.value.length
 }
 
 const prevImage = () => {
-  currentIndex = (currentIndex - 1 + images.length) % images.length
-  currentImage.value = images[currentIndex]
+  if (newsList.value.length === 0) return
+  currentIndex.value = (currentIndex.value - 1 + newsList.value.length) % newsList.value.length
 }
+
+onMounted(() => {
+  loadNews()
+})
 </script>
 
 <style scoped>

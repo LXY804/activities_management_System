@@ -82,6 +82,9 @@ const persistSession = (payload, fallbackRole = 'student', fallbackUsername = ''
   localStorage.setItem('isLoggedIn', 'true')
   localStorage.setItem('username', payload.username || fallbackUsername)
   localStorage.setItem('userRole', payload.role || fallbackRole)
+  if (payload.userId) {
+    localStorage.setItem('userId', String(payload.userId))
+  }
 }
 
 const handleLogin = async () => {

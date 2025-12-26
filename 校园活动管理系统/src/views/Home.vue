@@ -72,18 +72,94 @@
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue'
 import NavBar from '../components/NavBar.vue'
+import { fetchEvents } from '@/api/event'
+import { fetchUserStats } from '@/api/user'
 
-const heroCards = [
-  { label: '正在进行', value: '48 场', desc: '今日新增 6', icon: '🎨' },
-  { label: '结识伙伴', value: '12,560', desc: '活跃 312', icon: '👋' }
-]
+const heroCards = ref([
+  { label: '正在进行', value: '0 场', desc: '今日新增 0', icon: '🎨' },
+  { label: '结识伙伴', value: '0', desc: '活跃 0', icon: '👋' }
+])
 
-const stats = [
-  { value: '200+', label: '资源' },
-  { value: '3.5k+', label: '活动' },
-  { value: '50k+', label: '人数' }
-]
+const stats = ref([
+  { value: '0+', label: '资源' },
+  { value: '0+', label: '活动' },
+  { value: '0+', label: '人数' }
+])
+
+const loadHomeData = async () => {
+  try {
+    // 获取活动数据
+    const eventsData = await fetchEvents({})
+    const events = eventsData?.list || []
+    
+    // 计算进行中的活动（当前时间在开始和结束时间之间）
+    const now = new Date()
+    const ongoingEvents = events.filter(ev => {
+      if (!ev.start_time || !ev.end_time) return false
+      try {
+        const start = new Date(ev.start_time)
+        const end = new Date(ev.end_time)
+        return now >= start && now <= end
+      } catch (e) {
+        return false
+      }
+    })
+    
+    // 计算今日新增（今天创建的活动，使用 created_at 字段）
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    today.setMinutes(0, 0, 0)
+    today.setSeconds(0, 0)
+    today.setMilliseconds(0)
+    
+    const todayEvents = events.filter(ev => {
+      if (!ev.created_at) return false
+      try {
+        const created = new Date(ev.created_at)
+        return created >= today
+      } catch (e) {
+        return false
+      }
+    })
+    
+    heroCards.value[0].value = `${ongoingEvents.length} 场`
+    heroCards.value[0].desc = `今日新增 ${todayEvents.length}`
+    
+    // 获取用户统计数据
+    try {
+      const userStats = await fetchUserStats()
+      if (userStats) {
+        const totalUsers = userStats.total || 0
+        const activeUsers = userStats.active || 0 // 活跃用户数（最近30天有活动的用户）
+        
+        stats.value[0].value = `${totalUsers}+`
+        stats.value[1].value = `${events.length}+`
+        heroCards.value[1].value = totalUsers.toLocaleString()
+        heroCards.value[1].desc = `活跃 ${activeUsers}`
+      } else {
+        stats.value[0].value = `${0}+`
+        stats.value[1].value = `${events.length}+`
+        heroCards.value[1].value = '0'
+        heroCards.value[1].desc = '活跃 0'
+      }
+    } catch (err) {
+      // 如果未登录或API失败，使用默认值
+      console.warn('获取用户统计失败:', err)
+      stats.value[0].value = `${0}+`
+      stats.value[1].value = `${events.length}+`
+      heroCards.value[1].value = '0'
+      heroCards.value[1].desc = '活跃 0'
+    }
+  } catch (err) {
+    console.error('加载首页数据失败:', err)
+  }
+}
+
+onMounted(() => {
+  loadHomeData()
+})
 </script>
 
 <style scoped>

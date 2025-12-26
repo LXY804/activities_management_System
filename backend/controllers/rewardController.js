@@ -135,8 +135,11 @@ exports.getMySummary = async (req, res) => {
       { replacements: [userId], type: QueryTypes.SELECT }
     )
 
+    // 确保积分不为负数（如果计算结果是负数，显示为0）
+    const totalPoints = Math.max(0, pointRow?.total || 0)
+
     success(res, {
-      totalPoints: pointRow?.total || 0,
+      totalPoints,
       recentTransactions: transactions,
       recentOrders: orders
     })
@@ -394,9 +397,11 @@ exports.redeemGift = async (req, res) => {
     const totalCost = gift.points_cost * qty
     const currentPoints = await getUserPointTotal(req.user.id, t)
 
-    if (currentPoints < totalCost) {
+    // 确保当前积分不为负数，并且有足够积分兑换
+    const availablePoints = Math.max(0, currentPoints)
+    if (availablePoints < totalCost) {
       await t.rollback()
-      return error(res, '积分不足', 400)
+      return error(res, `积分不足。当前可用积分：${availablePoints}，需要：${totalCost}`, 400)
     }
 
     const insertOrderSql = `
@@ -537,6 +542,53 @@ exports.savePointRule = async (req, res) => {
   }
 }
 
+// 删除积分规则
+exports.deletePointRule = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { role, id: userId } = req.user
+
+    if (!id) {
+      return error(res, '请提供规则ID', 400)
+    }
+
+    // 检查规则是否存在
+    const checkSql = `
+      SELECT rule_id, organizer_id
+      FROM activity_point_rules
+      WHERE rule_id = ?
+    `
+    const [rule] = await sequelize.query(checkSql, {
+      replacements: [id],
+      type: QueryTypes.SELECT
+    })
+
+    if (!rule) {
+      return error(res, '积分规则不存在', 404)
+    }
+
+    // 组织者只能删除自己创建的规则
+    if (role === 'organizer' && rule.organizer_id !== userId) {
+      return error(res, '只能删除自己创建的积分规则', 403)
+    }
+
+    // 删除规则
+    const deleteSql = `
+      DELETE FROM activity_point_rules
+      WHERE rule_id = ?
+    `
+    await sequelize.query(deleteSql, {
+      replacements: [id],
+      type: QueryTypes.DELETE
+    })
+
+    success(res, null, '积分规则已删除')
+  } catch (err) {
+    console.error('删除积分规则失败:', err)
+    error(res, '删除积分规则失败', 500)
+  }
+}
+
 exports.adjustPoints = async (req, res) => {
   try {
     const { userId, amount, reason = '', relatedActivityId = null } = req.body
@@ -544,6 +596,14 @@ exports.adjustPoints = async (req, res) => {
 
     if (!userId || !Number.isFinite(delta) || delta === 0) {
       return error(res, '请提供有效的用户与积分变动值', 400)
+    }
+
+    // 如果调整后会导致负数，先检查当前积分
+    if (delta < 0) {
+      const currentPoints = await getUserPointTotal(userId, null)
+      if (currentPoints + delta < 0) {
+        return error(res, `调整后积分不能为负数。当前积分：${currentPoints}，调整值：${delta}，调整后：${currentPoints + delta}`, 400)
+      }
     }
 
     const actionType = delta > 0 ? 'earn' : 'adjust'

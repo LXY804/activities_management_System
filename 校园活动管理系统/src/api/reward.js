@@ -45,6 +45,8 @@ export const fetchPointRules = (params) => request.get('/rewards/rules', { param
 
 export const savePointRule = (payload) => request.post('/rewards/rules', payload)
 
+export const deletePointRule = (id) => request.delete(`/rewards/rules/${id}`)
+
 export const adjustRewardPoints = (payload) =>
   request.post('/rewards/transactions/adjust', payload)
 

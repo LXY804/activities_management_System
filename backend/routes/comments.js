@@ -6,6 +6,7 @@ const { authenticate } = require('../middleware/auth')
 router.post('/events/:eventId', authenticate, commentController.submitComment)
 router.get('/events/:eventId', commentController.getEventComments)
 router.get('/my', authenticate, commentController.getMyComments)
+router.delete('/:id', authenticate, commentController.deleteMyComment)
 
 module.exports = router
 

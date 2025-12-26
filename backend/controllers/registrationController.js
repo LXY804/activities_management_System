@@ -20,7 +20,7 @@ const eventStatusExpr = `
   END
 `
 
-const buildListSql = (includeCover = true) => `
+const buildListSql = (includeCover = true, includePoints = true) => `
   SELECT 
     ua.apply_id AS registration_id,
     ${registrationStatusExpr} AS registration_status,
@@ -35,6 +35,7 @@ const buildListSql = (includeCover = true) => `
     a.type_id,
     ${eventStatusExpr} AS event_status,
     ${includeCover ? "COALESCE(a.cover_image, '')" : "''"} AS cover_url,
+    ${includePoints ? "COALESCE(a.points, 0)" : "0"} AS points,
     CASE 
       WHEN EXISTS (
         SELECT 1 
@@ -84,8 +85,8 @@ exports.getMyRegistrations = async (req, res) => {
       type: QueryTypes.SELECT
     })
 
-    const executeListQuery = async (includeCover = true) => {
-      const listSql = `${buildListSql(includeCover)}
+    const executeListQuery = async (includeCover = true, includePoints = true) => {
+      const listSql = `${buildListSql(includeCover, includePoints)}
         ${whereClause}
         ORDER BY ua.applied_at DESC
         LIMIT ? OFFSET ?
@@ -99,11 +100,19 @@ exports.getMyRegistrations = async (req, res) => {
 
     let list
     try {
-      list = await executeListQuery(true)
+      list = await executeListQuery(true, true)
     } catch (err) {
       if (err?.original?.code === 'ER_BAD_FIELD_ERROR') {
-        // 数据库缺少 cover_image 列时退回到不包含封面字段的查询
-        list = await executeListQuery(false)
+        // 数据库缺少某些列时退回到不包含这些字段的查询
+        try {
+          list = await executeListQuery(true, false)
+        } catch (err2) {
+          if (err2?.original?.code === 'ER_BAD_FIELD_ERROR') {
+            list = await executeListQuery(false, false)
+          } else {
+            throw err2
+          }
+        }
       } else {
         throw err
       }

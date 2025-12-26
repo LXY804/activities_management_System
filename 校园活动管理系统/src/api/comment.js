@@ -9,3 +9,6 @@ export const submitComment = (eventId, data) =>
 export const fetchMyComments = (params) =>
   request.get('/comments/my', { params })
 
+export const deleteMyComment = (commentId) =>
+  request.delete(`/comments/${commentId}`)
+

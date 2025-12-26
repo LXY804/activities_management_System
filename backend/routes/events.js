@@ -40,17 +40,20 @@ const uploadCover = multer({
 })
 
 // 学生 / 公共接口
+// 注意：具体路径必须放在参数路径（/:id）之前，否则会被参数路由捕获
 router.get('/types', eventController.getActivityTypes) // 获取活动类型列表
-router.get('/', eventController.getEventList)
-router.get('/highlights', eventController.getHighlightedEvents)
-router.get('/week', eventController.getWeeklyEvents)
-router.get('/:id', eventController.getEventDetail)
-router.post('/:id/register', authenticate, eventController.registerEvent)
+router.get('/highlights', eventController.getHighlightedEvents) // 获取精选活动
+router.get('/week', eventController.getWeeklyEvents) // 获取本周活动
 
-// 组织者：提交活动（待管理员审核）
-router.post('/', authenticate, authorize('organizer', 'admin'), uploadCover.single('coverImage'), eventController.createEvent)
+// 组织者/管理员：AI 生成活动文案
+router.post(
+  '/generate-copy',
+  authenticate,
+  authorize('organizer', 'admin'),
+  eventController.generateEventCopy
+)
 
-// 组织者：获取自己提交的活动及审核状态
+// 组织者：获取自己提交的活动及审核状态（必须在 /:id 之前）
 router.get(
   '/organizer/mine',
   authenticate,
@@ -58,7 +61,7 @@ router.get(
   organizerController.getMyActivities
 )
 
-// 管理员审核队列
+// 管理员审核队列（必须在 /:id 之前）
 router.get(
   '/admin/pending',
   authenticate,
@@ -77,5 +80,13 @@ router.post(
   authorize('admin'),
   eventController.rejectEvent
 )
+
+// 通用路由（放在最后）
+router.get('/', eventController.getEventList)
+router.get('/:id', eventController.getEventDetail)
+router.post('/:id/register', authenticate, eventController.registerEvent)
+
+// 组织者：提交活动（待管理员审核）
+router.post('/', authenticate, authorize('organizer', 'admin'), uploadCover.single('coverImage'), eventController.createEvent)
 
 module.exports = router

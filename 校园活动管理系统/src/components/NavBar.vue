@@ -83,6 +83,18 @@
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m5 5H9"/>
              </svg>
           </button>
+          <router-link 
+            to="/announcements" 
+            class="icon-btn notification-btn" 
+            title="系统公告"
+            style="text-decoration: none; display: flex; align-items: center; justify-content: center; padding: 8px; border-radius: 8px; color: var(--text-muted); transition: 0.2s; position: relative;"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            <span v-if="unconfirmedCount > 0" class="notification-badge">{{ unconfirmedCount > 99 ? '99+' : unconfirmedCount }}</span>
+          </router-link>
         </div>
       </div>
     </header>
@@ -92,6 +104,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { fetchUnconfirmedCount } from '@/api/announcement'
 
 const router = useRouter()
 const route = useRoute()
@@ -108,6 +121,7 @@ const isNight = computed(() => {
 const searchTerm = ref('')
 const isLoggedIn = ref(false)
 const userRole = ref('')
+const unconfirmedCount = ref(0)
 
 const navGroups = computed(() => [
   {
@@ -137,8 +151,41 @@ const navGroups = computed(() => [
 
 const checkLoginStatus = () => {
   const token = localStorage.getItem('token')
-  isLoggedIn.value = !!token
-  userRole.value = localStorage.getItem('userRole') || ''
+  const storedRole = localStorage.getItem('userRole') || ''
+  const storedIsLoggedIn = localStorage.getItem('isLoggedIn')
+  
+  // 多重检查确保状态正确
+  const wasLoggedIn = isLoggedIn.value
+  isLoggedIn.value = !!(token && (storedIsLoggedIn === 'true' || token.length > 0))
+  userRole.value = storedRole
+  
+  // 如果 token 存在但 isLoggedIn 标记不存在，更新标记
+  if (token && storedIsLoggedIn !== 'true') {
+    localStorage.setItem('isLoggedIn', 'true')
+  }
+  
+  // 如果用户已登录，加载未确认公告数量
+  if (isLoggedIn.value && !wasLoggedIn) {
+    loadUnconfirmedCount()
+  } else if (!isLoggedIn.value) {
+    unconfirmedCount.value = 0
+  }
+}
+
+// 加载未确认公告数量
+const loadUnconfirmedCount = async () => {
+  if (!isLoggedIn.value) {
+    unconfirmedCount.value = 0
+    return
+  }
+  
+  try {
+    const data = await fetchUnconfirmedCount()
+    unconfirmedCount.value = data?.count || 0
+  } catch (e) {
+    console.error('加载未确认公告数量失败:', e)
+    unconfirmedCount.value = 0
+  }
 }
 
 const isItemDisabled = (item) => {
@@ -170,18 +217,45 @@ const handleLogout = () => {
   router.push('/login')
 }
 
+let loginCheckInterval = null
+
 onMounted(() => {
   checkLoginStatus()
+  // 定期检查登录状态，确保状态同步（每2秒检查一次）
+  loginCheckInterval = setInterval(() => {
+    checkLoginStatus()
+    // 如果已登录，定期刷新未确认公告数量（每30秒）
+    if (isLoggedIn.value) {
+      loadUnconfirmedCount()
+    }
+  }, 2000)
   window.addEventListener('storage', checkLoginStatus)
+  // 监听 localStorage 变化（跨标签页同步）
+  window.addEventListener('focus', checkLoginStatus)
   document.body.classList.add('has-side-nav-layout')
+  
+  // 初始加载未确认公告数量
+  if (isLoggedIn.value) {
+    loadUnconfirmedCount()
+  }
 })
 
 onUnmounted(() => {
+  if (loginCheckInterval) {
+    clearInterval(loginCheckInterval)
+  }
   window.removeEventListener('storage', checkLoginStatus)
+  window.removeEventListener('focus', checkLoginStatus)
   document.body.classList.remove('has-side-nav-layout')
 })
 
-watch(() => route.path, checkLoginStatus)
+watch(() => route.path, () => {
+  checkLoginStatus()
+  // 当路由变化到公告页面时，刷新未确认数量
+  if (route.path === '/announcements' && isLoggedIn.value) {
+    loadUnconfirmedCount()
+  }
+})
 </script>
 
 <style scoped>
@@ -355,6 +429,44 @@ watch(() => route.path, checkLoginStatus)
   transition: 0.2s;
 }
 .icon-btn-exit:hover { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.2s;
+  position: relative;
+}
+
+.icon-btn:hover {
+  background: var(--search-bg);
+  color: var(--text-main);
+}
+
+.notification-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
 
 .fade-enter-active, .fade-leave-active { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
 .fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(-10px); }
