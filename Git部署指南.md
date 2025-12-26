@@ -287,6 +287,106 @@ git push
 - 使用 SSH 密钥（推荐）
 - 或使用 Personal Access Token（GitHub/Gitee）
 
+### 问题 5：AI 大模型功能报错
+
+**症状**：聊天功能或 AI 推荐功能报错，提示 "DEEPSEEK_API_KEY 未配置" 或 "DeepSeek error"
+
+**可能原因**：
+1. `.env` 文件中未配置 `DEEPSEEK_API_KEY`
+2. 环境变量未正确加载
+3. API Key 无效或已过期
+
+**解决方案**：
+```bash
+# 1. 检查 .env 文件是否存在
+cd /var/www/activities_management/backend
+ls -la .env
+
+# 2. 如果不存在，创建 .env 文件
+nano .env
+
+# 3. 添加以下配置（替换为你的实际 API Key）
+# DEEPSEEK_API_KEY=your_actual_api_key_here
+# DEEPSEEK_MODEL=deepseek-chat
+
+# 4. 确保文件权限安全
+chmod 600 .env
+
+# 5. 重启后端服务使配置生效
+pm2 restart activities-backend
+
+# 6. 查看日志确认配置是否生效
+pm2 logs activities-backend --lines 50
+```
+
+**获取 DeepSeek API Key**：
+1. 访问 https://platform.deepseek.com/
+2. 注册/登录账号
+3. 在控制台创建 API Key
+4. 将 API Key 复制到 `.env` 文件中
+
+### 问题 6：无法访问网站（ERR_CONNECTION_REFUSED）
+
+**症状**：浏览器显示"拒绝连接"或"无法访问此页面"
+
+**可能原因**：
+1. Nginx 服务未运行
+2. 后端服务未运行
+3. 防火墙阻止了端口
+4. 服务配置错误
+
+**快速排查步骤**：
+
+```bash
+# 1. 使用检查脚本（推荐）
+# 将 check-server.sh 上传到服务器后执行
+chmod +x check-server.sh
+./check-server.sh
+
+# 2. 手动检查 Nginx
+sudo systemctl status nginx
+# 如果未运行，启动它
+sudo systemctl start nginx
+sudo systemctl enable nginx  # 设置开机自启
+
+# 3. 检查后端服务
+pm2 list
+# 如果未运行，启动它
+cd /var/www/activities_management/backend
+pm2 start ecosystem.config.js
+pm2 save
+
+# 4. 检查端口是否被占用
+netstat -tuln | grep -E ":(80|3000) "
+
+# 5. 检查防火墙（如果使用 UFW）
+sudo ufw status
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+
+# 6. 检查 Nginx 配置
+sudo nginx -t
+# 如果有错误，修复后重载
+sudo systemctl reload nginx
+
+# 7. 查看错误日志
+pm2 logs activities-backend --lines 50
+sudo tail -50 /var/log/nginx/activities_error.log
+```
+
+**快速修复命令**（按顺序执行）：
+
+```bash
+# 重启所有服务
+cd /var/www/activities_management/backend
+pm2 restart activities-backend
+sudo systemctl restart nginx
+
+# 如果服务不存在，重新启动
+pm2 start ecosystem.config.js
+pm2 save
+```
+
 ---
 
 ## 🎯 推荐的 Git 工作流程

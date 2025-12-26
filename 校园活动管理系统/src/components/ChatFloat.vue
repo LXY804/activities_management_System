@@ -48,7 +48,7 @@
   
   <script setup>
     import { ref, onMounted, onBeforeUnmount } from 'vue'
-    import axios from 'axios'
+    import request from '@/api/request'
     
     const open = ref(false)
     const inputText = ref('')
@@ -215,12 +215,12 @@
     
       try {
         const userId = getUserId()
-        const { data } = await axios.post('http://localhost:3000/api/chat/ask', {
+        const data = await request.post('/chat/ask', {
           sessionId: getSessionId(),
           userMessage: text,
           userId: userId, // 传递用户ID，用于个性化推荐
         })
-        const reply = data?.data?.reply || data?.reply || '机器人没有返回内容'
+        const reply = data?.reply || '机器人没有返回内容'
         messages.value.push({ from: 'bot', text: reply })
       } catch (e) {
         console.error(e)

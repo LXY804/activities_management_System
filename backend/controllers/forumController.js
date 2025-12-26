@@ -102,6 +102,7 @@ exports.getPosts = async (req, res) => {
         p.status,
         u.username AS author,
         u.user_id AS author_id,
+        u.image AS author_image,
         COUNT(DISTINCT c.comment_id) AS comment_count,
         COUNT(DISTINCT f.favorite_id) AS favorite_count,
         (
@@ -172,6 +173,7 @@ exports.getPostDetail = async (req, res) => {
         p.updated_at,
         u.username AS author,
         u.user_id AS author_id,
+        u.image AS author_image,
         COUNT(DISTINCT c.comment_id) AS comment_count,
         COUNT(DISTINCT f.favorite_id) AS favorite_count
       FROM forum_posts p
@@ -336,6 +338,7 @@ exports.getMyPosts = async (req, res) => {
         p.created_at,
         u.username AS author,
         u.user_id AS author_id,
+        u.image AS author_image,
         COUNT(DISTINCT c.comment_id) AS comment_count,
         COUNT(DISTINCT f.favorite_id) AS favorite_count,
         (
@@ -410,6 +413,7 @@ exports.getMyCommentedPosts = async (req, res) => {
         p.created_at,
         u.username AS author,
         u.user_id AS author_id,
+        u.image AS author_image,
         COUNT(DISTINCT c2.comment_id) AS comment_count,
         COUNT(DISTINCT f.favorite_id) AS favorite_count,
         MAX(c.created_at) AS my_comment_time,
@@ -642,7 +646,8 @@ exports.getPendingPosts = async (req, res) => {
         p.image_url,
         p.created_at,
         u.username AS author,
-        u.user_id AS author_id
+        u.user_id AS author_id,
+        u.image AS author_image
       FROM forum_posts p
       INNER JOIN users u ON p.user_id = u.user_id
       WHERE p.status = 0 AND p.admin_check = 0

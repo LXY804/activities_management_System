@@ -125,6 +125,7 @@ const ctaMap = { open: '立即报名', upcoming: '查看详情', finished: '查�
 
 const loadEvents = async () => {
   loading.value = true
+  errorMsg.value = ''
   try {
     const data = await fetchEvents(selectedTypeId.value ? { category_id: selectedTypeId.value } : {})
     events.value = data?.list?.map(item => ({
@@ -134,7 +135,15 @@ const loadEvents = async () => {
       cta: ctaMap[item.status] || '查看',
       time: formatTimeRange(item.start_time, item.end_time)
     })) || []
-  } catch (err) { errorMsg.value = '加载失败' }
+    
+    // 如果没有数据，显示提示
+    if (!events.value.length && !loading.value) {
+      errorMsg.value = '暂无活动数据'
+    }
+  } catch (err) { 
+    console.error('加载活动列表失败:', err)
+    errorMsg.value = err?.message || err?.response?.data?.message || '加载失败，请检查网络连接或稍后重试'
+  } 
   finally { loading.value = false }
 }
 
@@ -198,7 +207,7 @@ const upcomingCount = computed(() => events.value.filter(e => e.status === 'upco
   flex: 1;
   display: flex;
   justify-content: center; /* 内容水平居中 */
-  padding: 84px 24px 20px;
+  padding: 74px 24px 20px; /* 导航条高度64px + 间距10px = 74px */
   overflow: hidden;
 }
 

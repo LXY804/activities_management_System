@@ -120,6 +120,7 @@ exports.updateProfile = async (req, res) => {
       collegeId,
       role,
       studentId,
+      username,
       realName,
       gender,
       idType,
@@ -134,6 +135,7 @@ exports.updateProfile = async (req, res) => {
       typeof email === 'undefined' &&
       typeof collegeId === 'undefined' &&
       typeof studentId === 'undefined' &&
+      typeof username === 'undefined' &&
       typeof realName === 'undefined' &&
       typeof gender === 'undefined' &&
       typeof idType === 'undefined' &&
@@ -165,6 +167,7 @@ exports.updateProfile = async (req, res) => {
       updateData.collegeId = collegeId
     }
     if (studentId !== undefined) updateData.studentId = normalizeValue(studentId)
+    if (username !== undefined) updateData.username = normalizeValue(username)
     if (realName !== undefined) updateData.realName = normalizeValue(realName)
     if (gender !== undefined) updateData.gender = gender === '' ? null : gender
     if (idType !== undefined) updateData.idType = normalizeValue(idType)
