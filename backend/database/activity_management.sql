@@ -11,7 +11,7 @@
  Target Server Version : 80040
  File Encoding         : 65001
 
- Date: 20/12/2025 17:57:07
+ Date: 26/12/2025 14:23:09
 */
 
 SET NAMES utf8mb4;
@@ -43,17 +43,17 @@ CREATE TABLE `activities`  (
   CONSTRAINT `activities_ibfk_1` FOREIGN KEY (`type_id`) REFERENCES `activity_types` (`type_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `activities_ibfk_2` FOREIGN KEY (`target_college_id`) REFERENCES `colleges` (`college_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `activities_ibfk_3` FOREIGN KEY (`organizer_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 18 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 21 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of activities
 -- ----------------------------
-INSERT INTO `activities` VALUES (1, 'AI技术讲座', 'ACT001', '邀请知名专家讲解人工智能最新技术发展', 1, '2024-12-15 14:00:00', '2024-12-15 16:00:00', '大礼堂', 1, 200, 2, NULL, '2025-12-20 13:04:18');
+INSERT INTO `activities` VALUES (1, 'AI技术讲座', 'ACT001', '邀请知名专家讲解人工智能最新技术发展', 1, '2024-12-15 14:00:00', '2024-12-15 16:00:00', '大礼堂', 1, 200, 2, 'uploads\\fbd146228157e894c10fa56bd950c829.jpg', '2025-12-20 13:04:18');
 INSERT INTO `activities` VALUES (2, '编程挑战赛', 'ACT002', '面向全校的算法编程竞赛', 2, '2025-01-05 09:00:00', '2025-01-05 18:00:00', '创新实验室', 2, 150, 2, NULL, '2025-12-20 13:04:18');
 INSERT INTO `activities` VALUES (3, '珞狮体育嘉年华', 'ACT003', '武汉理工田径场全天候体育嘉年华，包含飞盘、路跑、桨板等体验', 4, '2025-03-20 08:30:00', '2025-03-20 17:30:00', '余家头校区田径场', 2, 500, 4, NULL, '2025-12-20 13:04:18');
 INSERT INTO `activities` VALUES (4, '东湖龙舟体验营', 'ACT004', '邀请龙舟队教练带来水上课程，面向所有院系开放', 4, '2025-04-12 09:00:00', '2025-04-12 15:00:00', '东湖风景区码头', 3, 120, 4, NULL, '2025-12-20 13:04:18');
 INSERT INTO `activities` VALUES (5, '武汉理工校史文化巡礼', 'ACT005', '以校史馆为起点，串联余区地标的沉浸式讲解路线', 5, '2025-04-28 14:00:00', '2025-04-28 17:00:00', '余家头校史馆', 1, 80, 5, NULL, '2025-12-20 13:04:18');
-INSERT INTO `activities` VALUES (6, '青春湖畔音乐节', 'ACT006', '南湖草坪大型民谣与电子音乐专场，邀请师生乐队同台', 5, '2025-05-18 18:30:00', '2025-05-18 22:00:00', '南湖露天舞台', 4, 400, 5, NULL, '2025-12-20 13:04:18');
+INSERT INTO `activities` VALUES (6, '青春湖畔音乐节', 'ACT006', '南湖草坪大型民谣与电子音乐专场，邀请师生乐队同台', 5, '2025-05-18 18:30:00', '2025-05-18 22:00:00', '南湖露天舞台', 4, 400, 5, 'uploads\\avatar_12_1766058138829.jpg', '2025-12-20 13:04:18');
 INSERT INTO `activities` VALUES (7, '智能车创客营', 'ACT007', '智能车队与实验室联合举办的实训营，提供器材与导师辅导', 6, '2025-06-08 09:30:00', '2025-06-08 17:30:00', '智能制造实验室', 1, 60, 2, NULL, '2025-12-20 13:04:18');
 INSERT INTO `activities` VALUES (8, '光谷博物馆夜游', 'ACT008', '与光谷科技馆合作的夜间科普专场，含讲解与互动展区', 5, '2025-06-22 19:00:00', '2025-06-22 22:00:00', '湖北省科技馆', 3, 200, 5, NULL, '2025-12-20 13:04:18');
 INSERT INTO `activities` VALUES (9, '未来材料研讨沙龙', 'ACT009', '材料学院教授分享前沿成果，并邀请研究生参与圆桌讨论', 1, '2025-07-02 15:00:00', '2025-07-02 18:00:00', '材料科学楼A302', 1, 100, 1, NULL, '2025-12-20 13:04:18');
@@ -61,10 +61,11 @@ INSERT INTO `activities` VALUES (10, '军运会志愿者培训营', 'ACT010', '�
 INSERT INTO `activities` VALUES (11, '国际文化交流日', 'ACT011', '留学生与本土社团联合布展，体验全球文化市集', 5, '2025-07-26 10:00:00', '2025-07-26 18:00:00', '南湖会堂', 4, 300, 12, NULL, '2025-12-20 13:04:18');
 INSERT INTO `activities` VALUES (12, '创客孵化工作坊', 'ACT012', '创客导师带来武汉理工特色的创业实战演练', 6, '2025-08-03 09:00:00', '2025-08-03 16:30:00', '创新创业基地', 1, 80, 2, NULL, '2025-12-20 13:04:18');
 INSERT INTO `activities` VALUES (13, '智慧交通创新周', 'ACT013', '交通学院联合企业开展未来交通方案共创周，含沙龙与体验展。', 6, '2026-03-10 09:30:00', '2026-03-15 17:30:00', '南湖交通创新中心', 4, 180, 2, NULL, '2025-12-20 13:04:18');
-INSERT INTO `activities` VALUES (14, '沿江城市徒步嘉年华', 'ACT014', '组织 30 公里江城徒步路线，沿途设置文化补给站与伙伴任务。', 4, '2026-04-20 07:00:00', '2026-04-20 18:00:00', '武汉江滩集合点', 2, 600, 4, NULL, '2025-12-20 13:04:18');
-INSERT INTO `activities` VALUES (15, '未来能源开放实验室', 'ACT015', '能源学院开放氢能与储能实验平台，安排导师带队深度体验。', 1, '2026-05-08 13:30:00', '2026-05-08 18:30:00', '能源大楼B1实验区', 1, 90, 1, NULL, '2025-12-20 13:04:18');
-INSERT INTO `activities` VALUES (16, '校园可持续设计黑客松', 'ACT016', '跨专业团队 36 小时共创低碳校园解决方案，配套导师辅导。', 2, '2026-06-12 09:00:00', '2026-06-13 21:00:00', '南湖创客空间', 5, 200, 5, NULL, '2025-12-20 13:04:18');
+INSERT INTO `activities` VALUES (14, '沿江城市徒步嘉年华', 'ACT014', '组织 30 公里江城徒步路线，沿途设置文化补给站与伙伴任务。', 4, '2026-04-20 07:00:00', '2026-04-20 18:00:00', '武汉江滩集合点', 2, 600, 4, 'uploads\\12856a4a6a09886ee2cef503d7b52703.jpg', '2025-12-20 13:04:18');
+INSERT INTO `activities` VALUES (15, '未来能源开放实验室', 'ACT015', '能源学院开放氢能与储能实验平台，安排导师带队深度体验。', 1, '2026-05-08 13:30:00', '2026-05-08 18:30:00', '能源大楼B1实验区', 1, 90, 1, 'uploads\\dde8647d62163b809fec57e3bfece40d.jpg', '2025-12-20 13:04:18');
+INSERT INTO `activities` VALUES (16, '校园可持续设计黑客松', 'ACT016', '跨专业团队 36 小时共创低碳校园解决方案，配套导师辅导。', 2, '2026-06-12 09:00:00', '2026-06-13 21:00:00', '南湖创客空间', 5, 200, 5, 'uploads\\fbd146228157e894c10fa56bd950c829.jpg', '2025-12-20 13:04:18');
 INSERT INTO `activities` VALUES (17, '舞动青春', 'ACT2512205164', '舞动青春是一场面向全校同学的文体活动，旨在通过舞蹈释放活力、展现风采。无论你是舞蹈爱好者还是零基础新手，都可以在这里感受节奏、结交朋友，在律动中放松身心、收获快乐。具体时间地点将另行通知，期待与你共舞！', 1, '2025-12-21 18:30:00', '2025-12-21 20:30:00', '慧园操场', NULL, 0, 2, '/uploads/cover_1766216625125_kkp4nr.jpg', '2025-12-20 15:43:45');
+INSERT INTO `activities` VALUES (18, '冬至包饺子', 'ACT2512249846', '冬至将至，一起动手包饺子吧！在欢声笑语中体验传统习俗，亲手制作热腾腾的饺子，与同学们分享温暖与美味。无论你是厨房新手还是美食达人，都能在这里找到乐趣，结交新朋友，感受冬日里的校园温情。具体时间地点请关注后续通知，期待与你共度温馨冬至！', 1, '2025-12-24 11:50:00', '2025-12-25 11:50:00', '越远食堂', NULL, 0, 2, '/uploads/cover_1766548269788_locjn7.jpg', '2025-12-24 11:51:09');
 
 -- ----------------------------
 -- Table structure for activity_comments
@@ -170,7 +171,7 @@ CREATE TABLE `announcement_confirmations`  (
   INDEX `idx_user_id`(`user_id` ASC) USING BTREE,
   CONSTRAINT `announcement_confirmations_ibfk_1` FOREIGN KEY (`announcement_id`) REFERENCES `announcements` (`announcement_id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `announcement_confirmations_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of announcement_confirmations
@@ -179,6 +180,7 @@ INSERT INTO `announcement_confirmations` VALUES (1, 1, 3, '2025-12-20 16:14:11')
 INSERT INTO `announcement_confirmations` VALUES (2, 1, 6, '2025-12-20 16:17:41');
 INSERT INTO `announcement_confirmations` VALUES (3, 1, 2, '2025-12-20 16:17:58');
 INSERT INTO `announcement_confirmations` VALUES (4, 1, 1, '2025-12-20 16:53:11');
+INSERT INTO `announcement_confirmations` VALUES (5, 1, 14, '2025-12-24 00:11:55');
 
 -- ----------------------------
 -- Table structure for announcements
@@ -275,7 +277,7 @@ CREATE TABLE `forum_favorites`  (
   INDEX `idx_user_id`(`user_id` ASC) USING BTREE,
   CONSTRAINT `forum_favorites_ibfk_1` FOREIGN KEY (`post_id`) REFERENCES `forum_posts` (`post_id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `forum_favorites_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of forum_favorites
@@ -375,16 +377,15 @@ CREATE TABLE `gift_items`  (
 -- ----------------------------
 -- Records of gift_items
 -- ----------------------------
-INSERT INTO `gift_items` VALUES (1, '校园定制水杯', '双层玻璃杯，限量校徽款。', '/uploads/gift_cup.jpg', 120, 80, 'offline', 'active', NULL, 2, 1, '2025-12-20 13:04:18', '2025-12-20 13:04:18');
-INSERT INTO `gift_items` VALUES (2, '活动加油礼包', '含能量棒、贴纸等小礼物，适合户外活动。', '/uploads/gift_energy.jpg', 80, 119, 'both', 'active', NULL, 2, 1, '2025-12-20 13:04:18', '2025-12-20 13:36:09');
-INSERT INTO `gift_items` VALUES (3, '线上音乐会门票', '赞助商提供的线上演唱会兑换码。', '/uploads/gift_music.jpg', 200, 40, 'online', 'active', NULL, 1, 1, '2025-12-20 13:04:18', '2025-12-20 13:04:18');
-INSERT INTO `gift_items` VALUES (4, '珞狮校园帆布包', '武汉理工手绘地标帆布包，含胸章贴纸组合。', '/uploads/gift_bag.jpg', 90, 150, 'both', 'active', NULL, 4, 1, '2025-12-20 13:04:18', '2025-12-20 13:04:18');
-INSERT INTO `gift_items` VALUES (5, '余区纪念徽章套装', '校史馆推出的四枚限量徽章，附纪念卡。', '/uploads/gift_badge.jpg', 60, 220, 'offline', 'active', NULL, 5, 1, '2025-12-20 13:04:18', '2025-12-20 13:04:18');
-INSERT INTO `gift_items` VALUES (6, '龙舟体验券', '可在东湖龙舟基地兑换一次体验课程。', '/uploads/gift_dragonboat.jpg', 180, 50, 'offline', 'active', '管理员审核通过', 4, 1, '2025-12-20 13:04:18', '2025-12-20 15:56:26');
-INSERT INTO `gift_items` VALUES (7, '夜游科普手账', '夜游活动限定手账与荧光贴组合。', '/uploads/gift_notebook.jpg', 70, 160, 'both', 'active', NULL, 5, 1, '2025-12-20 13:04:18', '2025-12-20 13:04:18');
+INSERT INTO `gift_items` VALUES (1, '校园定制水杯', '双层玻璃杯，限量校徽款。', 'uploads\\gifts\\校园定制水杯.jpg', 120, 80, 'offline', 'active', NULL, 2, 1, '2025-12-20 13:04:18', '2025-12-24 12:01:43');
+INSERT INTO `gift_items` VALUES (2, '活动加油礼包', '含能量棒、贴纸等小礼物，适合户外活动。', 'uploads\\gifts\\活动加油礼包.jpg', 80, 119, 'both', 'active', NULL, 2, 1, '2025-12-20 13:04:18', '2025-12-24 12:04:08');
+INSERT INTO `gift_items` VALUES (3, '线上音乐会门票', '赞助商提供的线上演唱会兑换码。', 'uploads\\gifts\\线上音乐会门票.jpg', 200, 40, 'online', 'active', NULL, 1, 1, '2025-12-20 13:04:18', '2025-12-24 12:03:35');
+INSERT INTO `gift_items` VALUES (4, '珞狮校园帆布包', '武汉理工手绘地标帆布包，含胸章贴纸组合。', 'uploads\\gifts\\珞狮校园帆布包.jpg', 90, 150, 'both', 'active', NULL, 4, 1, '2025-12-20 13:04:18', '2025-12-24 12:05:02');
+INSERT INTO `gift_items` VALUES (5, '余区纪念徽章套装', '校史馆推出的四枚限量徽章，附纪念卡。', 'uploads\\gifts\\余区纪念微章套装.jpg', 60, 220, 'offline', 'active', NULL, 5, 1, '2025-12-20 13:04:18', '2025-12-24 12:03:07');
+INSERT INTO `gift_items` VALUES (6, '龙舟体验券', '可在东湖龙舟基地兑换一次体验课程。', 'uploads\\gifts\\龙舟体验券.jpg', 180, 50, 'offline', 'active', '管理员审核通过', 4, 1, '2025-12-20 13:04:18', '2025-12-24 12:04:36');
+INSERT INTO `gift_items` VALUES (7, '夜游科普手账', '夜游活动限定手账与荧光贴组合。', 'uploads\\gifts\\夜游科普手账.jpg', 70, 160, 'both', 'active', NULL, 5, 1, '2025-12-20 13:04:18', '2025-12-24 12:02:47');
 INSERT INTO `gift_items` VALUES (8, '材料实验室 VIP 参观券', '可预约带队进入材料学院示范实验室。', '/uploads/gift_labpass.jpg', 150, 30, 'offline', 'inactive', NULL, 1, 1, '2025-12-20 13:04:18', '2025-12-20 13:04:18');
-INSERT INTO `gift_items` VALUES (9, '校园咖啡券', '南湖咖啡吧任意饮品一杯，附限定杯套。', '/uploads/gift_coffee.jpg', 65, 200, 'offline', 'active', NULL, 12, 1, '2025-12-20 13:04:18', '2025-12-20 13:04:18');
-INSERT INTO `gift_items` VALUES (10, '帆布包', '', '/uploads/gift_1766219524423_ozq297.jpg', 100, 20, 'offline', 'active', '管理员审核通过', 2, 1, '2025-12-20 16:32:04', '2025-12-20 16:50:23');
+INSERT INTO `gift_items` VALUES (9, '校园咖啡券', '南湖咖啡吧任意饮品一杯，附限定杯套。', 'uploads\\gifts\\校园咖啡券.jpg', 65, 200, 'offline', 'active', NULL, 12, 1, '2025-12-20 13:04:18', '2025-12-24 12:02:11');
 INSERT INTO `gift_items` VALUES (11, '书', '', '/uploads/gift_1766220831932_a1zugc.jpg', 100, 20, 'offline', 'active', '管理员审核通过', 2, 1, '2025-12-20 16:53:51', '2025-12-20 16:54:13');
 
 -- ----------------------------
@@ -415,16 +416,16 @@ CREATE TABLE `gift_orders`  (
 -- ----------------------------
 -- Records of gift_orders
 -- ----------------------------
-INSERT INTO `gift_orders` VALUES (1, 2, 3, 1, 80, 'processing', '李同学', '18800001111', 'offline', '学生事务中心', NULL, '2025-12-20 13:04:18', '2025-12-20 13:04:18');
+INSERT INTO `gift_orders` VALUES (1, 2, 3, 1, 80, 'shipped', '李同学', '18800001111', 'offline', '学生事务中心', NULL, '2025-12-20 13:04:18', '2025-12-26 00:10:28');
 INSERT INTO `gift_orders` VALUES (2, 4, 7, 1, 120, 'shipped', '王同学', '18800002222', 'offline', '余家头校史馆文创角', NULL, '2025-12-20 13:04:18', '2025-12-20 13:04:18');
 INSERT INTO `gift_orders` VALUES (3, 5, 10, 1, 90, 'received', '孙同学', '18800003333', 'offline', '校史馆服务台', NULL, '2025-12-20 13:04:18', '2025-12-20 13:04:18');
 INSERT INTO `gift_orders` VALUES (4, 7, 8, 1, 70, 'received', '刘同学', '18800004444', 'offline', '邮寄至学生公寓', NULL, '2025-12-20 13:04:18', '2025-12-20 13:04:18');
-INSERT INTO `gift_orders` VALUES (5, 1, 6, 2, 240, 'pending', '周同学', '18800005555', 'offline', '南湖生活区包裹点', NULL, '2025-12-20 13:04:18', '2025-12-20 13:04:18');
-INSERT INTO `gift_orders` VALUES (6, 3, 6, 1, 200, 'processing', '周同学', '18800005555', 'online', NULL, NULL, '2025-12-20 13:04:18', '2025-12-20 13:04:18');
-INSERT INTO `gift_orders` VALUES (7, 6, 9, 1, 180, 'pending', '赵同学', '18800006666', 'offline', '东湖龙舟基地前台', NULL, '2025-12-20 13:04:18', '2025-12-20 13:04:18');
+INSERT INTO `gift_orders` VALUES (5, 1, 6, 2, 240, 'shipped', '周同学', '18800005555', 'offline', '南湖生活区包裹点', NULL, '2025-12-20 13:04:18', '2025-12-26 00:10:28');
+INSERT INTO `gift_orders` VALUES (6, 3, 6, 1, 200, 'shipped', '周同学', '18800005555', 'online', NULL, NULL, '2025-12-20 13:04:18', '2025-12-26 00:10:29');
+INSERT INTO `gift_orders` VALUES (7, 6, 9, 1, 180, 'shipped', '赵同学', '18800006666', 'offline', '东湖龙舟基地前台', NULL, '2025-12-20 13:04:18', '2025-12-26 00:10:29');
 INSERT INTO `gift_orders` VALUES (8, 9, 10, 2, 130, 'received', '孙同学', '18800003333', 'offline', '南湖咖啡吧', NULL, '2025-12-20 13:04:18', '2025-12-20 13:04:18');
-INSERT INTO `gift_orders` VALUES (9, 4, 13, 1, 90, 'processing', '钱同学', '18800007777', 'offline', '邮寄至创业学院', NULL, '2025-12-20 13:04:18', '2025-12-20 13:04:18');
-INSERT INTO `gift_orders` VALUES (10, 2, 3, 1, 80, 'pending', 'student1', '13324653456', 'offline', '', '', '2025-12-20 13:36:09', '2025-12-20 13:36:09');
+INSERT INTO `gift_orders` VALUES (9, 4, 13, 1, 90, 'shipped', '钱同学', '18800007777', 'offline', '邮寄至创业学院', NULL, '2025-12-20 13:04:18', '2025-12-26 00:10:29');
+INSERT INTO `gift_orders` VALUES (10, 2, 3, 1, 80, 'shipped', 'student1', '13324653456', 'offline', '', '', '2025-12-20 13:36:09', '2025-12-26 00:10:27');
 
 -- ----------------------------
 -- Table structure for messages
@@ -438,7 +439,7 @@ CREATE TABLE `messages`  (
   `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_session_created`(`session_id` ASC, `created_at` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 35 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 51 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of messages
@@ -477,6 +478,22 @@ INSERT INTO `messages` VALUES (31, 'demo-session-1', 'user', '我报名过哪些
 INSERT INTO `messages` VALUES (32, 'demo-session-1', 'bot', '由于系统未检测到您的用户ID，目前无法查询个人报名记录哦～ 建议您在校园活动管理系统的个人中心查看「我的活动」标签，或者提供您的用户ID，我将立刻为您调取数据！', '2025-12-16 19:33:28');
 INSERT INTO `messages` VALUES (33, 'demo-session-1', 'user', '你好', '2025-12-20 13:29:31');
 INSERT INTO `messages` VALUES (34, 'demo-session-1', 'bot', '你好！😊 看起来你可能有新的需求？无论是想了解活动详情、报名进度，还是需要其他帮助，随时告诉我吧！我会尽力为你提供清晰的信息～ 🌟', '2025-12-20 13:29:35');
+INSERT INTO `messages` VALUES (35, 'demo-session-1', 'user', '今天几月几号', '2025-12-25 22:41:07');
+INSERT INTO `messages` VALUES (36, 'demo-session-1', 'bot', '今天是 **2025年6月12日**（星期四）。  \n如果需要查询活动截止时间或安排日程，可以随时告诉我哦！ 📅✨', '2025-12-25 22:41:11');
+INSERT INTO `messages` VALUES (37, 'demo-session-1', 'user', '今天几月几号', '2025-12-25 22:43:01');
+INSERT INTO `messages` VALUES (38, 'demo-session-1', 'bot', '今天是 **2025年6月12日**（星期四）。  \n需要我帮你看看近期有哪些活动吗？ 😊', '2025-12-25 22:43:04');
+INSERT INTO `messages` VALUES (39, 'demo-session-1', 'user', '今天几月几号', '2025-12-25 22:53:53');
+INSERT INTO `messages` VALUES (40, 'demo-session-1', 'bot', '今天是 **2025年6月12日**（星期四）。  \n如果对日期有疑问（比如活动截止时间），可以告诉我具体活动名称，我来帮你核对哦！ 📅✨', '2025-12-25 22:53:58');
+INSERT INTO `messages` VALUES (41, 'demo-session-1', 'user', '你能给我推荐一些活动吗', '2025-12-26 00:39:36');
+INSERT INTO `messages` VALUES (42, 'demo-session-1', 'bot', '由于系统未检测到您的用户ID，我暂时无法基于您的历史报名记录进行个性化推荐。不过，我可以为你介绍一些近期校园内比较热门的活动类型，供你参考：\n\n**近期热门活动类型参考**  \n1. **学术讲座类**  \n   - 常见主题：人工智能前沿、创业分享、学科竞赛指导  \n   - 时间特点：多集中在周末或工作日晚间  \n\n2. **志愿服务类**  \n   - 常见项目：社区帮扶、环保活动、支教招募  \n   - 适合人群：喜欢实践、有社会责任感的同学  \n\n3. **文体娱乐类**  \n   - 常见形式：篮球赛、音乐节、话剧演出、手工 workshop  \n   - 时间特点：周末或节假日居多  \n\n4. **职业发展类**  \n   - 常见活动：企业参访、模拟面试、简历 workshop  \n   - 适合人群：求职或实习准备期的同学  \n\n**小贴士**  \n- 如果你有**用户ID**，可以告诉我，我能立刻调取你的历史报名记录，为你做个性化推荐（比如“常参加某类活动”“常去某个校区”等）。  \n- 你也可以在校园活动系统的 **“活动广场”** 页面，用筛选功能按类型、时间、地点快速查找感兴趣的活动哦！  \n\n需要我帮你解释某类活动的具体内容，或者查询某个特定活动吗？ 😊', '2025-12-26 00:39:48');
+INSERT INTO `messages` VALUES (43, 'guest-session', 'user', '你能给我推荐一些活动吗', '2025-12-26 00:41:53');
+INSERT INTO `messages` VALUES (44, 'guest-session', 'bot', '嗨！我是小活，你的校园活动助手！😊\n\n目前我无法获取你的历史报名记录，所以暂时无法提供个性化的智能推荐。不过，我可以为你展示当前校园里最热门的几个活动，这些活动的报名人数都很多，你可以参考一下：\n\n**🔥 当前热门活动推荐：**\n\n1. **AI技术讲座**\n   - **类型**：学术讲座\n   - **时间**：2024年12月15日 14:00\n   - **地点**：大礼堂\n   - **热度**：已有2人报名\n\n2. **国际文化交流日**\n   - **类型**：文化交流\n   - **时间**：2025年7月26日 10:00\n   - **地点**：南湖会堂\n   - **热度**：已有2人报名\n\n3. **军运会志愿者培训营**\n   - **类型**：志愿服务\n   - **时间**：2025年7月15日 13:30\n   - **地点**：航海楼报告厅\n   - **热度**：已有2人报名\n\n4. **未来材料研讨沙龙**\n   - **类型**：学术研讨\n   - **时间**：2025年7月2日 15:00\n   - **地点**：材料科学楼A302\n   - **热度**：已有2人报名\n\n5. **青春湖畔音乐节**\n   - **类型**：文艺演出\n   - **时间**：2025年5月18日 18:30\n   - **地点**：南湖露天舞台\n   - **热度**：已有2人报名\n\n💡 **温馨提示**：\n- 如果你想获得更精准的个性化推荐（比如根据你常参加的活动类型、时间偏好等），建议登录系统后，我就能基于你的历史记录为你智能匹配更适合的活动啦！\n- 今天是 **2025年12月26日（星期五）**，现在是 **00:41**。你可以根据自己的时间安排来选择活动。\n\n你对哪种类型的活动比较感兴趣呢？我可以帮你留意一下！🎉', '2025-12-26 00:42:08');
+INSERT INTO `messages` VALUES (45, 'user-3-session', 'user', '你能给我推荐一些活动吗', '2025-12-26 00:43:25');
+INSERT INTO `messages` VALUES (46, 'user-3-session', 'bot', '嗨！小活来啦！✨\n\n根据你的历史报名记录分析，我发现你特别喜欢参加**学术讲座**类的活动，而且经常去**武汉江滩集合点**附近参加活动。基于这些偏好，我为你推荐以下几个活动：\n\n---\n\n### 🎓 推荐活动列表\n\n1. **【学术讲座】未来能源开放实验室**  \n   ⏰ 时间：2026年5月8日 13:30  \n   📍 地点：能源大楼B1实验区  \n   💡 推荐理由：**类型匹配**——你常参加学术讲座类活动，这个活动正好符合你的兴趣！\n\n2. **【创新创业】智慧交通创新周**  \n   ⏰ 时间：2026年3月10日 09:30  \n   📍 地点：南湖交通创新中心  \n   💡 推荐理由：**拓展尝试**——虽然不是你常去的类型，但创新创业类活动能拓宽视野，说不定你会喜欢哦~\n\n3. **【竞赛活动】校园可持续设计黑客松**  \n   ⏰ 时间：2026年6月12日 09:00  \n   📍 地点：南湖创客空间  \n   💡 推荐理由：**热门活动**——这是近期很多同学关注的竞赛类活动，适合喜欢挑战的你！\n\n---\n\n如果你对某个活动感兴趣，或者想看看更多类型（比如志愿服务、文艺演出等），随时告诉我哦！😊', '2025-12-26 00:43:36');
+INSERT INTO `messages` VALUES (47, 'user-3-session', 'user', '现在有什么同类型的活动？并且我还能报名', '2025-12-26 00:44:07');
+INSERT INTO `messages` VALUES (48, 'user-3-session', 'bot', '你好！我来帮你筛选一下当前还能报名的、与你常参加的**学术讲座**同类型的活动。  \n\n不过，我需要先说明一下：  \n- **当前系统时间**是 **2025年12月26日（星期五）00:44**。  \n- 我手头现有的推荐数据中，与你偏好匹配的学术讲座类活动是 **【未来能源开放实验室】**，但它的举办时间是 **2026年5月8日**，距离现在还有好几个月，报名通道很可能还没开放，或者开放时间未定。  \n\n---\n\n### 🔍 当前可报名的同类型活动情况\n根据现有数据，**暂时没有正在报名中或即将举办的学术讲座类活动**。  \n\n这可能是因为：  \n1. 近期（12月底～1月初）正值考试周或假期，学术讲座类活动安排较少。  \n2. 你常参加的活动地点（武汉江滩集合点）近期没有讲座计划。  \n\n---\n\n### 💡 我的建议\n1. **留意新学期初**：通常每学期开学后（2月、9月左右）会有大量学术讲座上线。  \n2. **扩大筛选范围**：如果你愿意尝试其他地点（如校内教学楼、图书馆报告厅等），我可以帮你看看是否有其他类型的活动可以报名。  \n3. **主动关注**：你可以随时问我“最近有什么能报名的活动”，我会帮你实时筛选。  \n\n需要我帮你看看其他类型的活动吗？还是你有特定的时间或地点偏好？ 😊', '2025-12-26 00:44:19');
+INSERT INTO `messages` VALUES (49, 'user-3-session', 'user', '今天几月几号', '2025-12-26 00:51:21');
+INSERT INTO `messages` VALUES (50, 'user-3-session', 'bot', '今天是 **2025年12月26日（星期五）**，现在是 **00:51**。 😊', '2025-12-26 00:51:24');
 
 -- ----------------------------
 -- Table structure for news
@@ -520,7 +537,7 @@ CREATE TABLE `organizer_activity_creation`  (
   INDEX `activity_id`(`activity_id` ASC) USING BTREE,
   CONSTRAINT `organizer_activity_creation_ibfk_1` FOREIGN KEY (`organizer_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `organizer_activity_creation_ibfk_2` FOREIGN KEY (`activity_id`) REFERENCES `activities` (`activity_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 14 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 15 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of organizer_activity_creation
@@ -538,6 +555,7 @@ INSERT INTO `organizer_activity_creation` VALUES (10, 4, 10, '2025-12-20 13:04:1
 INSERT INTO `organizer_activity_creation` VALUES (11, 12, 11, '2025-12-20 13:04:18', 1, '留学生办公室联动');
 INSERT INTO `organizer_activity_creation` VALUES (12, 2, 12, '2025-12-20 13:04:18', 1, '创新创业学院支持');
 INSERT INTO `organizer_activity_creation` VALUES (13, 2, 17, '2025-12-20 15:43:45', 1, NULL);
+INSERT INTO `organizer_activity_creation` VALUES (14, 2, 18, '2025-12-24 11:51:09', 1, NULL);
 
 -- ----------------------------
 -- Table structure for point_transactions
@@ -667,14 +685,14 @@ CREATE TABLE `user_activity_apply`  (
   INDEX `activity_id`(`activity_id` ASC) USING BTREE,
   CONSTRAINT `user_activity_apply_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `user_activity_apply_ibfk_2` FOREIGN KEY (`activity_id`) REFERENCES `activities` (`activity_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 21 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 23 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of user_activity_apply
 -- ----------------------------
 INSERT INTO `user_activity_apply` VALUES (1, 3, 1, 1, '2024-12-10 09:00:00');
 INSERT INTO `user_activity_apply` VALUES (2, 6, 1, 1, '2024-12-11 10:15:00');
-INSERT INTO `user_activity_apply` VALUES (3, 7, 2, 0, '2024-12-22 14:20:00');
+INSERT INTO `user_activity_apply` VALUES (3, 7, 2, 1, '2024-12-22 14:20:00');
 INSERT INTO `user_activity_apply` VALUES (4, 8, 3, 1, '2025-02-28 16:45:00');
 INSERT INTO `user_activity_apply` VALUES (5, 3, 3, 2, '2025-03-02 09:30:00');
 INSERT INTO `user_activity_apply` VALUES (6, 9, 4, 0, '2025-03-18 12:10:00');
@@ -689,9 +707,11 @@ INSERT INTO `user_activity_apply` VALUES (14, 8, 10, 0, '2025-06-22 16:48:00');
 INSERT INTO `user_activity_apply` VALUES (15, 9, 10, 1, '2025-06-23 18:12:00');
 INSERT INTO `user_activity_apply` VALUES (16, 10, 11, 1, '2025-07-05 09:15:00');
 INSERT INTO `user_activity_apply` VALUES (17, 6, 11, 1, '2025-07-06 14:00:00');
-INSERT INTO `user_activity_apply` VALUES (18, 7, 12, 0, '2025-07-20 16:30:00');
+INSERT INTO `user_activity_apply` VALUES (18, 7, 12, 1, '2025-07-20 16:30:00');
 INSERT INTO `user_activity_apply` VALUES (19, 13, 12, 1, '2025-07-22 10:18:00');
 INSERT INTO `user_activity_apply` VALUES (20, 3, 14, 1, '2025-12-20 13:23:43');
+INSERT INTO `user_activity_apply` VALUES (21, 14, 16, 3, '2025-12-25 23:03:00');
+INSERT INTO `user_activity_apply` VALUES (22, 14, 15, 0, '2025-12-25 23:03:11');
 
 -- ----------------------------
 -- Table structure for user_schedules
@@ -736,7 +756,7 @@ DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users`  (
   `user_id` int NOT NULL AUTO_INCREMENT,
   `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `password` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `role` enum('student','organizer','admin') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT 'student',
   `email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
   `phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
@@ -753,15 +773,15 @@ CREATE TABLE `users`  (
   UNIQUE INDEX `username`(`username` ASC) USING BTREE,
   INDEX `college_id`(`college_id` ASC) USING BTREE,
   CONSTRAINT `users_ibfk_1` FOREIGN KEY (`college_id`) REFERENCES `colleges` (`college_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 14 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 15 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of users
 -- ----------------------------
-INSERT INTO `users` VALUES (1, 'admin', '12345', 'admin', 'admin@example.com', NULL, 1, '2025-12-20 13:04:18', NULL, '管理员', NULL, NULL, NULL, NULL, NULL);
-INSERT INTO `users` VALUES (2, 'organizer1', '12345', 'organizer', 'organizer1@example.com', NULL, 1, '2025-12-20 13:04:18', NULL, '张组织', NULL, NULL, NULL, NULL, NULL);
-INSERT INTO `users` VALUES (3, 'student1', '12345', 'student', 'student1@example.com', NULL, 2, '2025-12-20 13:04:18', '1023004777', '李同学', NULL, NULL, NULL, NULL, NULL);
-INSERT INTO `users` VALUES (4, 'organizer2', '12345', 'organizer', 'organizer2@example.com', NULL, 2, '2025-12-20 13:04:18', NULL, '陈策划', NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `users` VALUES (1, 'admin', '$2b$10$qCEfe692sjamqP8kx6/yMujwvu5n6Mpwan8GjSeKysxPuuznS.l2G', 'admin', 'admin@example.com', NULL, 1, '2025-12-20 13:04:18', NULL, '管理员', NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `users` VALUES (2, 'organizer1', '$2b$10$8ynM8aFun8JtFvX2qRha2uGw2pzzurGPoF1BxG5BTzSladvYuxlgC', 'organizer', 'organizer1@example.com', NULL, 1, '2025-12-20 13:04:18', NULL, '张组织', NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `users` VALUES (3, 'student1', '$2b$10$/Wp4XyMajp/pwX3VOVvC8OXceu5LEFi4i.tq8sRNb8JulH5BWJIcG', 'student', 'student1@example.com', NULL, 2, '2025-12-20 13:04:18', '1023004777', '李同学', NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `users` VALUES (4, 'organizer2', '$2b$10$Dn02uZ20zXnlcMgPZWdlfeIm9tcaR29IZ8vX1565WqbbxF.P/hNgi', 'organizer', 'organizer2@example.com', NULL, 2, '2025-12-20 13:04:18', NULL, '陈策划', NULL, NULL, NULL, NULL, NULL);
 INSERT INTO `users` VALUES (5, 'organizer_whut', '12345', 'organizer', 'campus_org@example.com', NULL, 1, '2025-12-20 13:04:18', NULL, '武汉理工团委', NULL, NULL, NULL, NULL, NULL);
 INSERT INTO `users` VALUES (6, 'student2', '12345', 'student', 'student2@example.com', NULL, 1, '2025-12-20 13:04:18', NULL, '周同学', NULL, NULL, NULL, NULL, NULL);
 INSERT INTO `users` VALUES (7, 'student3', '12345', 'student', 'student3@example.com', NULL, 2, '2025-12-20 13:04:18', NULL, '王同学', NULL, NULL, NULL, NULL, NULL);
@@ -771,6 +791,7 @@ INSERT INTO `users` VALUES (10, 'student6', '12345', 'student', 'student6@exampl
 INSERT INTO `users` VALUES (11, 'assistant_admin', '12345', 'admin', 'assistant_admin@example.com', NULL, 1, '2025-12-20 13:04:18', NULL, '助理管理员', NULL, NULL, NULL, NULL, NULL);
 INSERT INTO `users` VALUES (12, 'organizer_media', '12345', 'organizer', 'media_org@example.com', NULL, 4, '2025-12-20 13:04:18', NULL, '融媒体中心', NULL, NULL, NULL, NULL, NULL);
 INSERT INTO `users` VALUES (13, 'student7', '12345', 'student', 'student7@example.com', NULL, 6, '2025-12-20 13:04:18', NULL, '钱同学', NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `users` VALUES (14, 'LXY', '$2b$10$b5kqbDtePP7pqP.QuQCmBeA1ZUIzLbkREolpEtNjlkfPXt6Q23WXq', 'student', NULL, '12461209283', 1, '2025-12-24 00:09:28', '1023004555', 'LXY', NULL, NULL, NULL, NULL, NULL);
 
 -- ----------------------------
 -- View structure for v_activity_comments

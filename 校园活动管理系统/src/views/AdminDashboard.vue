@@ -800,7 +800,18 @@
                 </label>
                 <label>
                   封面图片
-                  <input v-model.trim="newGiftForm.coverImage" type="text" placeholder="/uploads/gift.jpg" />
+                  <input
+                    ref="newGiftCoverInput"
+                    type="file"
+                    accept="image/*"
+                    @change="handleNewGiftCoverChange"
+                    style="margin-bottom: 10px;"
+                  />
+                  <small style="display: block; color: #666; margin-bottom: 10px;">支持 JPG/PNG，大小不超过 5MB（超过 300KB 将自动压缩以提升加载速度）</small>
+                  <div v-if="newGiftImagePreview" class="image-preview" style="margin-top: 10px;">
+                    <img :src="newGiftImagePreview" alt="预览" style="max-width: 200px; max-height: 200px; border-radius: 4px;" />
+                    <button type="button" @click="clearNewGiftCover" style="margin-top: 10px; padding: 5px 10px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;">移除图片</button>
+                  </div>
                 </label>
                 <div class="form-actions" style="margin-top: 20px;">
                   <button class="btn btn-secondary" @click="closeGiftMaintenanceModal">取消</button>
@@ -994,6 +1005,9 @@ const newGiftForm = reactive({
   deliveryType: 'offline',
   coverImage: ''
 })
+const newGiftCoverInput = ref(null)
+const newGiftImageFile = ref(null)
+const newGiftImagePreview = ref(null)
 const ruleForm = reactive({
   activityId: '',
   actionLabel: '',
@@ -1503,15 +1517,46 @@ const closeGiftForm = () => {
 }
 
 // 处理礼品图片选择
-const handleGiftImageChange = (e) => {
+const handleGiftImageChange = async (e) => {
   const file = e.target.files[0]
-  if (file) {
-    if (file.size > 5 * 1024 * 1024) {
-      showNotification('图片大小不能超过 5MB', 'warning')
-      return
+  if (!file) return
+
+  if (!file.type.startsWith('image/')) {
+    showNotification('请选择图片文件', 'warning')
+    return
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    showNotification('图片大小不能超过 5MB', 'warning')
+    return
+  }
+
+  // 立即显示预览
+  giftImagePreview.value = URL.createObjectURL(file)
+
+  // 如果文件大于 300KB，自动压缩
+  if (file.size > 300 * 1024) {
+    try {
+      showNotification('正在优化图片以提升加载速度...', 'info')
+      const compressedFile = await compressImage(file, 300, 0.85)
+      giftImageFile.value = compressedFile
+      
+      // 更新预览
+      if (giftImagePreview.value) {
+        URL.revokeObjectURL(giftImagePreview.value)
+      }
+      giftImagePreview.value = URL.createObjectURL(compressedFile)
+      
+      const originalSize = (file.size / 1024).toFixed(0)
+      const compressedSize = (compressedFile.size / 1024).toFixed(0)
+      showNotification(`✓ 图片已优化：${originalSize}KB → ${compressedSize}KB`, 'success')
+    } catch (error) {
+      console.error('图片压缩失败:', error)
+      giftImageFile.value = file
+      showNotification('图片优化失败，将使用原文件', 'warning')
     }
+  } else {
     giftImageFile.value = file
-    giftImagePreview.value = URL.createObjectURL(file)
   }
 }
 
@@ -1551,6 +1596,137 @@ const resetGiftForm = () => {
   newGiftForm.stock = 50
   newGiftForm.deliveryType = 'offline'
   newGiftForm.coverImage = ''
+  newGiftImageFile.value = null
+  newGiftImagePreview.value = null
+  if (newGiftCoverInput.value) {
+    newGiftCoverInput.value.value = ''
+  }
+}
+
+// 图片压缩函数（优化加载速度）
+const compressImage = (file, maxSizeKB = 300, quality = 0.85) => {
+  return new Promise((resolve, reject) => {
+    // 如果文件已经很小，直接返回
+    if (file.size <= maxSizeKB * 1024) {
+      resolve(file)
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        // 计算压缩尺寸（最大宽度 1920px，保持比例）
+        let width = img.width
+        let height = img.height
+        const maxWidth = 1920
+
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width
+          width = maxWidth
+        }
+
+        // 创建 Canvas 进行压缩
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+
+        // 转换为 Blob，逐步降低质量直到达到目标大小
+        const tryCompress = (currentQuality) => {
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                resolve(file)
+                return
+              }
+
+              // 如果压缩后大小符合要求，或质量已经很低，使用当前结果
+              if (blob.size <= maxSizeKB * 1024 || currentQuality <= 0.5) {
+                const compressedFile = new File(
+                  [blob],
+                  file.name.replace(/\.[^/.]+$/, '.jpg'), // 统一转为 .jpg
+                  { type: 'image/jpeg' }
+                )
+                resolve(compressedFile)
+              } else {
+                // 继续降低质量
+                tryCompress(currentQuality - 0.1)
+              }
+            },
+            'image/jpeg',
+            currentQuality
+          )
+        }
+
+        tryCompress(quality)
+      }
+      img.onerror = () => reject(new Error('图片加载失败'))
+      img.src = e.target.result
+    }
+    reader.onerror = () => reject(new Error('文件读取失败'))
+    reader.readAsDataURL(file)
+  })
+}
+
+// 处理新礼品封面图片选择（自动压缩）
+const handleNewGiftCoverChange = async (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+
+  if (!file.type.startsWith('image/')) {
+    showNotification('请选择图片文件', 'warning')
+    return
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    showNotification('图片大小不能超过 5MB', 'warning')
+    return
+  }
+
+  // 立即显示预览（使用原文件）
+  newGiftImagePreview.value = URL.createObjectURL(file)
+
+  // 如果文件大于 300KB，自动压缩
+  if (file.size > 300 * 1024) {
+    try {
+      showNotification('正在优化图片以提升加载速度...', 'info')
+      const compressedFile = await compressImage(file, 300, 0.85)
+      
+      newGiftImageFile.value = compressedFile
+      
+      // 更新预览
+      if (newGiftImagePreview.value) {
+        URL.revokeObjectURL(newGiftImagePreview.value)
+      }
+      newGiftImagePreview.value = URL.createObjectURL(compressedFile)
+      
+      const originalSize = (file.size / 1024).toFixed(0)
+      const compressedSize = (compressedFile.size / 1024).toFixed(0)
+      showNotification(`✓ 图片已优化：${originalSize}KB → ${compressedSize}KB（加载速度提升约 ${Math.round((1 - compressedFile.size / file.size) * 100)}%）`, 'success')
+    } catch (error) {
+      console.error('图片压缩失败:', error)
+      // 压缩失败时使用原文件
+      newGiftImageFile.value = file
+      showNotification('图片优化失败，将使用原文件', 'warning')
+    }
+  } else {
+    // 小文件直接使用
+    newGiftImageFile.value = file
+  }
+}
+
+// 清除新礼品封面图片
+const clearNewGiftCover = () => {
+  if (newGiftImagePreview.value) {
+    URL.revokeObjectURL(newGiftImagePreview.value)
+  }
+  newGiftImagePreview.value = null
+  newGiftImageFile.value = null
+  if (newGiftCoverInput.value) {
+    newGiftCoverInput.value.value = ''
+  }
 }
 
 const createSystemGift = async () => {
@@ -1559,9 +1735,23 @@ const createSystemGift = async () => {
     return
   }
 
+  if (!newGiftImageFile.value) {
+    showNotification('请上传礼品封面图片', 'warning')
+    return
+  }
+
   submittingGift.value = true
   try {
-    await createGift({ ...newGiftForm })
+    // 使用 FormData 上传文件
+    const formData = new FormData()
+    formData.append('title', newGiftForm.title.trim())
+    formData.append('description', newGiftForm.description || '')
+    formData.append('pointsCost', newGiftForm.pointsCost.toString())
+    formData.append('stock', newGiftForm.stock.toString())
+    formData.append('deliveryType', newGiftForm.deliveryType)
+    formData.append('coverImage', newGiftImageFile.value)
+
+    await createGift(formData)
     showNotification('✓ 礼品已添加并待上架', 'success')
     resetGiftForm()
     loadManagedGifts()
