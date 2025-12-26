@@ -39,9 +39,15 @@
             </div>
             <div class="user-col">
               <div class="user-info">
-                <img v-if="item.avatar" :src="item.avatar" :alt="item.username" class="user-avatar" />
+                <img 
+                  v-if="getAvatarUrl(item.avatar)" 
+                  :src="getAvatarUrl(item.avatar)" 
+                  :alt="item.username" 
+                  class="user-avatar"
+                  @error="handleAvatarError"
+                />
                 <div v-else class="user-avatar-placeholder">
-                  {{ item.username?.charAt(0)?.toUpperCase() || '?' }}
+                  <!-- 没有头像时显示空白，不显示首字符 -->
                 </div>
                 <div class="user-detail">
                   <p class="username">{{ item.username || '未知用户' }}</p>
@@ -92,6 +98,26 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close'])
+
+// 获取 API 基础 URL（去掉 /api 后缀）
+const API_ORIGIN = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/api\/?$/, '')
+
+// 处理头像 URL
+const getAvatarUrl = (avatar) => {
+  if (!avatar) return null
+  // 如果已经是完整 URL，直接返回
+  if (avatar.startsWith('http://') || avatar.startsWith('https://')) {
+    return avatar
+  }
+  // 如果是相对路径，拼接完整 URL
+  return API_ORIGIN + avatar
+}
+
+// 处理头像加载失败
+const handleAvatarError = (event) => {
+  // 加载失败时隐藏图片，显示占位符
+  event.target.style.display = 'none'
+}
 
 const loading = ref(false)
 const rankingData = ref([])
@@ -464,7 +490,7 @@ watch(
   height: 40px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;

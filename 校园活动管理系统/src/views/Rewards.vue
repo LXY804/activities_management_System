@@ -351,6 +351,13 @@ onMounted(refreshAll)
 .metric-item { display: flex; align-items: center; gap: 12px; transition: 0.3s; }
 .hover-lift:hover { transform: translateY(-3px); }
 
+.actions-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 140px;
+}
+
 .icon-wrap {
   width: 44px; height: 44px; border-radius: 12px;
   display: flex; align-items: center; justify-content: center; font-size: 18px;
@@ -363,6 +370,9 @@ onMounted(refreshAll)
   border: none; background: #f1f5f9; padding: 10px 18px;
   border-radius: 12px; cursor: pointer; transition: 0.3s;
   font-weight: 700; color: #64748b;
+  width: 100%;
+  justify-content: center;
+  box-sizing: border-box;
 }
 .modern-refresh-btn:hover { background: #e2e8f0; color: var(--accent); }
 .modern-refresh-btn:active .refresh-icon { transform: rotate(180deg); }
@@ -373,6 +383,9 @@ onMounted(refreshAll)
   border: none; background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
   padding: 10px 18px; border-radius: 12px; cursor: pointer; transition: 0.3s;
   font-weight: 700; color: white;
+  width: 100%;
+  justify-content: center;
+  box-sizing: border-box;
 }
 .modern-ranking-btn:hover { 
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);

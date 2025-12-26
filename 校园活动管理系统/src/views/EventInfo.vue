@@ -10,7 +10,25 @@
         <span class="hero-cloud hero-cloud--right" aria-hidden="true"></span>
         <div class="hero-left glass-panel">
           <div class="hero-chip">🌿 活力活动</div>
-          <img :src="event.image" alt="封面" />
+          <div class="image-container">
+            <img 
+              v-if="event.image"
+              :src="event.image" 
+              alt="封面"
+              loading="eager"
+              fetchpriority="high"
+              @load="onImageLoad"
+              @error="onImageError"
+              :class="{ 'image-loaded': imageLoaded, 'image-error': imageError }"
+            />
+            <div v-if="!imageLoaded && !imageError" class="image-skeleton">
+              <div class="skeleton-shimmer"></div>
+            </div>
+            <div v-if="imageError" class="image-placeholder">
+              <span class="placeholder-icon">🖼️</span>
+              <span class="placeholder-text">图片加载失败</span>
+            </div>
+          </div>
         </div>
 
         <aside class="hero-right">
@@ -83,6 +101,8 @@ const buildImageUrl = (coverUrl) => {
 const event = ref({})
 const loading = ref(false)
 const errorMsg = ref('')
+const imageLoaded = ref(false)
+const imageError = ref(false)
 
 const formattedDate = computed(() => {
   if (!event.value.start_time) return ''
@@ -120,15 +140,25 @@ const requireLogin = () => {
 const loadEventDetail = async () => {
   loading.value = true
   errorMsg.value = ''
+  imageLoaded.value = false
+  imageError.value = false
+  
   try {
     const data = await fetchEventDetail(id)
+    const imageUrl = buildImageUrl(data.cover_url)
+    
+    // 预加载图片
+    if (imageUrl) {
+      preloadImage(imageUrl)
+    }
+    
     event.value = {
       id: data.id,
       title: data.title,
       start_time: data.start_time,
       end_time: data.end_time,
       location: data.location,
-      image: buildImageUrl(data.cover_url),
+      image: imageUrl,
       organizer: data.organizer_name || '学校',
       capacity: data.capacity || 0,
       signed_up: data.signed_up || 0,
@@ -140,6 +170,35 @@ const loadEventDetail = async () => {
     errorMsg.value = e?.message || '加载活动详情失败'
   } finally {
     loading.value = false
+  }
+}
+
+// 预加载图片
+const preloadImage = (url) => {
+  const img = new Image()
+  img.onload = () => {
+    imageLoaded.value = true
+  }
+  img.onerror = () => {
+    imageError.value = true
+  }
+  img.src = url
+}
+
+// 图片加载成功
+const onImageLoad = () => {
+  imageLoaded.value = true
+  imageError.value = false
+}
+
+// 图片加载失败
+const onImageError = (e) => {
+  imageError.value = true
+  imageLoaded.value = false
+  // 尝试使用默认图片
+  if (e.target.src !== DEFAULT_COVER) {
+    e.target.src = DEFAULT_COVER
+    imageError.value = false
   }
 }
 
@@ -250,11 +309,74 @@ onMounted(() => {
   gap: 16px;
 }
 
-.hero-left img {
+.image-container {
+  position: relative;
   width: 100%;
   height: 420px;
+  border-radius: 24px;
+  overflow: hidden;
+  background: #f0f0f0;
+}
+
+.hero-left img {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   border-radius: 24px;
+  transition: opacity 0.3s ease;
+  opacity: 0;
+}
+
+.hero-left img.image-loaded {
+  opacity: 1;
+}
+
+.hero-left img.image-error {
+  display: none;
+}
+
+.image-skeleton {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.image-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #e0e0e0 0%, #f5f5f5 100%);
+  color: #999;
+}
+
+.placeholder-icon {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+.placeholder-text {
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .hero-chip {

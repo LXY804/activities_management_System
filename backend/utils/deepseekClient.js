@@ -6,7 +6,7 @@ const OpenAI = require("openai");
 // 在 .env 或系统环境中配置 DEEPSEEK_API_KEY
 const openai = new OpenAI({
   baseURL: "https://api.deepseek.com",
-  apiKey: "sk-25833b284ac84df4ab7bc85c5cbdb545",
+  apiKey: "sk-c65bd82df08b4f01882a85d34b255c00",
 });
 
 /**

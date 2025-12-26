@@ -104,6 +104,12 @@ module.exports = (req, res, next) => {
       replacements,
       type: QueryTypes.INSERT
     }).catch((err) => {
+      // 只在表不存在时输出一次警告，避免日志刷屏
+      if (err.message && err.message.includes("doesn't exist")) {
+        // 表不存在，静默处理（避免每次请求都输出错误）
+        return
+      }
+      // 其他错误才输出
       console.error('[activityLogger] 记录操作日志失败:', err.message)
     })
   })
