@@ -2,7 +2,7 @@ const sequelize = require('../config/database')
 const { QueryTypes } = require('sequelize')
 const { generateToken } = require('../utils/jwt')
 const { success, error } = require('../utils/response')
-
+// 登录
 exports.login = async (req, res) => {
   try {
     const { username, password, role } = req.body
@@ -28,17 +28,17 @@ exports.login = async (req, res) => {
       type: QueryTypes.SELECT
     })
 
-    // 用户不存在
+    // 用户不存在 
     if (!user) {
       return error(res, '该用户暂未注册', 401)
     }
     
-    // 角色验证
+    // 角色验证 如果角色不匹配，则返回错误
     if (role && user.role !== role) {
       return error(res, '身份验证失败，请选择正确的身份', 403)
     }
 
-    // 密码错误
+    // 密码错误 
     if (password !== user.password) {
       return error(res, '账号或密码错误', 401)
     }

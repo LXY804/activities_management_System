@@ -2,7 +2,7 @@ const sequelize = require('../config/database')
 const { QueryTypes } = require('sequelize')
 const { success, error } = require('../utils/response')
 const path = require('path')
-
+// 获取个人资料
 exports.getProfile = async (req, res) => {
   try {
     const userId = req.user.id
@@ -40,7 +40,7 @@ exports.getProfile = async (req, res) => {
   }
 }
 
-// 上传头像（使用 users 表中的 image 字段）
+// 上传头像（使用/backend/uploads/ 目录下的图片文件）
 exports.uploadAvatar = async (req, res) => {
   try {
     const userId = req.user.id

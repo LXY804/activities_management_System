@@ -2,7 +2,7 @@ const { verifyToken } = require('../utils/jwt')
 const sequelize = require('../config/database')
 const { QueryTypes } = require('sequelize')
 const { error } = require('../utils/response')
-
+// 认证中间件
 const authenticate = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '')

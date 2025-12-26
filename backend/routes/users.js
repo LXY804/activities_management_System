@@ -6,7 +6,7 @@ const multer = require('multer')
 const path = require('path')
 const fs = require('fs')
 
-// 确保上传目录存在
+// 确保上传目录存在。这是为了确保上传的文件能够保存到正确的位置。
 const uploadDir = path.join(__dirname, '..', 'uploads')
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true })
@@ -22,7 +22,7 @@ const storage = multer.diskStorage({
     cb(null, `avatar_${req.user.id}_${Date.now()}${ext}`)
   }
 })
-
+// 配置 multer 保存路径和文件名
 const upload = multer({ storage })
 
 router.get('/profile', authenticate, userController.getProfile)
