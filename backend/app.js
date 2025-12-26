@@ -20,10 +20,31 @@ const app = express();
 app.use(
   cors({
     origin: (origin, callback) => {
+      // 允许的域名列表
+      const allowedOrigins = [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        process.env.CORS_ORIGIN
+      ].filter(Boolean);
+      
+      // 如果没有 origin（如 Postman、curl 等），允许通过
       if (!origin) return callback(null, true);
-      if (origin.startsWith('http://localhost')) {
+      
+      // 开发环境：允许 localhost
+      if (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost')) {
         return callback(null, true);
       }
+      
+      // 生产环境：检查是否在允许列表中
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      
+      // 如果设置了 CORS_ORIGIN，也允许匹配的域名
+      if (process.env.CORS_ORIGIN && origin === process.env.CORS_ORIGIN) {
+        return callback(null, true);
+      }
+      
       return callback(new Error('Not allowed by CORS'));
     },
     credentials: true
