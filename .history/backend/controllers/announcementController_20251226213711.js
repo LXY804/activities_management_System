@@ -165,17 +165,20 @@ exports.getPublishedAnnouncements = async (req, res) => {
 
     const { count, rows } = await Announcement.findAndCountAll({
       attributes: [
-        'announcementId',
+        ['announcement_id', 'id'],
         'title',
         'content',
         'createdAt',
+        ['created_at', 'created_at'],
         'publishedAt',
-        'publisherType'
+        ['published_at', 'published_at'],
+        'publisherType',
+        ['publisher_type', 'publisher_type']
       ],
       include: [{
         model: User,
         as: 'publisher',
-        attributes: ['userId', 'username'],
+        attributes: ['username'],
         required: true
       }],
       where: {
@@ -276,21 +279,29 @@ exports.getAdminConfirmationStats = async (req, res) => {
   try {
     const announcements = await Announcement.findAll({
       attributes: [
-        'announcementId',
+        ['announcement_id', 'id'],
         'title',
-        'publishedAt'
+        'publishedAt',
+        ['published_at', 'published_at']
       ],
       include: [
         {
           model: User,
           as: 'publisher',
-          attributes: ['userId', 'username'],
+          attributes: ['username'],
           required: true
+        },
+        {
+          model: AnnouncementConfirmation,
+          as: 'confirmations',
+          attributes: [],
+          required: false
         }
       ],
       where: {
         status: 1
       },
+      group: ['Announcement.announcement_id', 'publisher.user_id'],
       order: [['publishedAt', 'DESC']]
     })
 
@@ -404,15 +415,20 @@ exports.getAllAnnouncements = async (req, res) => {
 
     const { count, rows } = await Announcement.findAndCountAll({
       attributes: [
-        'announcementId',
+        ['announcement_id', 'id'],
         'title',
         'content',
         'status',
         'adminCheck',
+        ['admin_check', 'admin_check'],
         'checkRemark',
+        ['check_remark', 'check_remark'],
         'createdAt',
+        ['created_at', 'created_at'],
         'publishedAt',
-        'publisherType'
+        ['published_at', 'published_at'],
+        'publisherType',
+        ['publisher_type', 'publisher_type']
       ],
       include: [
         {

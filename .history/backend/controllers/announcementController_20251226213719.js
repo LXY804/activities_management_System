@@ -165,17 +165,20 @@ exports.getPublishedAnnouncements = async (req, res) => {
 
     const { count, rows } = await Announcement.findAndCountAll({
       attributes: [
-        'announcementId',
+        ['announcement_id', 'id'],
         'title',
         'content',
         'createdAt',
+        ['created_at', 'created_at'],
         'publishedAt',
-        'publisherType'
+        ['published_at', 'published_at'],
+        'publisherType',
+        ['publisher_type', 'publisher_type']
       ],
       include: [{
         model: User,
         as: 'publisher',
-        attributes: ['userId', 'username'],
+        attributes: ['username'],
         required: true
       }],
       where: {
@@ -404,15 +407,20 @@ exports.getAllAnnouncements = async (req, res) => {
 
     const { count, rows } = await Announcement.findAndCountAll({
       attributes: [
-        'announcementId',
+        ['announcement_id', 'id'],
         'title',
         'content',
         'status',
         'adminCheck',
+        ['admin_check', 'admin_check'],
         'checkRemark',
+        ['check_remark', 'check_remark'],
         'createdAt',
+        ['created_at', 'created_at'],
         'publishedAt',
-        'publisherType'
+        ['published_at', 'published_at'],
+        'publisherType',
+        ['publisher_type', 'publisher_type']
       ],
       include: [
         {

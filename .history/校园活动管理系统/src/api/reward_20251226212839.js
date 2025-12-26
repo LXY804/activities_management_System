@@ -56,7 +56,8 @@ export const fetchAdminRewardOrders = (params) =>
 export const updateAdminOrderStatus = (orderId, payload) =>
   request.patch(`/rewards/admin/orders/${orderId}/status`, payload)
 
-
+export const fetchPointsRanking = (params) =>
+  request.get('/rewards/ranking/points', { params })
 
 // 在 reward.js 末尾或合适位置添加
 export const fetchPointsRanking = (params) => request.get('/rewards/ranking', { params })

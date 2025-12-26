@@ -171,7 +171,6 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import NavBar from '../components/NavBar.vue'
-import PointsRankingModal from '../components/PointsRankingModal.vue'
 import {
   fetchRewardsSummary,
   fetchGiftLibrary,
@@ -202,7 +201,6 @@ const recentOrders = ref([])
 const allGifts = ref([])         
 const displayedGifts = ref([])   
 const loadingGifts = ref(false)
-const showRankingModal = ref(false)
 
 const redeemState = reactive({
   open: false,
@@ -367,20 +365,6 @@ onMounted(refreshAll)
 .modern-refresh-btn:hover { background: #e2e8f0; color: var(--accent); }
 .modern-refresh-btn:active .refresh-icon { transform: rotate(180deg); }
 .refresh-icon { transition: 0.5s; display: inline-block; }
-
-.modern-ranking-btn {
-  display: flex; align-items: center; gap: 8px;
-  border: none; background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-  padding: 10px 18px; border-radius: 12px; cursor: pointer; transition: 0.3s;
-  font-weight: 700; color: white;
-}
-.modern-ranking-btn:hover { 
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(251, 191, 36, 0.3);
-}
-.modern-ranking-btn:active { transform: translateY(0); }
-.ranking-icon { display: inline-block; }
 
 .bento-grid { 
   flex: 1; 

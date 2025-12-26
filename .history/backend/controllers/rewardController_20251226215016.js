@@ -885,72 +885,69 @@ exports.createFeedback = async (req, res) => {
  * 获取积分排行榜
  * 从v_user_points视图查询，按积分从高到低排序
  */
-// backend/controllers/rewardController.js
-
 exports.getPointsRanking = async (req, res) => {
   try {
     const limit = parsePositiveInt(req.query.limit, 100, false)
     const offset = parsePositiveInt(req.query.offset, 0, true)
 
-    // === 优化版本 ===
-    // 1. 使用直接聚合而不是视图，避免视图全表扫描
-    // 2. 早期过滤：WHERE 条件在聚合前就开始过滤
-    // 3. 索引优化：利用 point_transactions(user_id) 和 users(user_id) 的索引
-    // 4. 避免排序成本：先聚合和排序，再 LIMIT OFFSET
-    
-    // 先查询排名和数据（不分页），然后在内存中应用分页
-    const rankingSql = `
+    // === 修改开始 ===
+    // 1. 移除 CROSS JOIN (SELECT @rank := 0)
+    // 2. 使用 ROW_NUMBER() 或 RANK() 窗口函数
+    // 3. 给别名 rank 加上反引号 `rank` 以避免关键字冲突
+    const sql = `
       SELECT 
-        u.user_id AS userId,
-        u.username,
-        u.role AS userType,
-        u.image AS avatar,
-        COALESCE(SUM(pt.change_amount), 0) AS totalPoints
-      FROM users u
-      LEFT JOIN point_transactions pt ON u.user_id = pt.user_id
-      GROUP BY u.user_id, u.username, u.role, u.image
-      HAVING COALESCE(SUM(pt.change_amount), 0) > 0
-      ORDER BY totalPoints DESC, u.user_id ASC
-      LIMIT 500
+        sub.userId,
+        sub.username,
+        sub.userType,
+        sub.avatar,
+        sub.totalPoints,
+        sub.rankNum AS \`rank\`
+      FROM (
+        SELECT 
+          vup.user_id AS userId,
+          u.username,
+          u.user_type AS userType,
+          u.avatar,
+          vup.total_points AS totalPoints,
+          RANK() OVER (ORDER BY vup.total_points DESC, vup.user_id ASC) AS rankNum
+        FROM v_user_points vup
+        LEFT JOIN users u ON vup.user_id = u.user_id
+        WHERE vup.total_points > 0
+      ) sub
+      ORDER BY sub.rankNum ASC
+      LIMIT ? OFFSET ?
     `
+    // === 修改结束 ===
 
-    console.log(`[排行榜] 开始查询，限制为${limit}，偏移为${offset}`)
-    const startTime = Date.now()
-
-    const ranking = await sequelize.query(rankingSql, {
-      type: QueryTypes.SELECT,
-      timeout: 30000 // 30秒超时
+    const countSql = `
+      SELECT COUNT(*) AS total
+      FROM v_user_points
+      WHERE total_points > 0
+    `
+    
+    // 注意：原本的 replacements 不需要改变，依然是 [limit, offset]
+    const [ranking] = await sequelize.query(sql, {
+      replacements: [limit, offset],
+      type: QueryTypes.SELECT
     })
 
-    const queryTime = Date.now() - startTime
-    console.log(`[排行榜] 查询完成，用时${queryTime}ms，返回${ranking.length}条记录`)
+    const [countResult] = await sequelize.query(countSql, {
+      type: QueryTypes.SELECT
+    })
 
-    // 在内存中添加排名
-    const withRank = ranking.map((item, index) => ({
-      ...item,
-      rank: index + 1
-    }))
+    const total = countResult?.total || 0
 
-    // 获取总数用于分页
-    const total = ranking.length
-    const pageCount = Math.ceil(total / limit)
-
-    // 应用分页
-    const paginatedData = withRank.slice(offset, offset + limit)
-
-    console.log(`[排行榜] 分页：总${total}条，第${Math.floor(offset / limit) + 1}/${pageCount}页，返回${paginatedData.length}条`)
-
-    return success(res, {
-      ranking: paginatedData,
+    success(res, {
+      ranking,
       pagination: {
         total,
         limit,
         offset,
-        pageCount
+        pageCount: Math.ceil(total / limit)
       }
-    })
+    }, '获取积分排行榜成功')
   } catch (err) {
-    console.error('[排行榜] 获取积分排行榜失败:', err)
-    return error(res, '获取积分排行榜失败', 500)
+    console.error('获取积分排行榜失败:', err)
+    error(res, '获取积分排行榜失败', 500)
   }
 }

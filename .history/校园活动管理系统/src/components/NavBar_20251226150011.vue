@@ -218,37 +218,32 @@ const handleLogout = () => {
 }
 
 let loginCheckInterval = null
-let msgCheckInterval = null // 新增一个用于消息轮询的定时器变量
 
 onMounted(() => {
   checkLoginStatus()
-  
-  // 定时器 1：检查登录状态（保持每2秒检查一次，用于多标签页同步登出状态）
+  // 定期检查登录状态，确保状态同步（每2秒检查一次）
   loginCheckInterval = setInterval(() => {
     checkLoginStatus()
-  }, 2000)
-
-  // 定时器 2：轮询未读消息（设置为每30秒一次，避免后端日志刷屏）
-  msgCheckInterval = setInterval(() => {
+    // 如果已登录，定期刷新未确认公告数量（每30秒）
     if (isLoggedIn.value) {
       loadUnconfirmedCount()
     }
-  }, 30000) // 30000 ms = 30秒
-
+  }, 2000)
   window.addEventListener('storage', checkLoginStatus)
+  // 监听 localStorage 变化（跨标签页同步）
   window.addEventListener('focus', checkLoginStatus)
   document.body.classList.add('has-side-nav-layout')
   
-  // 初始加载
+  // 初始加载未确认公告数量
   if (isLoggedIn.value) {
     loadUnconfirmedCount()
   }
 })
 
 onUnmounted(() => {
-  if (loginCheckInterval) clearInterval(loginCheckInterval)
-  if (msgCheckInterval) clearInterval(msgCheckInterval) // 清除消息定时器
-  
+  if (loginCheckInterval) {
+    clearInterval(loginCheckInterval)
+  }
   window.removeEventListener('storage', checkLoginStatus)
   window.removeEventListener('focus', checkLoginStatus)
   document.body.classList.remove('has-side-nav-layout')
