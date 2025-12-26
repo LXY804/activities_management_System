@@ -3,6 +3,7 @@ const { exec } = require('child_process')
 const fs = require('fs')
 const path = require('path')
 const { authenticate, authorize } = require('../middleware/auth')
+const { getLogs } = require('../controllers/logController')
 
 const router = express.Router()
 
@@ -61,6 +62,8 @@ router.post('/backup', authenticate, authorize('admin'), (req, res) => {
     })
   })
 })
+
+router.get('/logs', authenticate, authorize('admin'), getLogs)
 
 module.exports = router
 

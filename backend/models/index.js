@@ -16,6 +16,7 @@ const Schedule = require('./Schedule')
 const GiftItem = require('./GiftItem')
 const GiftOrder = require('./GiftOrder')
 const RecUserTopn = require('./RecUserTopn')
+const ActivityLog = require('./ActivityLog')
 
 // User <-> College (多对一)
 User.belongsTo(College, {
@@ -269,6 +270,15 @@ Activity.hasMany(RecUserTopn, {
   as: 'userRecommendations'
 })
 
+ActivityLog.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'actor'
+})
+User.hasMany(ActivityLog, {
+  foreignKey: 'user_id',
+  as: 'activityLogs'
+})
+
 module.exports = {
   User,
   College,
@@ -286,6 +296,7 @@ module.exports = {
   Schedule,
   GiftItem,
   GiftOrder,
-  RecUserTopn
+  RecUserTopn,
+  ActivityLog
 }
 
