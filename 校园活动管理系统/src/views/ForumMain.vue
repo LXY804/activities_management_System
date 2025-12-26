@@ -134,15 +134,15 @@
                         <textarea v-model.trim="publishForm.content" rows="6" placeholder="分享今天的见闻、求助信息或出物详情..." required></textarea>
                         <div class="bento-upload-area">
                           <p>附件图片（最多3张）</p>
-                          <div class="upload-drop-zone" @click.prevent="triggerImagePicker">
+                          <div class="upload-drop-zone">
                             <div class="upload-cta">
                               <span class="upload-icon" aria-hidden="true">📁</span>
                               <div>
-                                <strong>选择图片文件夹</strong>
-                                <small>点击此区域或拖拽图片，自动上限 3 张</small>
+                                <strong>选择图片</strong>
+                                <small>点击此区域选择图片，最多 3 张</small>
                               </div>
                             </div>
-                            <input ref="imagePicker" class="hidden-file-input" type="file" accept="image/*" multiple @change="handleImageSelect" />
+                            <input ref="imagePicker" class="hidden-file-input" type="file" accept="image/*" multiple @change="handleImageSelect" @click.stop />
                           </div>
                           <div class="upload-preview-row" v-if="imagePreviewList.length">
                             <div class="upload-chip" v-for="(img, idx) in imagePreviewList" :key="img + idx">
@@ -157,7 +157,6 @@
                             <span>置顶</span>
                           </label>
                           <div class="bento-action-btns">
-                            <button type="button" class="btn-cancel" @click="closePublishModal">取消</button>
                             <button type="submit" class="btn-send-grad">确认发布</button>
                           </div>
                         </div>
@@ -183,8 +182,15 @@
                     >
                       <div class="p-card-header">
                         <div class="p-author">
-                          <div class="p-avatar" :style="{ background: generateColor(post.userName) }">
-                            {{ post.userName.charAt(0) }}
+                          <div class="p-avatar" :style="post.userAvatar ? {} : { background: generateColor(post.userName) }">
+                            <img 
+                              v-if="post.userAvatar" 
+                              :src="API_ORIGIN + post.userAvatar" 
+                              alt="头像" 
+                              class="avatar-img"
+                              @error="handleAvatarError"
+                            />
+                            <span v-else></span>
                           </div>
                           <div class="p-meta">
                             <span class="p-name">{{ post.userName }}</span>
@@ -295,7 +301,7 @@ const currentUser = reactive({
 const activeCategoryId = ref(null)
 const keyword = ref('')
 const commentDrafts = reactive({})
-const publishForm = reactive({ title: '', content: '', imageInputs: ['', '', ''], isSticky: false, categoryId: 0 })
+const publishForm = reactive({ title: '', content: '', imageInputs: ['', '', ''], imageFiles: [], isSticky: false, categoryId: 0 })
 const showPublishModal = ref(false)
 const imagePicker = ref(null)
 const tempImageUrls = ref([])
@@ -439,6 +445,7 @@ const loadPosts = async () => {
         categoryId: post.category_id || 0,
         userId: post.author_id || post.user_id,
         userName: post.author || post.username,
+        userAvatar: post.author_image || null,
         title: post.title,
         content: post.content,
         status: (post.status === 1 || post.status === '1') ? 'active' : 'solved',
@@ -516,6 +523,7 @@ const handleImageSelect = (event) => {
   const urls = files.map(file => URL.createObjectURL(file))
   tempImageUrls.value = urls
   publishForm.imageInputs = ['', '', '']
+  publishForm.imageFiles = files // 保存原始 File 对象
   urls.forEach((url, idx) => { publishForm.imageInputs[idx] = url })
   event.target.value = ''
 }
@@ -530,6 +538,7 @@ const resetForm = () => {
   publishForm.title = ''
   publishForm.content = ''
   publishForm.imageInputs = ['', '', '']
+  publishForm.imageFiles = []
   publishForm.categoryId = activeCategoryId.value || 0 // 根据当前板块设置默认类别
   releaseTempImageUrls()
   if (imagePicker.value) imagePicker.value.value = ''
@@ -541,18 +550,23 @@ const closePublishModal = () => {
 }
 
 const publishPost = async () => {
+  // 检查是否登录
+  if (!requireLogin()) {
+    return
+  }
+  
   if (!publishForm.title || !publishForm.content) {
     alert('请填写标题和内容')
     return
   }
   
   try {
-    // 处理图片上传（如果有）
-    const imageFile = publishForm.imageInputs.find(img => img && typeof img !== 'string')
+    // 处理图片上传（如果有）- 使用保存的 File 对象
+    const imageFile = publishForm.imageFiles.length > 0 ? publishForm.imageFiles[0] : null
     
     await createPost({
-    title: publishForm.title,
-    content: publishForm.content,
+      title: publishForm.title,
+      content: publishForm.content,
       categoryId: publishForm.categoryId || 0,
       image: imageFile
     })
@@ -564,7 +578,8 @@ const publishPost = async () => {
     await loadMyStats()
   } catch (err) {
     console.error('发帖错误:', err)
-    alert('发帖失败: ' + (err.message || '未知错误'))
+    const errorMsg = err?.response?.data?.message || err?.message || '未知错误'
+    alert('发帖失败: ' + errorMsg)
   }
 }
 
@@ -673,6 +688,11 @@ const handleDelete = async (id) => {
   } catch (err) {
     alert('删除失败: ' + (err.message || '未知错误'))
   }
+}
+
+const handleAvatarError = (e) => {
+  // 头像加载失败时，隐藏图片，显示空白
+  e.target.style.display = 'none'
 }
 const formatTime = (v) => {
   const d = new Date(v)
@@ -1024,15 +1044,17 @@ onBeforeUnmount(() => {
 }
 
 .bento-footer { display: flex; flex-direction: column; gap: 18px; margin-top: 20px; }
-.bento-action-btns { display: flex; gap: 12px; width: 100%; }
+.bento-action-btns { display: flex; gap: 12px; width: 100%; justify-content: center; }
 .btn-cancel {
   flex: 1; background: #f3f4f6; color: #6b7280; border: none; padding: 14px 0;
   border-radius: 100px; font-weight: 800; cursor: pointer; transition: all 0.3s;
 }
 .btn-cancel:hover { background: #e5e7eb; color: #111827; }
 .btn-send-grad {
-  flex: 2; background: var(--bg-dark); color: white; border: none; padding: 14px 0;
+  flex: 1; background: linear-gradient(135deg, #0db18c, #10b981); color: white; border: none; padding: 14px 0;
   border-radius: 100px; font-weight: 800; cursor: pointer; transition: all 0.3s;
+  box-shadow: 0 4px 12px rgba(13, 177, 140, 0.3);
+  max-width: 300px;
 }
 .btn-send-grad:hover { transform: translateY(-3px); background: var(--mint); box-shadow: 0 10px 20px rgba(13, 177, 140, 0.2); }
 
@@ -1043,7 +1065,7 @@ onBeforeUnmount(() => {
 .upload-cta { display: flex; align-items: center; gap: 16px; }
 .upload-icon { width: 48px; height: 48px; border-radius: 16px; background: rgba(13, 177, 140, 0.12); display: flex; align-items: center; justify-content: center; font-size: 24px; }
 .upload-cta strong { display: block; font-size: 15px; color: #0f172a; }
-.hidden-file-input { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+.hidden-file-input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; z-index: 10; pointer-events: auto; }
 .upload-preview-row { display: flex; gap: 12px; flex-wrap: wrap; }
 .upload-chip { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 16px; background: white; border: 1px solid rgba(226, 232, 240, 0.9); box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06); font-size: 12px; font-weight: 800; color: #475569; }
 .upload-chip img { width: 36px; height: 36px; border-radius: 12px; object-fit: cover; }
@@ -1087,6 +1109,13 @@ onBeforeUnmount(() => {
   font-size: 20px;
   flex-shrink: 0;
   box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  overflow: hidden;
+}
+
+.p-avatar .avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .p-meta {
   display: flex;
@@ -1228,10 +1257,25 @@ onBeforeUnmount(() => {
   padding: 32px;
   overflow-y: auto;
   flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .publish-modal-body .bento-form {
   gap: 20px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.publish-modal-body .bento-footer {
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid #f1f5f9;
+  position: sticky;
+  bottom: 0;
+  background: white;
+  z-index: 10;
 }
 
 /* 响应式设计 */

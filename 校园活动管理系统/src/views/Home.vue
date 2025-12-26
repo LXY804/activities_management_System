@@ -19,7 +19,7 @@
             </h1>
             <p class="compact-lead">发现伙伴、收集能量，让每一天都闪耀绿光。</p>
             <div class="hero-actions">
-              <button class="primary-btn">立即加入</button>
+              <button class="primary-btn" @click="goToPromotion">立即加入</button>
               <div class="user-stack">
                 <span class="avatar-dot"></span>
                 <span class="stack-text">1.2w+ 伙伴已上线</span>
@@ -73,9 +73,12 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import NavBar from '../components/NavBar.vue'
 import { fetchEvents } from '@/api/event'
 import { fetchUserStats } from '@/api/user'
+
+const router = useRouter()
 
 const heroCards = ref([
   { label: '正在进行', value: '0 场', desc: '今日新增 0', icon: '🎨' },
@@ -155,6 +158,10 @@ const loadHomeData = async () => {
   } catch (err) {
     console.error('加载首页数据失败:', err)
   }
+}
+
+const goToPromotion = () => {
+  router.push({ name: 'EventPromotion' })
 }
 
 onMounted(() => {
