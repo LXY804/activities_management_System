@@ -15,6 +15,7 @@ console.log('[APP] DB_USER:', process.env.DB_USER);
 console.log('[APP] DB_PASSWORD:', process.env.DB_PASSWORD);
 console.log('[APP] DB_NAME:', process.env.DB_NAME);
 
+const activityLogger = require('./middleware/activityLogger');
 const app = express();
 // 中间件
 app.use(
@@ -55,6 +56,9 @@ app.use(express.urlencoded({ extended: true }));
 
 // 静态资源
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// 操作日志中间件（在业务路由前）
+app.use(activityLogger);
 
 // ==== 关键改动: 初始化数据库连接 ====
 const sequelize = require('./config/database');

@@ -5,7 +5,7 @@
       <div class="glow-orb orb-2"></div>
     </div>
 
-    <NavBar />
+    <NavBar style="position: relative; z-index: 100;" />
     
     <main class="dashboard-wrapper">
       <div class="dashboard-inner">
@@ -162,17 +162,16 @@ const upcomingCount = computed(() => events.value.filter(e => e.status === 'upco
 </script>
 
 <style scoped>
-/* --- 全局布局优化：修正偏移 & 消除分隔线 --- */
+/* --- 全局布局优化 --- */
 .events-dashboard {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f8fafc; /* 底色保持纯净 */
+  background: #f8fafc;
   position: relative;
   overflow: hidden;
 }
 
-/* 无缝背景光晕 */
 .background-atmosphere {
   position: fixed;
   inset: 0;
@@ -191,27 +190,26 @@ const upcomingCount = computed(() => events.value.filter(e => e.status === 'upco
 .orb-1 { width: 500px; height: 500px; background: #d1fae5; top: -100px; right: -100px; }
 .orb-2 { width: 400px; height: 400px; background: #e0f2fe; bottom: -50px; left: -50px; }
 
-/* 容器居中修正 */
 .dashboard-wrapper {
   position: relative;
-  z-index: 1;
+  z-index: 1; /* 确保主体在背景之上，但在 NavBar 之下 */
   flex: 1;
   display: flex;
-  justify-content: center; /* 内容水平居中 */
-  padding: 84px 24px 20px;
+  justify-content: center;
+  padding: 24px 24px 20px; /* 移除了多余的顶部偏移，由内容自行撑开 */
   overflow: hidden;
 }
 
 .dashboard-inner {
   width: 100%;
-  max-width: 1100px; /* 限制宽度防止内容向右拉伸 */
+  max-width: 1100px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  height: calc(100vh - 120px); /* 确保有足够高度显示内容 */
+  height: calc(100vh - 100px); 
 }
 
-/* --- 看板组件：去除硬边框 --- */
+/* --- 看板组件 --- */
 .glass-soft {
   background: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(20px);
@@ -221,10 +219,9 @@ const upcomingCount = computed(() => events.value.filter(e => e.status === 'upco
   border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
-/* 标题盒子固定定位 */
 .dashboard-header {
   position: sticky;
-  top: -680px;
+  top: 0; /* 修复点：粘性定位设为0，确保不向上冲破布局 */
   z-index: 10;
 }
 
@@ -275,15 +272,15 @@ const upcomingCount = computed(() => events.value.filter(e => e.status === 'upco
   outline: none;
 }
 
-/* --- 滚动区：局部滚动条美化 --- */
+/* --- 滚动区 --- */
 .scroll-viewport {
   flex: 1;
   overflow-y: auto;
   padding-bottom: 20px;
-  min-height: 0; /* 确保flex子元素可以缩小 */
-  scrollbar-width: none; /* Firefox */
+  min-height: 0;
+  scrollbar-width: none;
 }
-.scroll-viewport::-webkit-scrollbar { width: 0; display: none; } /* Chrome 隐藏滚动条增强沉浸感 */
+.scroll-viewport::-webkit-scrollbar { width: 0; display: none; }
 
 .cards-layout {
   display: grid;
@@ -291,7 +288,7 @@ const upcomingCount = computed(() => events.value.filter(e => e.status === 'upco
   gap: 16px;
 }
 
-/* --- 紧凑卡片设计 --- */
+/* --- 卡片设计 --- */
 .event-card-compact {
   background: white;
   border-radius: 16px;
@@ -329,7 +326,7 @@ const upcomingCount = computed(() => events.value.filter(e => e.status === 'upco
 .cta-mini-btn:hover { background: #10b981; color: white; }
 
 @media (max-width: 768px) {
-  .dashboard-wrapper { padding: 80px 16px 20px; }
+  .dashboard-wrapper { padding: 20px 16px; }
   .header-top { flex-direction: column; align-items: flex-start; gap: 16px; }
   .stats-overview { width: 100%; justify-content: space-between; }
 }

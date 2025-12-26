@@ -43,6 +43,12 @@
         <button 
           type="button"
           class="sidebar__item"
+          :class="{ active: activeMenu === 'logs' }"
+          @click="switchToLogs"
+        >操作日志</button>
+        <button 
+          type="button"
+          class="sidebar__item"
           :class="{ active: activeMenu === 'news' }"
           @click="activeMenu = 'news'"
         >发布资讯</button>
@@ -440,6 +446,148 @@
             </div>
           </div>
         </article>
+
+        <!-- 操作日志面板 -->
+        <div v-if="activeMenu === 'logs'" class="logs-container">
+          <article class="panel logs-main-panel">
+            <header class="panel-header-actions">
+              <div>
+                <h2>系统操作日志</h2>
+                <p class="panel-desc">实时回溯每一次 API 调用，支持关键词、方法、状态与时间段筛选</p>
+              </div>
+              <div class="panel-actions">
+                <button class="ghost-link" @click="loadActivityLogs" :disabled="logLoading">
+                  {{ logLoading ? '刷新中...' : '刷新' }}
+                </button>
+              </div>
+            </header>
+
+            <div class="log-stat-grid">
+              <div class="log-stat-card">
+                <p>总记录</p>
+                <strong>{{ logStats.total }}</strong>
+                <small>累计追踪条目</small>
+              </div>
+              <div class="log-stat-card">
+                <p>成功次数</p>
+                <strong>{{ logStats.successCount }}</strong>
+                <small>返回 2xx/3xx</small>
+              </div>
+              <div class="log-stat-card">
+                <p>失败次数</p>
+                <strong>{{ logStats.failureCount }}</strong>
+                <small>返回 4xx/5xx</small>
+              </div>
+              <div class="log-stat-card">
+                <p>成功率</p>
+                <strong>{{ logSuccessRate }}%</strong>
+                <small>成功 / 总计</small>
+              </div>
+              <div class="log-stat-card">
+                <p>平均耗时</p>
+                <strong>{{ formatDuration(logStats.avgDuration) }}</strong>
+                <small>服务响应时间</small>
+              </div>
+            </div>
+
+            <div class="log-filter-bar">
+              <input
+                v-model.trim="logFilters.keyword"
+                type="text"
+                placeholder="搜索用户名 / 接口 / IP"
+                class="search-input"
+                @keyup.enter="applyLogFilters"
+              />
+              <select v-model="logFilters.method" class="log-select" @change="applyLogFilters">
+                <option value="all">全部方法</option>
+                <option v-for="method in logMethodOptions" :key="method" :value="method">{{ method }}</option>
+              </select>
+              <select v-model="logFilters.success" class="log-select" @change="applyLogFilters">
+                <option value="all">全部状态</option>
+                <option value="success">成功</option>
+                <option value="failure">失败</option>
+              </select>
+              <div class="log-date-range">
+                <input type="date" v-model="logFilters.startDate" class="date-input" @change="applyLogFilters" />
+                <span>至</span>
+                <input type="date" v-model="logFilters.endDate" class="date-input" @change="applyLogFilters" />
+              </div>
+              <div class="log-filter-actions">
+                <button class="btn btn-primary" @click="applyLogFilters">筛选</button>
+                <button class="btn btn-secondary" @click="resetLogFilters">重置</button>
+              </div>
+            </div>
+
+            <div v-if="logLoading" class="loading-block">日志加载中...</div>
+            <div v-else-if="logs.length" class="log-table">
+              <div v-for="log in logs" :key="log.id" class="log-row">
+                <div class="log-row-header">
+                  <div>
+                    <span class="log-user">{{ log.username || '未登录访客' }}</span>
+                    <span class="log-action">{{ describeLogAction(log) }}</span>
+                  </div>
+                  <div class="log-meta">
+                    <span class="log-method-badge" :class="`method-${(log.method || '').toLowerCase()}`">{{ log.method }}</span>
+                    <span class="log-status-badge" :class="{ success: log.success, failure: !log.success }">
+                      {{ log.success ? '成功' : '失败' }}
+                    </span>
+                    <span class="log-code">HTTP {{ log.statusCode }}</span>
+                    <span class="log-duration">{{ formatDuration(log.durationMs) }}</span>
+                  </div>
+                </div>
+                <div class="log-row-body">
+                  <div class="log-route"><strong>路由：</strong>{{ log.route }}</div>
+                  <div class="log-meta-info">
+                    <span>时间：{{ formatTime(log.createdAt) }}</span>
+                    <span>IP：{{ log.ipAddress || '未知' }}</span>
+                  </div>
+                  <div class="log-payload">
+                    <strong>请求数据：</strong>
+                    <details v-if="log.requestPayload">
+                      <summary>{{ payloadPreview(log.requestPayload) }}</summary>
+                      <pre>{{ log.requestPayload }}</pre>
+                    </details>
+                    <span v-else>无</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p v-else class="empty-text">暂无符合条件的日志记录</p>
+
+            <div class="log-pagination">
+              <button class="log-pager-btn" :disabled="logPagination.page === 1 || logLoading" @click="handleLogPageChange('prev')">
+                上一页
+              </button>
+              <span class="pager-info">第 {{ logPagination.page }} / {{ logTotalPages }} 页 · 共 {{ logPagination.total }} 条</span>
+              <button class="log-pager-btn" :disabled="logPagination.page === logTotalPages || logLoading" @click="handleLogPageChange('next')">
+                下一页
+              </button>
+            </div>
+          </article>
+
+          <article class="panel log-side-panel">
+            <section>
+              <h3>活跃用户 TOP5</h3>
+              <ul class="log-top-list">
+                <li v-for="user in logStats.topUsers" :key="user.username">
+                  <span>{{ user.username }}</span>
+                  <span class="log-top-count">{{ user.count }} 次</span>
+                </li>
+                <li v-if="!logStats.topUsers.length" class="empty-text">暂无数据</li>
+              </ul>
+            </section>
+            <section>
+              <h3>热点接口 TOP5</h3>
+              <ul class="log-top-list">
+                <li v-for="route in logStats.topRoutes" :key="route.route">
+                  <span>{{ route.route }}</span>
+                  <span class="log-top-count">{{ route.count }} 次</span>
+                </li>
+                <li v-if="!logStats.topRoutes.length" class="empty-text">暂无数据</li>
+              </ul>
+            </section>
+          </article>
+        </div>
 
         <!-- 发布资讯面板 -->
         <div v-if="activeMenu === 'news'" class="news-container">
@@ -911,6 +1059,7 @@ import {
   updateAdminOrderStatus
 } from '@/api/reward'
 import { deleteGift } from '@/api/gift'
+import { manualBackup, fetchActivityLogs } from '@/api/admin'
 
 // 当前活动菜单
 const activeMenu = ref('review')
@@ -1022,6 +1171,146 @@ const adjustmentForm = reactive({
 })
 const adjustingPoints = ref(false)
 const rewardPanelInitialized = ref(false)
+const logs = ref([])
+const logLoading = ref(false)
+const logPagination = reactive({
+  page: 1,
+  pageSize: 20,
+  total: 0
+})
+const logFilters = reactive({
+  keyword: '',
+  method: 'all',
+  success: 'all',
+  startDate: '',
+  endDate: ''
+})
+const logStats = ref({
+  total: 0,
+  successCount: 0,
+  failureCount: 0,
+  avgDuration: 0,
+  topUsers: [],
+  topRoutes: []
+})
+const logsInitialized = ref(false)
+const logMethodOptions = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']
+const LOG_METHOD_VERBS = {
+  GET: '查看',
+  POST: '提交',
+  PUT: '更新',
+  DELETE: '删除',
+  PATCH: '调整'
+}
+const ROUTE_SEGMENT_LABELS = {
+  api: '',
+  forum: '论坛',
+  posts: '帖子',
+  post: '帖子',
+  comments: '评论',
+  comment: '评论',
+  my: '个人',
+  stats: '统计',
+  announcements: '公告',
+  announcement: '公告',
+  unconfirmed: '待确认',
+  pending: '待审核',
+  count: '数量',
+  events: '活动',
+  event: '活动',
+  registrations: '报名',
+  registration: '报名',
+  rewards: '积分',
+  reward: '积分',
+  gifts: '礼品',
+  gift: '礼品',
+  users: '用户',
+  user: '用户',
+  admin: '后台',
+  logs: '日志',
+  log: '日志',
+  news: '资讯',
+  approve: '审核通过',
+  reject: '驳回',
+  config: '系统配置',
+  system: '系统',
+  backup: '备份',
+  manual: '手动',
+  orders: '订单',
+  order: '订单',
+  auth: '认证',
+  login: '登录',
+  logout: '退出',
+  profile: '档案',
+  schedule: '日程',
+  overview: '概览'
+}
+const LOG_ACTION_PATTERNS = [
+  { method: 'POST', match: /^\/api\/forum\/posts$/, label: '发布新帖' },
+  { method: 'GET', match: /^\/api\/forum\/my\/stats$/, label: '查看个人论坛统计' },
+  { method: 'POST', match: /^\/api\/forum\/posts\/\d+\/comments$/, label: '发表评论' },
+  { method: 'GET', match: /^\/api\/announcements\/unconfirmed\/count$/, label: '查看待确认公告数量' },
+  { method: 'POST', match: /^\/api\/announcements$/, label: '创建公告' },
+  { method: 'POST', match: /^\/api\/news$/, label: '发布资讯' },
+  { method: 'POST', match: /^\/api\/gifts$/, label: '提交礼品申请' },
+  { method: 'POST', match: /^\/api\/auth\/login$/, label: '登录系统' },
+  { method: 'POST', match: /^\/api\/auth\/logout$/, label: '退出登录' },
+  { method: 'POST', match: /^\/api\/admin\/backup$/, label: '触发手动备份' },
+  { method: 'POST', match: /^\/api\/events$/, label: '创建活动' },
+  { method: 'PUT', match: /^\/api\/events\/\d+$/, label: '更新活动信息' }
+]
+const hasChinese = (text = '') => /[\u4e00-\u9fa5]/.test(text)
+const capitalize = (text = '') => (text ? text.charAt(0).toUpperCase() + text.slice(1) : '')
+const translateRouteSegment = (segment = '') => {
+  const normalized = segment.toLowerCase()
+  if (ROUTE_SEGMENT_LABELS[normalized] !== undefined) {
+    return ROUTE_SEGMENT_LABELS[normalized]
+  }
+  if (/^\d+$/.test(segment)) {
+    return ''
+  }
+  if (segment.includes('-') || segment.includes('_')) {
+    return segment
+      .split(/[-_]/)
+      .map((part) => capitalize(part.toLowerCase()))
+      .join(' ')
+  }
+  return capitalize(segment)
+}
+const buildRouteTargetLabel = (route = '') => {
+  if (!route) return ''
+  const normalized = route.split('?')[0]
+  const segments = normalized
+    .split('/')
+    .filter(Boolean)
+    .filter((seg) => seg !== 'api')
+  const translated = segments.map(translateRouteSegment).filter(Boolean)
+  if (!translated.length) {
+    return ''
+  }
+  return hasChinese(translated.join('')) ? translated.join('') : translated.join(' ')
+}
+const getPatternLabel = (method, route) => {
+  if (!route) return ''
+  const normalizedMethod = (method || '').toUpperCase()
+  const match = LOG_ACTION_PATTERNS.find((pattern) => {
+    const methodMatched = !pattern.method || pattern.method === normalizedMethod
+    return methodMatched && pattern.match.test(route)
+  })
+  return match?.label || ''
+}
+const describeLogAction = (log) => {
+  if (!log) return '执行操作'
+  const method = (log.method || '').toUpperCase()
+  const route = log.route || ''
+  const patternLabel = getPatternLabel(method, route)
+  if (patternLabel) {
+    return patternLabel
+  }
+  const verb = LOG_METHOD_VERBS[method] || '执行'
+  const target = buildRouteTargetLabel(route) || '接口'
+  return `${verb}${target}`
+}
 
 const loadPendingEvents = async () => {
   try {
@@ -1194,6 +1483,14 @@ const switchToStats = () => {
   }
 }
 
+const switchToLogs = () => {
+  activeMenu.value = 'logs'
+  if (!logsInitialized.value) {
+    logsInitialized.value = true
+  }
+  loadActivityLogs()
+}
+
 onMounted(() => {
   // 检查登录状态和权限
   const token = localStorage.getItem('token')
@@ -1237,6 +1534,10 @@ onMounted(() => {
     if (activeMenu.value === 'announcements') {
       loadPendingAnnouncements().catch(e => console.error('加载待审核公告失败:', e))
       loadAnnouncementStats().catch(e => console.error('加载公告统计失败:', e))
+    }
+    if (activeMenu.value === 'logs') {
+      logsInitialized.value = true
+      loadActivityLogs().catch(e => console.error('加载操作日志失败:', e))
     }
   } catch (e) {
     console.error('管理后台初始化失败:', e)
@@ -1344,6 +1645,24 @@ const loadUsers = async () => {
     userList.value = [] // 确保设置为空数组
   } finally {
     loadingUsers.value = false
+  }
+}
+
+const onBackup = async () => {
+  if (backingUp.value) return
+  if (!confirm('确认立即执行数据库备份吗？')) {
+    return
+  }
+  backingUp.value = true
+  try {
+    const result = await manualBackup()
+    const filename = result?.file ? result.file.split(/[/\\]/).pop() : ''
+    showNotification(`✓ 备份任务已启动${filename ? `：${filename}` : ''}`, 'success')
+  } catch (e) {
+    console.error('手动备份失败:', e)
+    showNotification('手动备份失败，请稍后重试', 'warning')
+  } finally {
+    backingUp.value = false
   }
 }
 
@@ -1956,6 +2275,97 @@ const submitAdjustment = async () => {
   }
 }
 
+const buildLogQueryParams = () => {
+  const params = {
+    page: logPagination.page,
+    pageSize: logPagination.pageSize
+  }
+  const keyword = logFilters.keyword.trim()
+  if (keyword) {
+    params.keyword = keyword
+  }
+  if (logFilters.method !== 'all') {
+    params.method = logFilters.method
+  }
+  if (logFilters.success !== 'all') {
+    params.success = logFilters.success === 'success' ? 1 : 0
+  }
+  if (logFilters.startDate) {
+    params.startDate = logFilters.startDate
+  }
+  if (logFilters.endDate) {
+    params.endDate = logFilters.endDate
+  }
+  return params
+}
+
+const loadActivityLogs = async () => {
+  logLoading.value = true
+  try {
+    const data = await fetchActivityLogs(buildLogQueryParams())
+    logs.value = Array.isArray(data?.list) ? data.list : []
+    logPagination.total = data?.total || 0
+    logStats.value = {
+      total: data?.stats?.total || 0,
+      successCount: data?.stats?.successCount || 0,
+      failureCount: data?.stats?.failureCount || 0,
+      avgDuration: Math.round(data?.stats?.avgDuration || 0),
+      topUsers: data?.stats?.topUsers || [],
+      topRoutes: data?.stats?.topRoutes || []
+    }
+  } catch (e) {
+    console.error('加载操作日志失败:', e)
+    logs.value = []
+    logPagination.total = 0
+    showNotification('加载操作日志失败，请稍后重试', 'warning')
+  } finally {
+    logLoading.value = false
+  }
+}
+
+const applyLogFilters = () => {
+  if (logFilters.startDate && logFilters.endDate && logFilters.startDate > logFilters.endDate) {
+    showNotification('结束日期需要晚于开始日期', 'warning')
+    return
+  }
+  logPagination.page = 1
+  loadActivityLogs()
+}
+
+const resetLogFilters = () => {
+  logFilters.keyword = ''
+  logFilters.method = 'all'
+  logFilters.success = 'all'
+  logFilters.startDate = ''
+  logFilters.endDate = ''
+  logPagination.page = 1
+  loadActivityLogs()
+}
+
+const handleLogPageChange = (direction) => {
+  const maxPage = logTotalPages.value || 1
+  if (direction === 'prev' && logPagination.page > 1) {
+    logPagination.page -= 1
+    loadActivityLogs()
+    return
+  }
+  if (direction === 'next' && logPagination.page < maxPage) {
+    logPagination.page += 1
+    loadActivityLogs()
+  }
+}
+
+const payloadPreview = (payload) => {
+  if (!payload) return '无'
+  return payload.length > 120 ? `${payload.slice(0, 120)}...` : payload
+}
+
+const formatDuration = (value) => {
+  if (value === null || value === undefined) return '—'
+  if (value < 1000) return `${value} ms`
+  return `${(value / 1000).toFixed(2)} s`
+}
+
 // 计算过滤后的用户列表（现在后端已经过滤，这里直接返回）
 const deletingUserId = ref(null)
 
@@ -1974,6 +2384,20 @@ const selectedMonthLabel = computed(() => {
   const [year, month] = selectedMonth.value.split('-')
   if (!year || !month) return selectedMonth.value
   return `${year} 年 ${month} 月`
+})
+
+const logTotalPages = computed(() => {
+  if (!logPagination.total) {
+    return 1
+  }
+  return Math.max(1, Math.ceil(logPagination.total / logPagination.pageSize))
+})
+
+const logSuccessRate = computed(() => {
+  if (!logStats.value.total) {
+    return 0
+  }
+  return Math.round((logStats.value.successCount / logStats.value.total) * 100)
 })
 
 // 防抖函数，用于搜索
@@ -2225,6 +2649,12 @@ watch(activeMenu, (value) => {
   }
   if (value === 'gifts') {
     loadAllGifts().catch(e => console.error('加载礼品列表失败:', e))
+  }
+  if (value === 'logs') {
+    if (!logsInitialized.value) {
+      logsInitialized.value = true
+    }
+    loadActivityLogs()
   }
 })
 
@@ -3347,6 +3777,283 @@ watch(activeMenu, (value) => {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.logs-container {
+  display: grid;
+  grid-template-columns: minmax(0, 2.4fr) minmax(0, 1fr);
+  gap: 24px;
+}
+
+.logs-main-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.log-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.log-stat-card {
+  background: rgba(239, 250, 255, 0.85);
+  border-radius: 18px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.log-stat-card p {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(20, 44, 70, 0.6);
+}
+
+.log-stat-card strong {
+  display: block;
+  margin: 6px 0 2px;
+  font-size: 24px;
+  color: #142c46;
+}
+
+.log-stat-card small {
+  color: rgba(20, 44, 70, 0.45);
+}
+
+.log-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(239, 250, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.log-select,
+.date-input {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 42, 66, 0.15);
+  background: #fff;
+  font-size: 14px;
+}
+
+.log-date-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.log-filter-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.log-table {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.log-row {
+  border: 1px solid rgba(15, 42, 66, 0.08);
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.95);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.log-row-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.log-user {
+  font-weight: 700;
+  color: #142c46;
+  margin-right: 8px;
+}
+
+.log-action {
+  color: rgba(20, 44, 70, 0.65);
+  font-size: 14px;
+}
+
+.log-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.log-method-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(20, 44, 70, 0.08);
+  color: #142c46;
+  text-transform: uppercase;
+}
+
+.log-method-badge.method-post {
+  background: rgba(111, 226, 197, 0.35);
+  color: #0f5d4c;
+}
+
+.log-method-badge.method-get {
+  background: rgba(120, 206, 255, 0.35);
+  color: #0f4c81;
+}
+
+.log-method-badge.method-delete {
+  background: rgba(255, 203, 196, 0.6);
+  color: #8a331e;
+}
+
+.log-method-badge.method-put,
+.log-method-badge.method-patch {
+  background: rgba(255, 214, 130, 0.5);
+  color: #a86200;
+}
+
+.log-status-badge {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.log-status-badge.success {
+  background: rgba(130, 236, 184, 0.55);
+  color: #0f7c56;
+}
+
+.log-status-badge.failure {
+  background: rgba(255, 181, 181, 0.55);
+  color: #8a1f1f;
+}
+
+.log-code,
+.log-duration {
+  font-size: 12px;
+  color: rgba(20, 44, 70, 0.6);
+}
+
+.log-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 14px;
+  color: rgba(20, 44, 70, 0.75);
+}
+
+.log-route {
+  word-break: break-all;
+}
+
+.log-meta-info {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  color: rgba(20, 44, 70, 0.6);
+  font-size: 13px;
+}
+
+.log-payload details {
+  margin-top: 4px;
+  cursor: pointer;
+}
+
+.log-payload summary {
+  color: #0b4ea2;
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+}
+
+.log-payload pre {
+  background: rgba(15, 42, 66, 0.06);
+  padding: 10px;
+  border-radius: 12px;
+  margin-top: 8px;
+  max-height: 200px;
+  overflow: auto;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.log-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.log-pager-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-weight: 600;
+  cursor: pointer;
+  background: rgba(111, 226, 197, 0.25);
+  color: #0f5d4c;
+}
+
+.log-pager-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.log-side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.log-side-panel section h3 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  color: #142c46;
+}
+
+.log-top-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.log-top-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(15, 42, 66, 0.08);
+  font-size: 14px;
+}
+
+.log-top-count {
+  color: #5d6ce2;
+  font-weight: 700;
+}
+
+@media (max-width: 1200px) {
+  .logs-container {
+    grid-template-columns: 1fr;
+  }
 }
 
 .post-content {
