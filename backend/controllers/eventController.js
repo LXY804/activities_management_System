@@ -348,7 +348,7 @@ exports.registerEvent = async (req, res) => {
     await sequelize.query(`INSERT INTO user_activity_apply (activity_id, user_id, apply_status, applied_at) VALUES (?, ?, 0, NOW())`, { replacements: [id, userId], type: QueryTypes.INSERT })
     success(res, null, '报名成功')
   } catch (err) {
-    error(res, '服务器错误', 500)
+      error(res, '服务器错误', 500)
   }
 }
 
