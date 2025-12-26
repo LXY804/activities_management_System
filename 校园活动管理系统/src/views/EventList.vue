@@ -64,7 +64,13 @@
               @click="open(ev.id)"
             >
               <div class="thumb-box">
-                <img :src="ev.image" @error="handleImageError" />
+                <img 
+                  :src="ev.image" 
+                  :alt="ev.title"
+                  loading="lazy"
+                  @error="handleImageError"
+                  @load="onImageLoad"
+                />
                 <div class="tag-overlay">
                   <span class="status-pill" :data-status="ev.status">{{ ev.statusText }}</span>
                 </div>
@@ -157,7 +163,18 @@ onMounted(() => {
 const handleTypeChange = () => loadEvents()
 const setTab = (idx) => activeTab.value = idx
 const open = (id) => router.push({ name: 'EventInfo', params: { id } })
-const handleImageError = (e) => e.target.src = DEFAULT_COVER
+
+// 图片加载优化
+const handleImageError = (e) => {
+  if (e.target.src !== DEFAULT_COVER) {
+    e.target.src = DEFAULT_COVER
+  }
+}
+
+const onImageLoad = (e) => {
+  // 图片加载成功，可以添加淡入动画
+  e.target.style.opacity = '1'
+}
 
 const filteredEvents = computed(() => {
   if (activeTab.value === 0) return events.value
@@ -312,8 +329,23 @@ const upcomingCount = computed(() => events.value.filter(e => e.status === 'upco
   box-shadow: 0 16px 32px rgba(15, 42, 66, 0.06);
 }
 
-.thumb-box { position: relative; height: 120px; }
-.thumb-box img { width: 100%; height: 100%; object-fit: cover; }
+.thumb-box { 
+  position: relative; 
+  height: 120px; 
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  overflow: hidden;
+}
+.thumb-box img { 
+  width: 100%; 
+  height: 100%; 
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.thumb-box img[src] {
+  opacity: 1;
+}
 
 .tag-overlay { position: absolute; top: 8px; right: 8px; }
 .status-pill {

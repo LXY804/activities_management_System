@@ -158,6 +158,10 @@ exports.getLogs = async (req, res) => {
       }
     })
   } catch (err) {
+    // 如果表不存在，返回友好的错误信息
+    if (err.message && err.message.includes("doesn't exist")) {
+      return error(res, '操作日志表尚未创建，请联系管理员', 503)
+    }
     console.error('获取操作日志失败:', err)
     return error(res, '获取操作日志失败', 500)
   }
