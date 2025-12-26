@@ -54,14 +54,28 @@
                     <label>活动名称 <span>*</span></label>
                     <input v-model="form.title" type="text" placeholder="请输入活动名称" required />
                   </div>
-                  <div class="input-group">
-                    <label>活动类型 <span>*</span></label>
-                    <select v-model="form.activityType" required>
-                      <option disabled value="">选择类型</option>
-                      <option v-for="type in activityTypes" :key="type" :value="type">{{ type }}</option>
-                    </select>
-                  </div>
-                </div>
+                 <!-- AI 智能推荐活动类型 -->
+<div class="input-group">
+  <label>活动类型 <span>*</span></label>
+  <!-- 只显示 AI 推荐结果或加载状态 -->
+  <div v-if="aiSuggestedType" class="ai-suggestion-box">
+    <div class="suggested-type-chip">
+      <span class="ai-badge">🤖 AI</span>
+      {{ aiSuggestedType }}
+    </div>
+    <p class="ai-explain-text">💡 基于活动内容自动识别</p>
+  </div>
+  <div v-else-if="form.title.trim()" class="ai-loading-hint">
+    <span class="spinner"></span> 正在分析活动类型...
+  </div>
+  <div v-else>
+    <span class="placeholder-text">请输入活动名称以自动识别类型</span>
+  </div>
+
+  <!-- 隐藏的 input 用于确保 activityType 被包含在表单中（可选） -->
+  <!-- 实际上 reactive form 已包含，无需额外 input -->
+</div>
+</div>
                 <div class="form-row">
                   <div class="input-group">
                     <label>副标题</label>
@@ -494,6 +508,116 @@ import {
   fetchOrganizerRewardStats
 } from '@/api/reward'
 
+const getDefaultForm = () => ({
+  title: '',
+  subtitle: '',
+  activityType: '',
+  belongCollege: '',
+  description: '',
+  detailRichText: '',
+  location: '',
+  startTime: '',
+  endTime: '',
+  registrationDeadline: '',
+  maxParticipants: 0,
+  enableWaitlist: false,
+  waitlistLimit: 0,
+  needApproval: false,
+  targetColleges: [],
+  targetGrades: [],
+  coverImage: '',
+  attachments: []
+})
+const form = reactive(getDefaultForm())
+const coverImageFile = ref(null)
+const coverImagePreview = ref(null)
+const DRAFT_KEY = 'organizer_publish_draft'
+// AI 推荐相关状态
+const aiSuggestedType = ref('')        // AI 推荐的类型
+const isAiLoading = ref(false)         // 是否正在请求 AI
+const useAiSuggestion = ref(false)     // 是否已采纳 AI 建议
+
+
+
+// AI 推荐接口（调用你刚加的分词器/NLP服务）
+const suggestActivityType = async (title, description = '', detail = '') => {
+  const response = await fetch('/api/events/suggest-type', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ title, description, detail })
+  })
+  if (!response.ok) throw new Error('AI 推荐服务暂时不可用')
+  
+   const result = await response.json()
+  return result.data // ✅ 返回 { suggestedType: "学术讲座" }
+}
+
+// 防抖函数
+function debounce(func, wait) {
+  let timeout
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout)
+      func(...args)
+    }
+    clearTimeout(timeout)
+    timeout = setTimeout(later, wait)
+  }
+}
+
+// 用户点击“修改类型”按钮
+const editActivityType = () => {
+  showManualTypeSelect.value = true
+  aiSuggestedType.value = null
+}
+
+// 触发 AI 推荐（带防抖）
+// 防抖触发 AI 推荐
+const triggerAiSuggestion = debounce(async () => {
+  if (!form.title.trim()) {
+    aiSuggestedType.value = null
+    form.activityType = '' // 清空类型
+    return
+  }
+
+  try {
+    const res = await suggestActivityType(
+      form.title,
+      form.description || '',
+      form.detailRichText || ''
+    )
+    const type = res.suggestedType
+
+    // 只要 AI 返回了类型，就直接使用（即使不在列表中也可考虑放宽）
+    if (type) {
+      aiSuggestedType.value = type
+      form.activityType = type // ✅ 自动填入
+    } else {
+      // AI 无法识别，设为“其他活动”或留空（根据业务）
+      aiSuggestedType.value = '其他活动'
+      form.activityType = '其他活动'
+    }
+  } catch (err) {
+    console.warn('AI 推荐失败:', err)
+    aiSuggestedType.value = '其他活动'
+    form.activityType = '其他活动'
+  }
+}, 800)
+
+// 监听标题/描述变化
+watch(
+  () => `${form.title} ${form.description} ${form.detailRichText}`,
+  triggerAiSuggestion
+)
+
+
+// 示例：加载组织者活动（按你实际需要保留）
+onMounted(() => {
+  // 例如加载礼品、积分规则等
+})
+
+
 // --- 【核心修改：显式导入本地资产图片】 ---
 import imgCup from '@/assets/校园定制水杯.jpg'
 import imgPack from '@/assets/活动加油礼包.jpg'
@@ -600,31 +724,7 @@ const activityTypes = ['学术讲座', '文体活动', '志愿服务', '竞赛�
 const collegeOptions = ['计算机学院', '软件学院', '管理学院', '艺术设计学院', '经济学院']
 const gradeOptions = ['大一', '大二', '大三', '大四', '研究生']
 
-const getDefaultForm = () => ({
-  title: '',
-  subtitle: '',
-  activityType: '',
-  belongCollege: '',
-  description: '',
-  detailRichText: '',
-  location: '',
-  startTime: '',
-  endTime: '',
-  registrationDeadline: '',
-  maxParticipants: 0,
-  enableWaitlist: false,
-  waitlistLimit: 0,
-  needApproval: false,
-  targetColleges: [],
-  targetGrades: [],
-  coverImage: '',
-  attachments: []
-})
 
-const form = reactive(getDefaultForm())
-const coverImageFile = ref(null)
-const coverImagePreview = ref(null)
-const DRAFT_KEY = 'organizer_publish_draft'
 
 // --- 业务方法 ---
 onMounted(() => {
@@ -1242,5 +1342,90 @@ onBeforeUnmount(() => {
   .bento-sidebar { width: 100%; position: static; }
   .form-layout { grid-template-columns: 1fr; }
   .condition-grid { grid-template-columns: 1fr; }
+}
+/* ============== AI 智能推荐活动类型 - 新增样式 ============== */
+
+.ai-suggestion-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f0fdfa;
+  border: 1px solid #a7f3d0;
+  border-radius: 14px;
+  font-weight: 600;
+  color: #065f46;
+  margin-bottom: 8px;
+}
+
+.ai-badge {
+  background: #dcfce7;
+  color: #16a34a;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-edit-type {
+  background: none;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-light);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 600;
+}
+
+.btn-edit-type:hover {
+  background: #f1f5f9;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.ai-explain-text {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.4;
+}
+
+.ai-loading-hint {
+  font-size: 13px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #e2e8f0;
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.manual-type-select {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px;
+  background: white;
+  font-size: 13px;
+  width: 100%;
 }
 </style>

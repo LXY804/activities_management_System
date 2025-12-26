@@ -1,3 +1,4 @@
+const { generateTags } = require('../utils/autoTagger');
 const sequelize = require('../config/database')
 const { QueryTypes } = require('sequelize')
 const { success, error } = require('../utils/response')
@@ -102,30 +103,135 @@ const generateActivityCode = () => {
   return `ACT${y}${m}${d}${ts}`
 }
 
+// === 新增：AI 推荐活动类型接口 ===
+exports.suggestActivityType = async (req, res) => {
+  try {
+    const { title, description = '', detail = '' } = req.body;
+    if (!title) {
+      return error(res, '活动名称不能为空', 400);
+    }
+
+    // 合并文本用于分析
+    const fullText = `${title} ${description} ${detail}`.trim();
+    console.log('🔍 AI 分析文本:', fullText);
+
+    // 使用已有的 generateTags 获取关键词
+    const tags = generateTags(fullText);
+    console.log('🏷️ 分词结果 (tags):', tags);
+
+    // 【关键】从标签中映射到最可能的活动类型
+    // 你可以根据业务自定义映射规则
+    const typeMapping = {
+      '讲座': '学术讲座',
+      '演讲': '学术讲座',
+      '培训': '学术讲座',
+      '比赛': '竞赛比赛',
+      '竞赛': '竞赛比赛',
+      '志愿': '志愿服务',
+      '服务': '志愿服务',
+      '文艺': '文体活动',
+      '演出': '文体活动',
+      '体育': '文体活动',
+      '社团': '社团活动',
+      '招新': '社团活动'
+    };
+
+    let suggestedType = '其他活动'; // 默认值
+
+    // 查找第一个匹配的关键词
+    for (const tag of tags) {
+      for (const [keyword, type] of Object.entries(typeMapping)) {
+        if (tag.includes(keyword) || keyword.includes(tag)) {
+          suggestedType = type;
+          break;
+        }
+      }
+      if (suggestedType !== '其他活动') break;
+    }
+
+    success(res, { suggestedType });
+  } catch (err) {
+    console.error('AI 推荐类型失败:', err);
+    error(res, '推荐服务暂时不可用', 500);
+  }
+};
+
 exports.createEvent = async (req, res) => {
   try {
-    const organizerId = req.user.id
-    const { title, description, activityType, belongCollege, location, startTime, endTime, maxParticipants } = req.body
+    const organizerId = req.user.id;
+    const { title, description, activityType, belongCollege, location, startTime, endTime, maxParticipants } = req.body;
+
     if (!title || !activityType || !startTime || !endTime) {
-      return error(res, '请完善必填字段', 400)
+      return error(res, '请完善必填字段', 400);
     }
-    const typeId = await getTypeIdByName(activityType)
-    const targetCollegeId = await getCollegeIdByName(belongCollege)
-    const activityCode = generateActivityCode()
-    let coverImagePath = req.file ? path.posix.join('/uploads', req.file.filename) : null
 
+    // ✅ 1. 自动生成标签（基于标题 + 描述）
+    const autoTags = generateTags(title + ' ' + (description || ''));
+
+    // 转为 JSON 字符串（MySQL JSON 类型可直接存数组，但安全起见用 stringify）
+    const tagsJson = JSON.stringify(autoTags);
+
+    const typeId = await getTypeIdByName(activityType);
+    const targetCollegeId = await getCollegeIdByName(belongCollege);
+    const activityCode = generateActivityCode();
+    let coverImagePath = req.file ? path.posix.join('/uploads', req.file.filename) : null;
+
+    // ✅ 2. 插入 activities 表，包含 tags 字段
     const [activityId] = await sequelize.query(`
-      INSERT INTO activities (activity_name, activity_code, Activity_description, type_id, start_time, end_time, location, target_college_id, capacity, organizer_id, cover_image)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
-      { replacements: [title, activityCode, description || '', typeId, startTime, endTime, location || '', targetCollegeId, maxParticipants || 0, organizerId, coverImagePath], type: QueryTypes.INSERT }
-    )
+      INSERT INTO activities (
+        activity_name, 
+        activity_code, 
+        Activity_description, 
+        type_id, 
+        start_time, 
+        end_time, 
+        location, 
+        target_college_id, 
+        capacity, 
+        organizer_id, 
+        cover_image,
+        tags  -- ← 新增字段
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
+      {
+        replacements: [
+          title,
+          activityCode,
+          description || '',
+          typeId,
+          startTime,
+          endTime,
+          location || '',
+          targetCollegeId,
+          maxParticipants || 0,
+          organizerId,
+          coverImagePath,
+          tagsJson  // ← 存入标签
+        ],
+        type: QueryTypes.INSERT
+      }
+    );
 
-    await sequelize.query(`INSERT INTO organizer_activity_creation (organizer_id, activity_id, admin_check) VALUES (?, ?, 0)`, { replacements: [organizerId, activityId], type: QueryTypes.INSERT })
-    success(res, { id: activityId, code: activityCode }, '活动已提交审核')
+    await sequelize.query(
+      `INSERT INTO organizer_activity_creation (organizer_id, activity_id, admin_check) 
+       VALUES (?, ?, 0)`, 
+      { 
+        replacements: [organizerId, activityId], 
+        type: QueryTypes.INSERT 
+      }
+    );
+
+    // ✅ 3. 返回结果时，也带上建议标签（前端可用于展示）
+    success(res, { 
+      id: activityId, 
+      code: activityCode,
+      suggestedTags: autoTags  // ← 新增返回
+    }, '活动已提交审核');
+
   } catch (err) {
-    error(res, '服务器错误', 500)
+    console.error('创建活动失败:', err); // ← 建议保留错误日志
+    error(res, '服务器错误', 500);
   }
-}
+};
 
 exports.getEventList = async (req, res) => {
   try {

@@ -77,5 +77,6 @@ router.post(
   authorize('admin'),
   eventController.rejectEvent
 )
+router.post('/suggest-type', eventController.suggestActivityType);
 
 module.exports = router
