@@ -6,7 +6,8 @@ echo "🚀 开始部署到云服务器..."
 # 1. 拉取代码
 echo "📥 拉取最新代码..."
 cd /var/www/activities_management
-git pull origin LXY
+git checkout main
+git pull origin main
 
 # 2. 创建数据库表（如果不存在）
 echo "📊 创建 activity_logs 表..."
