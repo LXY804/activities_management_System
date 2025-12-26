@@ -277,7 +277,7 @@ CREATE TABLE `forum_favorites`  (
   INDEX `idx_user_id`(`user_id` ASC) USING BTREE,
   CONSTRAINT `forum_favorites_ibfk_1` FOREIGN KEY (`post_id`) REFERENCES `forum_posts` (`post_id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `forum_favorites_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of forum_favorites
@@ -321,6 +321,41 @@ INSERT INTO `forum_posts` VALUES (4, 8, '【官方招募】校园文创市集执
 INSERT INTO `forum_posts` VALUES (5, 9, '寻找每天在鉴湖边晨读的那个戴蓝色耳机的女孩', '你经常在早上7点左右出现，读的是托尔斯泰，感觉很有气质，想交个朋友。', NULL, 0, 1, 1, NULL, NULL, NULL, '2025-12-16 13:44:05', '2025-12-20 13:44:05');
 INSERT INTO `forum_posts` VALUES (6, 3, '有午饭推荐吗', '南湖附近有什么好吃的外卖', NULL, 0, 1, 1, NULL, 1, '2025-12-20 15:56:49', '2025-12-20 13:46:36', '2025-12-20 15:56:49');
 INSERT INTO `forum_posts` VALUES (7, 3, '午饭推荐', '有什么午饭推荐吗uu', NULL, 2, 1, 1, NULL, NULL, NULL, '2025-12-20 13:53:04', '2025-12-20 13:53:04');
+
+-- ----------------------------
+-- Table structure for activity_logs
+-- ----------------------------
+DROP TABLE IF EXISTS `activity_logs`;
+CREATE TABLE `activity_logs`  (
+  `log_id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NULL DEFAULT NULL COMMENT '触发操作的用户ID，可为空',
+  `username` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '触发者用户名',
+  `action` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '动作描述，如 GET /api/events',
+  `method` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'HTTP 方法',
+  `route` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '路由路径（不含查询参数）',
+  `status_code` int NOT NULL COMMENT '响应状态码',
+  `success` tinyint NOT NULL DEFAULT 1 COMMENT '是否成功 (1-成功 0-失败)',
+  `duration_ms` int NULL DEFAULT NULL COMMENT '请求耗时 (ms)',
+  `ip_address` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '客户端 IP',
+  `user_agent` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '客户端 UA',
+  `request_payload` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '请求负载（过滤敏感字段）',
+  `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`log_id`) USING BTREE,
+  INDEX `idx_log_user`(`user_id` ASC) USING BTREE,
+  INDEX `idx_log_route`(`route` ASC) USING BTREE,
+  INDEX `idx_log_method`(`method` ASC) USING BTREE,
+  INDEX `idx_log_status`(`status_code` ASC) USING BTREE,
+  INDEX `idx_log_created_at`(`created_at` ASC) USING BTREE,
+  CONSTRAINT `activity_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL ON UPDATE RESTRICT
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
+-- Records of activity_logs
+-- ----------------------------
+INSERT INTO `activity_logs` (`log_id`, `user_id`, `username`, `action`, `method`, `route`, `status_code`, `success`, `duration_ms`, `ip_address`, `user_agent`, `request_payload`, `created_at`) VALUES
+(1, 3, '理大小青', 'GET /api/events', 'GET', '/api/events', 200, 1, 132, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', '{"query":{"page":1,"pageSize":10}}', '2025-12-20 10:02:11'),
+(2, 3, '理大小青', 'POST /api/forum/posts', 'POST', '/api/forum/posts', 201, 1, 248, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', '[multipart/form-data omitted]', '2025-12-20 10:03:55'),
+(3, 6, '博学路同学', 'DELETE /api/forum/posts/6', 'DELETE', '/api/forum/posts/6', 403, 0, 92, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', NULL, '2025-12-20 10:05:13');
 
 -- ----------------------------
 -- Table structure for gift_feedback
@@ -778,10 +813,10 @@ CREATE TABLE `users`  (
 -- ----------------------------
 -- Records of users
 -- ----------------------------
-INSERT INTO `users` VALUES (1, 'admin', '$2b$10$qCEfe692sjamqP8kx6/yMujwvu5n6Mpwan8GjSeKysxPuuznS.l2G', 'admin', 'admin@example.com', NULL, 1, '2025-12-20 13:04:18', NULL, '管理员', NULL, NULL, NULL, NULL, NULL);
-INSERT INTO `users` VALUES (2, 'organizer1', '$2b$10$8ynM8aFun8JtFvX2qRha2uGw2pzzurGPoF1BxG5BTzSladvYuxlgC', 'organizer', 'organizer1@example.com', NULL, 1, '2025-12-20 13:04:18', NULL, '张组织', NULL, NULL, NULL, NULL, NULL);
-INSERT INTO `users` VALUES (3, 'student1', '$2b$10$/Wp4XyMajp/pwX3VOVvC8OXceu5LEFi4i.tq8sRNb8JulH5BWJIcG', 'student', 'student1@example.com', NULL, 2, '2025-12-20 13:04:18', '1023004777', '李同学', NULL, NULL, NULL, NULL, NULL);
-INSERT INTO `users` VALUES (4, 'organizer2', '$2b$10$Dn02uZ20zXnlcMgPZWdlfeIm9tcaR29IZ8vX1565WqbbxF.P/hNgi', 'organizer', 'organizer2@example.com', NULL, 2, '2025-12-20 13:04:18', NULL, '陈策划', NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `users` VALUES (1, 'admin', '12345', 'admin', 'admin@example.com', NULL, 1, '2025-12-20 13:04:18', NULL, '管理员', NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `users` VALUES (2, 'organizer1', '12345', 'organizer', 'organizer1@example.com', NULL, 1, '2025-12-20 13:04:18', NULL, '张组织', NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `users` VALUES (3, 'student1', '12345', 'student', 'student1@example.com', NULL, 2, '2025-12-20 13:04:18', '1023004777', '李同学', NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `users` VALUES (4, 'organizer2', '12345', 'organizer', 'organizer2@example.com', NULL, 2, '2025-12-20 13:04:18', NULL, '陈策划', NULL, NULL, NULL, NULL, NULL);
 INSERT INTO `users` VALUES (5, 'organizer_whut', '12345', 'organizer', 'campus_org@example.com', NULL, 1, '2025-12-20 13:04:18', NULL, '武汉理工团委', NULL, NULL, NULL, NULL, NULL);
 INSERT INTO `users` VALUES (6, 'student2', '12345', 'student', 'student2@example.com', NULL, 1, '2025-12-20 13:04:18', NULL, '周同学', NULL, NULL, NULL, NULL, NULL);
 INSERT INTO `users` VALUES (7, 'student3', '12345', 'student', 'student3@example.com', NULL, 2, '2025-12-20 13:04:18', NULL, '王同学', NULL, NULL, NULL, NULL, NULL);

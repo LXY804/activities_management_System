@@ -1,6 +1,9 @@
 <template>
   <div class="personal-info">
-    <h2 class="page-title">我的基本信息</h2>
+    <div class="page-title-wrapper">
+      <h2 class="page-title">我的基本信息</h2>
+      <span class="role-badge" v-if="form.role">{{ form.role }}</span>
+    </div>
     <div class="info-form">
       <div class="form-grid">
         <!-- 前两行和照片的容器 -->
@@ -12,12 +15,12 @@
               <input type="text" v-model="form.studentId" placeholder="请输入学号" />
             </div>
             <div class="form-group">
-              <label>姓名</label>
-              <input type="text" v-model="form.name" placeholder="请输入姓名" />
+              <label>昵称</label>
+              <input type="text" v-model="form.nickname" placeholder="请输入昵称（用于评论显示）" />
             </div>
             <div class="form-group">
-              <label>用户角色</label>
-              <input type="text" v-model="form.role" placeholder="请输入用户角色" />
+              <label>姓名</label>
+              <input type="text" v-model="form.name" placeholder="请输入姓名" />
             </div>
           </div>
 
@@ -124,6 +127,7 @@ const API_ORIGIN = (
 
 const form = ref({
   studentId: '',
+  nickname: '',
   name: '',
   role: '',
   gender: '',
@@ -158,6 +162,7 @@ const loadProfile = async () => {
     const data = await fetchProfile()
     form.value = {
       studentId: data?.student_id || '',
+      nickname: data?.username || '',
       name: data?.real_name || '',
       role: data?.role || '',
       gender: data?.gender || '',
@@ -182,8 +187,8 @@ const handleSubmit = async () => {
   try {
     await updateProfile({
       studentId: form.value.studentId,
+      username: form.value.nickname,
       realName: form.value.name,
-      role: form.value.role,
       gender: form.value.gender,
       idType: form.value.idType,
       idNumber: form.value.idNumber,
@@ -192,6 +197,10 @@ const handleSubmit = async () => {
       collegeId: form.value.collegeId,
       className: form.value.class
     })
+    // 更新 localStorage 中的 username，这样评论功能会使用新的昵称
+    if (form.value.nickname) {
+      localStorage.setItem('username', form.value.nickname)
+    }
     alert('信息已更新')
   } catch (err) {
     alert(err?.message || '更新失败')
@@ -251,11 +260,28 @@ onMounted(() => {
   min-height: 100%;
 }
 
+.page-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
 .page-title {
   font-size: 24px;
   font-weight: 700;
   color: #333;
-  margin-bottom: 24px;
+  margin: 0;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  background: #e0f2fe;
+  color: #0369a1;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .info-form {
