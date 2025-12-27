@@ -1,0 +1,28 @@
+# 查看错误日志
+
+## 查看错误日志（重要）
+```bash
+cd /var/www/activities_management/backend
+tail -100 logs/err.log
+```
+
+## 实时查看日志（推荐）
+```bash
+pm2 logs activities-backend --err
+```
+
+## 查看所有日志（包含错误）
+```bash
+pm2 logs activities-backend --lines 200
+```
+
+## 测试 AI 聊天 API
+```bash
+curl -X POST http://localhost:3000/api/chat/ask \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sessionId": "test123",
+    "userMessage": "你好"
+  }'
+```
+

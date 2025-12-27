@@ -1,0 +1,47 @@
+# AI 聊天功能修复部署
+
+## 🔧 问题
+- `deepseekClient.js` 文件中硬编码了旧的 API key
+- 需要改为从环境变量读取
+
+## ✅ 已修复
+- 本地文件已更新，现在从 `process.env.DEEPSEEK_API_KEY` 读取
+
+## 🚀 部署步骤
+
+### 1. 本地提交并推送
+```bash
+git add backend/utils/deepseekClient.js
+git commit -m "fix: 修复 deepseekClient 从环境变量读取 API key"
+git push origin main
+```
+
+### 2. 服务器上拉取并重启
+```bash
+cd /var/www/activities_management
+git pull origin main
+cd backend
+pm2 restart all --update-env
+```
+
+### 3. 验证修复
+```bash
+# 查看后端日志，确认 API key 已正确读取
+pm2 logs activities-backend --lines 50
+
+# 应该看到类似这样的日志：
+# [DeepSeek] 读取到的 API Key: sk-c...xxxx
+```
+
+### 4. 测试 AI 聊天
+在浏览器中测试智能助手功能，应该不再出现"出错了,请稍后再试"的错误。
+
+## ⚠️ 重要提醒
+确保服务器上的 `.env` 文件包含正确的 `DEEPSEEK_API_KEY`：
+```bash
+cd /var/www/activities_management/backend
+cat .env | grep DEEPSEEK
+```
+
+如果环境变量不存在或错误，需要更新 `.env` 文件。
+

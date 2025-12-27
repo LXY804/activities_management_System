@@ -1,0 +1,120 @@
+# 服务器后续部署步骤
+
+## ✅ 当前状态
+- PM2 进程已重启，服务正在运行
+
+## 📋 接下来需要做的
+
+### 步骤 1：拉取最新代码并创建配置文件
+
+```bash
+cd /var/www/activities_management
+
+# 拉取最新代码
+git checkout main
+git pull origin main
+
+# 检查 ecosystem.config.js 是否存在
+ls -la backend/ecosystem.config.js
+
+# 如果不存在，创建它
+cd backend
+cat > ecosystem.config.js << 'EOF'
+module.exports = {
+  apps: [{
+    name: 'activities-backend',
+    script: 'app.js',
+    instances: 1,
+    exec_mode: 'fork',
+    env: {
+      NODE_ENV: 'production',
+      PORT: 3000
+    },
+    error_file: './logs/err.log',
+    out_file: './logs/out.log',
+    log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+    merge_logs: true,
+    autorestart: true,
+    max_memory_restart: '1G',
+    watch: false,
+    ignore_watch: ['node_modules', 'logs', 'uploads']
+  }]
+}
+EOF
+
+# 创建 logs 目录
+mkdir -p logs
+```
+
+### 步骤 2：重启服务以应用新代码
+
+```bash
+# 使用配置文件重启（推荐，这样以后可以用 pm2 restart ecosystem.config.js）
+pm2 delete activities-backend
+pm2 start ecosystem.config.js
+
+# 或者直接重启现有进程（如果代码已更新）
+pm2 restart all --update-env
+```
+
+### 步骤 3：构建前端（如果需要）
+
+```bash
+cd /var/www/activities_management/校园活动管理系统
+npm run build
+sudo systemctl reload nginx
+```
+
+### 步骤 4：验证部署
+
+```bash
+# 查看后端日志
+pm2 logs activities-backend --lines 50
+
+# 检查服务状态
+pm2 status
+
+# 测试 API
+curl http://localhost:3000/api/health || echo "检查后端是否正常启动"
+```
+
+## 🚀 一键执行（推荐）
+
+```bash
+cd /var/www/activities_management && \
+git checkout main && \
+git pull origin main && \
+cd backend && \
+([ -f ecosystem.config.js ] || cat > ecosystem.config.js << 'EOF'
+module.exports = {
+  apps: [{
+    name: 'activities-backend',
+    script: 'app.js',
+    instances: 1,
+    exec_mode: 'fork',
+    env: {
+      NODE_ENV: 'production',
+      PORT: 3000
+    },
+    error_file: './logs/err.log',
+    out_file: './logs/out.log',
+    log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+    merge_logs: true,
+    autorestart: true,
+    max_memory_restart: '1G',
+    watch: false,
+    ignore_watch: ['node_modules', 'logs', 'uploads']
+  }]
+}
+EOF
+) && \
+mkdir -p logs && \
+pm2 restart all --update-env && \
+cd ../校园活动管理系统 && \
+npm run build && \
+sudo systemctl reload nginx && \
+echo "✅ 部署完成！" && \
+pm2 logs activities-backend --lines 20
+```
+
+
