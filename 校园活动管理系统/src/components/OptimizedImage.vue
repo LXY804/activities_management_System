@@ -1,5 +1,10 @@
 <template>
-  <div class="optimized-image-wrapper" :style="wrapperStyle">
+  <div 
+    ref="wrapperRef"
+    class="optimized-image-wrapper" 
+    :style="wrapperStyle"
+    :data-src="lazy ? src : null"
+  >
     <!-- 占位符骨架屏 -->
     <div v-if="!loaded && !error" class="image-placeholder">
       <div class="skeleton-loader"></div>
@@ -14,7 +19,7 @@
     <!-- 实际图片 -->
     <img
       v-show="loaded && !error"
-      :src="displaySrc"
+      :src="shouldLoad ? displaySrc : ''"
       :alt="alt"
       :class="['optimized-image', { 'image-loaded': loaded }]"
       @load="onLoad"
@@ -27,7 +32,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
 
 const props = defineProps({
   src: {
@@ -60,6 +65,9 @@ const props = defineProps({
 const loaded = ref(false)
 const error = ref(false)
 const useFallback = ref(false)
+const shouldLoad = ref(!props.lazy) // 懒加载时初始为false
+const wrapperRef = ref(null)
+let observer = null
 
 // 显示用的图片 URL
 const displaySrc = computed(() => {
@@ -111,26 +119,38 @@ watch(() => props.src, () => {
 
 onMounted(() => {
   // 如果使用懒加载，使用 Intersection Observer
-  if (props.lazy && 'IntersectionObserver' in window) {
-    const observer = new IntersectionObserver(
+  if (props.lazy && 'IntersectionObserver' in window && wrapperRef.value) {
+    observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             // 图片进入视口，开始加载
-            observer.unobserve(entry.target)
+            shouldLoad.value = true
+            if (observer) {
+              observer.unobserve(entry.target)
+              observer.disconnect()
+              observer = null
+            }
           }
         })
       },
       {
-        rootMargin: '50px' // 提前 50px 开始加载
+        rootMargin: '100px' // 提前 100px 开始加载（优化：提前更多）
       }
     )
     
     // 观察图片容器
-    const wrapper = document.querySelector(`.optimized-image-wrapper[data-src="${props.src}"]`)
-    if (wrapper) {
-      observer.observe(wrapper)
-    }
+    observer.observe(wrapperRef.value)
+  } else if (!props.lazy) {
+    // 不使用懒加载，立即加载
+    shouldLoad.value = true
+  }
+})
+
+onBeforeUnmount(() => {
+  if (observer) {
+    observer.disconnect()
+    observer = null
   }
 })
 </script>

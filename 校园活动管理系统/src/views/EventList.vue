@@ -58,7 +58,7 @@
         <section class="scroll-viewport">
           <div class="cards-layout" v-if="!loading && filteredEvents.length">
             <article 
-              v-for="ev in filteredEvents" 
+              v-for="(ev, index) in filteredEvents" 
               :key="ev.id" 
               class="event-card-compact glass-soft-hover"
               @click="open(ev.id)"
@@ -67,7 +67,8 @@
                 <OptimizedImage
                   :src="ev.image"
                   :alt="ev.title"
-                  :lazy="true"
+                  :lazy="index >= 3"
+                  :priority="index < 3 ? 'high' : 'auto'"
                   width="100%"
                   height="200px"
                 />
