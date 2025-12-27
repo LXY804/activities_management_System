@@ -64,12 +64,12 @@
               @click="open(ev.id)"
             >
               <div class="thumb-box">
-                <img 
-                  :src="ev.image" 
+                <OptimizedImage
+                  :src="ev.image"
                   :alt="ev.title"
-                  loading="lazy"
-                  @error="handleImageError"
-                  @load="onImageLoad"
+                  :lazy="true"
+                  width="100%"
+                  height="200px"
                 />
                 <div class="tag-overlay">
                   <span class="status-pill" :data-status="ev.status">{{ ev.statusText }}</span>
@@ -104,6 +104,7 @@
 
 <script setup>
 import NavBar from '@/components/NavBar.vue'
+import OptimizedImage from '@/components/OptimizedImage.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { fetchEvents, fetchActivityTypes } from '@/api/event'
@@ -164,17 +165,7 @@ const handleTypeChange = () => loadEvents()
 const setTab = (idx) => activeTab.value = idx
 const open = (id) => router.push({ name: 'EventInfo', params: { id } })
 
-// 图片加载优化
-const handleImageError = (e) => {
-  if (e.target.src !== DEFAULT_COVER) {
-    e.target.src = DEFAULT_COVER
-  }
-}
-
-const onImageLoad = (e) => {
-  // 图片加载成功，可以添加淡入动画
-  e.target.style.opacity = '1'
-}
+// 图片错误处理已由 OptimizedImage 组件处理
 
 const filteredEvents = computed(() => {
   if (activeTab.value === 0) return events.value

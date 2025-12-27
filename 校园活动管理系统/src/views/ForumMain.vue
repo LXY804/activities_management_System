@@ -207,7 +207,15 @@
                         <h3>{{ post.title }}</h3>
                         <p class="content-text">{{ post.content }}</p>
                         <div v-if="post.images.length" class="p-image-matrix" :class="'grid-' + post.images.length">
-                          <img v-for="img in post.images" :key="img" :src="img" alt="attachment" />
+                          <OptimizedImage
+                            v-for="img in post.images"
+                            :key="img"
+                            :src="img"
+                            alt="帖子图片"
+                            :lazy="true"
+                            width="100%"
+                            height="200px"
+                          />
                         </div>
                       </div>
                       <footer class="p-card-footer">
@@ -264,6 +272,7 @@
 import { reactive, ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import NavBar from '@/components/NavBar.vue'
+import OptimizedImage from '@/components/OptimizedImage.vue'
 import { fetchPosts, createPost, addComment, deletePost, fetchPostComments, fetchMyStats, fetchMyPosts, fetchMyCommentedPosts } from '@/api/forum'
 import mapImage from '@/assets/论坛背景图.jpg'
 import iconResale from '@/assets/论坛-二手闲置.png'
