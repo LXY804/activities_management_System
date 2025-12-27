@@ -163,24 +163,31 @@ async function buildRecommendText(userId) {
   const now = new Date()
   
   // 策略1：优先使用推荐表 rec_user_topn（如果有离线推荐结果）
-  const topnRecs = await RecUserTopn.findAll({
-    where: { userId },
-    include: [
-      {
-        model: Activity,
-        as: 'activity',
-        attributes: ['activityId', 'activityName', 'startTime', 'endTime', 'location', 'typeId', 'Activity_description'],
-        where: {
-          endTime: { [Op.gt]: now } // 只推荐未结束的活动
-        },
-        include: [
-          { model: ActivityType, as: 'type', attributes: ['typeName'] }
-        ]
-      }
-    ],
-    order: [['score', 'DESC']],
-    limit: 10
-  })
+  let topnRecs = []
+  try {
+    topnRecs = await RecUserTopn.findAll({
+      where: { userId },
+      include: [
+        {
+          model: Activity,
+          as: 'activity',
+          attributes: ['activityId', 'activityName', 'startTime', 'endTime', 'location', 'typeId', 'Activity_description'],
+          where: {
+            endTime: { [Op.gt]: now } // 只推荐未结束的活动
+          },
+          required: false, // 使用 LEFT JOIN，避免活动不存在时查询失败
+          include: [
+            { model: ActivityType, as: 'type', attributes: ['typeName'], required: false }
+          ]
+        }
+      ],
+      order: [['score', 'DESC']],
+      limit: 10
+    })
+  } catch (topnError) {
+    console.error('[推荐] 查询推荐表失败:', topnError)
+    // 继续使用其他策略
+  }
 
   if (topnRecs.length > 0) {
     const recText = topnRecs
@@ -198,24 +205,33 @@ async function buildRecommendText(userId) {
   }
 
   // 策略2：基于历史报名记录的多维度分析
-  const historyRecords = await UserActivityApply.findAll({
-    where: {
-      userId,
-      applyStatus: { [Op.in]: [0, 1] }, // 待审核/已通过
-    },
-    include: [
-      {
-        model: Activity,
-        as: 'activity',
-        attributes: ['activityId', 'typeId', 'startTime', 'location', 'activityName'],
-        include: [
-          { model: ActivityType, as: 'type', attributes: ['typeName'] }
-        ]
-      }
-    ],
-    order: [['appliedAt', 'DESC']],
-    limit: 50
-  })
+  let historyRecords = []
+  try {
+    historyRecords = await UserActivityApply.findAll({
+      where: {
+        userId,
+        applyStatus: { [Op.in]: [0, 1] }, // 待审核/已通过
+      },
+      include: [
+        {
+          model: Activity,
+          as: 'activity',
+          attributes: ['activityId', 'typeId', 'startTime', 'location', 'activityName'],
+          required: false, // 使用 LEFT JOIN，避免活动被删除后查询失败
+          include: [
+            { model: ActivityType, as: 'type', attributes: ['typeName'], required: false }
+          ]
+        }
+      ],
+      order: [['appliedAt', 'DESC']],
+      limit: 50
+    })
+    // 过滤掉活动已被删除的记录
+    historyRecords = historyRecords.filter(record => record.activity !== null)
+  } catch (historyError) {
+    console.error('[推荐] 查询历史报名记录失败:', historyError)
+    // 继续使用热门活动推荐
+  }
 
   if (!historyRecords.length) {
     // 策略3：新用户推荐热门活动（使用原始SQL查询，因为需要聚合）
@@ -454,19 +470,40 @@ exports.chatAsk = async (req, res) => {
         if (!userId) {
           // 未登录用户，推荐热门活动
           console.log('[推荐] 用户未登录，使用热门活动推荐')
-          const hotText = await buildHotActivitiesText()
-          dataText = `（系统提示：由于无法获取用户的历史报名记录，无法进行个性化推荐。已提供当前热门活动列表。请自然地告诉用户这些是当前热门的活动，并建议用户登录后可以获得基于历史记录的个性化推荐。）\n\n当前热门活动列表：\n${hotText}`
+          try {
+            const hotText = await buildHotActivitiesText()
+            dataText = `（系统提示：由于无法获取用户的历史报名记录，无法进行个性化推荐。已提供当前热门活动列表。请自然地告诉用户这些是当前热门的活动，并建议用户登录后可以获得基于历史记录的个性化推荐。）\n\n当前热门活动列表：\n${hotText}`
+          } catch (hotError) {
+            console.error('[推荐] 获取热门活动失败:', hotError)
+            dataText = '（系统提示：查询热门活动时遇到问题，请稍后再试。）'
+          }
         } else {
           console.log('[推荐] 开始为用户推荐活动，userId:', userId)
-          dataText = await buildRecommendText(userId)
-          console.log('[推荐] 推荐结果长度:', dataText?.length || 0)
+          try {
+            dataText = await buildRecommendText(userId)
+            console.log('[推荐] 推荐结果长度:', dataText?.length || 0)
+          } catch (recError) {
+            console.error('[推荐] 个性化推荐失败:', recError)
+            console.error('[推荐] 错误堆栈:', recError.stack)
+            // 如果个性化推荐失败，尝试使用热门活动作为备选
+            try {
+              const hotText = await buildHotActivitiesText()
+              dataText = `（系统提示：个性化推荐遇到问题，已提供当前热门活动列表。）\n\n当前热门活动列表：\n${hotText}`
+            } catch (hotError) {
+              console.error('[推荐] 备选热门活动也失败:', hotError)
+              dataText = '（系统提示：查询推荐活动时遇到问题，请稍后再试或联系管理员。）'
+            }
+          }
         }
       }
     } catch (dbError) {
       console.error('[推荐] 数据库查询错误:', dbError)
+      console.error('[推荐] 错误堆栈:', dbError.stack)
       // 如果数据库查询失败，至少返回一个友好的提示
       if (intent === 'RECOMMEND_FOR_ME') {
         dataText = '（系统提示：查询推荐活动时遇到问题，请稍后再试或联系管理员。）'
+      } else {
+        dataText = '（系统提示：查询数据时遇到问题，请稍后再试。）'
       }
     }
 
