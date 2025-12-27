@@ -262,16 +262,26 @@
     
       try {
         const userId = getUserId()
+        console.log('[前端] 发送消息，userId:', userId, 'text:', text)
         const data = await request.post('/chat/ask', {
           sessionId: getSessionId(),
           userMessage: text,
           userId: userId, // 传递用户ID，用于个性化推荐
         })
         const reply = data?.reply || '机器人没有返回内容'
+        console.log('[前端] 收到回复，长度:', reply?.length || 0)
         messages.value.push({ from: 'bot', text: reply })
       } catch (e) {
-        console.error(e)
-        messages.value.push({ from: 'bot', text: '出错了，请稍后再试。' })
+        console.error('[前端] 请求错误:', e)
+        console.error('[前端] 错误详情:', e.response?.data || e.message)
+        // 显示更友好的错误提示
+        let errorMsg = '出错了，请稍后再试。'
+        if (e.message && e.message.includes('网络')) {
+          errorMsg = '网络连接失败，请检查网络后重试。'
+        } else if (e.message && e.message.includes('401')) {
+          errorMsg = '登录已过期，请重新登录。'
+        }
+        messages.value.push({ from: 'bot', text: errorMsg })
       } finally {
         loading.value = false
       }

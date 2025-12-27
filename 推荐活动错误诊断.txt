@@ -1,0 +1,53 @@
+# 推荐活动错误诊断
+
+## 🔍 问题
+用户点击"推荐活动"按钮后，返回错误"出错了,请稍后再试。"
+
+## 📋 诊断步骤
+
+### 1. 查看后端错误日志
+```bash
+cd /var/www/activities_management/backend
+tail -50 logs/err.log | grep -A 10 "推荐\|recommend\|RECOMMEND"
+```
+
+### 2. 查看实时日志
+```bash
+pm2 logs activities-backend --lines 100
+```
+
+### 3. 测试推荐活动 API（需要 userId）
+```bash
+# 先获取一个有效的 userId（从数据库或已有用户）
+curl -X POST http://localhost:3000/api/chat/ask \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sessionId": "test-recommend",
+    "userMessage": "给我推荐一些活动",
+    "userId": 1
+  }'
+```
+
+### 4. 检查用户是否登录
+在浏览器控制台（F12）检查：
+```javascript
+localStorage.getItem('userId')
+localStorage.getItem('token')
+```
+
+## 🔧 可能的原因
+
+1. **用户未登录**：推荐功能需要 userId，如果未登录则 userId 为 null
+2. **数据库查询错误**：推荐活动时查询数据库出错
+3. **DeepSeek API 调用失败**：意图识别或生成回复时出错
+4. **前端 userId 传递问题**：前端没有正确获取或传递 userId
+
+## 🚀 快速修复
+
+### 检查前端是否正确传递 userId
+查看浏览器网络请求，确认请求体中是否包含 userId
+
+### 如果用户未登录
+- 提示用户登录
+- 或者使用热门活动作为推荐（已有逻辑）
+

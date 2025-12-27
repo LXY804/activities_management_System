@@ -439,23 +439,34 @@ exports.chatAsk = async (req, res) => {
     let dataText = ''
 
     // 4) 根据意图查数据库
-    if (intent === 'HOT_ACTIVITIES') {
-      dataText = await buildHotActivitiesText()
-    } else if (intent === 'VOLUNTEER_LIST') {
-      dataText = await buildVolunteerText()
-    } else if (intent === 'MY_REGISTERED') {
-      if (!userId) {
-        dataText = '（系统提示：该问题和“我已报名的活动”相关，但当前请求未提供 userId。）'
-      } else {
-        dataText = await buildMyRegisteredText(userId)
+    try {
+      if (intent === 'HOT_ACTIVITIES') {
+        dataText = await buildHotActivitiesText()
+      } else if (intent === 'VOLUNTEER_LIST') {
+        dataText = await buildVolunteerText()
+      } else if (intent === 'MY_REGISTERED') {
+        if (!userId) {
+          dataText = '（系统提示：该问题和"我已报名的活动"相关，但当前请求未提供 userId。）'
+        } else {
+          dataText = await buildMyRegisteredText(userId)
+        }
+      } else if (intent === 'RECOMMEND_FOR_ME') {
+        if (!userId) {
+          // 未登录用户，推荐热门活动
+          console.log('[推荐] 用户未登录，使用热门活动推荐')
+          const hotText = await buildHotActivitiesText()
+          dataText = `（系统提示：由于无法获取用户的历史报名记录，无法进行个性化推荐。已提供当前热门活动列表。请自然地告诉用户这些是当前热门的活动，并建议用户登录后可以获得基于历史记录的个性化推荐。）\n\n当前热门活动列表：\n${hotText}`
+        } else {
+          console.log('[推荐] 开始为用户推荐活动，userId:', userId)
+          dataText = await buildRecommendText(userId)
+          console.log('[推荐] 推荐结果长度:', dataText?.length || 0)
+        }
       }
-    } else if (intent === 'RECOMMEND_FOR_ME') {
-      if (!userId) {
-        // 未登录用户，推荐热门活动
-        const hotText = await buildHotActivitiesText()
-        dataText = `（系统提示：由于无法获取用户的历史报名记录，无法进行个性化推荐。已提供当前热门活动列表。请自然地告诉用户这些是当前热门的活动，并建议用户登录后可以获得基于历史记录的个性化推荐。）\n\n当前热门活动列表：\n${hotText}`
-      } else {
-        dataText = await buildRecommendText(userId)
+    } catch (dbError) {
+      console.error('[推荐] 数据库查询错误:', dbError)
+      // 如果数据库查询失败，至少返回一个友好的提示
+      if (intent === 'RECOMMEND_FOR_ME') {
+        dataText = '（系统提示：查询推荐活动时遇到问题，请稍后再试或联系管理员。）'
       }
     }
 
@@ -538,7 +549,9 @@ exports.chatAsk = async (req, res) => {
     messages.push({ role: 'user', content: userMessage })
 
     // 6) 调用 DeepSeek 生成回答
+    console.log('[聊天] 准备调用 DeepSeek，消息数量:', messages.length)
     const botReply = await callDeepseek(messages)
+    console.log('[聊天] DeepSeek 返回长度:', botReply?.length || 0)
 
     // 7) 保存机器人回复
     await Message.create({ sessionId, sender: 'bot', content: botReply })
@@ -546,7 +559,12 @@ exports.chatAsk = async (req, res) => {
     success(res, { reply: botReply }, 'success')
   } catch (err) {
     console.error('聊天接口错误:', err)
-    error(res, err.message || '聊天服务出错', 500)
+    console.error('错误堆栈:', err.stack)
+    // 返回更详细的错误信息（仅用于调试，生产环境可以简化）
+    const errorMessage = process.env.NODE_ENV === 'production' 
+      ? '聊天服务出错，请稍后再试' 
+      : err.message || '聊天服务出错'
+    error(res, errorMessage, 500)
   }
 }
 
