@@ -212,10 +212,10 @@
               </li>
               <li v-else v-for="(user, idx) in filteredUsers" :key="user.id || idx">
                 <div class="user-info">
-                  <div class="user-avatar">{{ user.name ? user.name.charAt(0) : '?' }}</div>
+                  <div class="user-avatar">{{ user.name.charAt(0) }}</div>
                   <div>
-                    <h4>{{ user.name || '未知用户' }}</h4>
-                    <p>{{ user.role || '未知角色' }}</p>
+                    <h4>{{ user.name }}</h4>
+                    <p>{{ user.role }}</p>
                   </div>
                 </div>
                 <div class="user-meta">
@@ -1689,33 +1689,6 @@ const loadUserStats = async () => {
       organizers: 0,
       admins: 0
     }
-  }
-}
-
-// 删除用户
-const onDeleteUser = async (user) => {
-  if (!user || !user.id) {
-    showNotification('用户信息不完整，无法删除', 'warning')
-    return
-  }
-  
-  if (!confirm(`确定要删除用户 "${user.name || '未知用户'}" 吗？此操作不可恢复。`)) {
-    return
-  }
-  
-  deletingUserId.value = user.id
-  try {
-    await fetchDeleteUser(user.id)
-    showNotification('✓ 用户已删除', 'success')
-    // 重新加载用户列表
-    await loadUsers()
-    await loadUserStats()
-  } catch (e) {
-    console.error('删除用户失败:', e)
-    const errorMsg = e.response?.data?.message || e.message || '未知错误'
-    showNotification(`删除用户失败: ${errorMsg}`, 'warning')
-  } finally {
-    deletingUserId.value = null
   }
 }
 
@@ -4065,11 +4038,30 @@ watch(activeMenu, (value) => {
 .log-top-list li {
   display: flex;
   justify-content: space-between;
+  gap: 12px;
   padding: 10px 12px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(15, 42, 66, 0.08);
   font-size: 14px;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(93, 108, 226, 0.4) transparent;
+}
+
+.log-top-list li::-webkit-scrollbar {
+  height: 6px;
+}
+
+.log-top-list li::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.log-top-list li::-webkit-scrollbar-thumb {
+  background: rgba(93, 108, 226, 0.35);
+  border-radius: 3px;
 }
 
 .log-top-count {
@@ -4506,4 +4498,5 @@ watch(activeMenu, (value) => {
   font-size: 14px;
 }
 </style>
+
 
