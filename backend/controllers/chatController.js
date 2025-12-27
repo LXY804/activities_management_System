@@ -437,8 +437,26 @@ exports.chatAsk = async (req, res) => {
       return error(res, 'sessionId 和 userMessage 必须提供', 400)
     }
 
+    // 确保 userMessage 是字符串
+    let messageContent = userMessage
+    if (typeof userMessage !== 'string') {
+      console.warn('[聊天] userMessage 不是字符串，类型:', typeof userMessage, '值:', userMessage)
+      // 如果是对象，尝试转换为字符串
+      if (userMessage && typeof userMessage === 'object') {
+        messageContent = JSON.stringify(userMessage)
+      } else {
+        messageContent = String(userMessage || '')
+      }
+    }
+    
+    // 确保消息内容不为空
+    messageContent = messageContent.trim()
+    if (!messageContent) {
+      return error(res, '消息内容不能为空', 400)
+    }
+
     // 1) 保存用户消息
-    await Message.create({ sessionId, sender: 'user', content: userMessage })
+    await Message.create({ sessionId, sender: 'user', content: messageContent })
 
     // 2) 历史消息
     const history = await Message.findAll({
@@ -448,8 +466,8 @@ exports.chatAsk = async (req, res) => {
       attributes: ['sender', 'content'],
     })
 
-    // 3) 意图识别
-    const { intent, needUserId } = await detectIntent(userMessage)
+    // 3) 意图识别（使用处理后的消息内容）
+    const { intent, needUserId } = await detectIntent(messageContent)
     console.log('detect intent:', { intent, needUserId })
 
     let dataText = ''
@@ -583,7 +601,7 @@ exports.chatAsk = async (req, res) => {
         content: m.content,
       })
     })
-    messages.push({ role: 'user', content: userMessage })
+    messages.push({ role: 'user', content: messageContent })
 
     // 6) 调用 DeepSeek 生成回答
     console.log('[聊天] 准备调用 DeepSeek，消息数量:', messages.length)

@@ -36,10 +36,10 @@
         <div class="chat-input">
           <input
             v-model="inputText"
-            @keyup.enter="sendMessage"
+            @keyup.enter="() => sendMessage()"
             placeholder="和机器人聊点什么..."
           />
-          <button @click="sendMessage" :disabled="loading">
+          <button @click="() => sendMessage()" :disabled="loading">
             {{ loading ? '发送中...' : '发送' }}
           </button>
         </div>
