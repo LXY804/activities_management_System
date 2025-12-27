@@ -22,13 +22,14 @@
         <button class="close-btn" @click="toggleOpen">×</button>
       </div>
   
-        <div class="chat-body">
+        <div class="chat-body" @click="handleMsgButtonClick">
           <div
             v-for="(msg, index) in messages"
             :key="index"
             :class="['msg', msg.from]"
           >
-            {{ msg.text }}
+            <div v-if="msg.from === 'bot'" v-html="formatMessage(msg.text)"></div>
+            <div v-else>{{ msg.text }}</div>
           </div>
         </div>
   
@@ -204,9 +205,55 @@
       window.removeEventListener('mouseup', stopDrag)
     }
     
+    // 格式化消息，将按钮文本转换为可点击的按钮
+    function formatMessage(text) {
+      if (!text) return ''
+      
+      // 转义 HTML 特殊字符
+      let formatted = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+      
+      // 匹配按钮文本模式（如"推荐活动"、"智能推荐活动"等）
+      const buttonPatterns = [
+        /推荐活动/g,
+        /智能推荐活动/g,
+        /给我推荐/g,
+        /热门活动/g,
+        /查询热门活动/g,
+        /我报名的活动/g,
+        /已报名活动/g
+      ]
+      
+      buttonPatterns.forEach(pattern => {
+        formatted = formatted.replace(pattern, (match) => {
+          return `<button class="msg-button" data-action="${match}">${match}</button>`
+        })
+      })
+      
+      // 将换行符转换为 <br>
+      formatted = formatted.replace(/\n/g, '<br>')
+      
+      return formatted
+    }
+    
+    // 处理消息中的按钮点击
+    function handleMsgButtonClick(event) {
+      if (event.target.classList.contains('msg-button')) {
+        const action = event.target.getAttribute('data-action')
+        if (action) {
+          inputText.value = action
+          sendMessage()
+        }
+      }
+    }
+    
     // 发送消息逻辑
-    async function sendMessage() {
-      const text = inputText.value.trim()
+    async function sendMessage(customText = null) {
+      const text = customText || inputText.value.trim()
       if (!text || loading.value) return
     
       messages.value.push({ from: 'user', text })
@@ -356,5 +403,26 @@
   .chat-input button:disabled {
     opacity: 0.6;
     cursor: default;
+  }
+  
+  .msg-button {
+    display: inline-block;
+    margin: 4px 8px 4px 0;
+    padding: 6px 12px;
+    background: #b498a4;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.2s;
+  }
+  
+  .msg-button:hover {
+    background: #9a7377;
+  }
+  
+  .msg-button:active {
+    background: #7d5d61;
   }
   </style>
