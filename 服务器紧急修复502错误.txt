@@ -1,0 +1,51 @@
+# 服务器紧急修复 502 错误
+
+## 🔍 1. 检查服务状态
+```bash
+pm2 status
+pm2 logs activities-backend --err --lines 30
+```
+
+## 🔄 2. 恢复备份文件（如果 sed 修改出错）
+```bash
+cd /var/www/activities_management/backend/controllers
+cp giftController.js.bak giftController.js
+pm2 restart all --update-env
+```
+
+## 🚀 3. 正确的方法：从 Git 拉取最新代码
+```bash
+cd /var/www/activities_management
+git fetch origin
+git reset --hard origin/main
+pm2 restart all --update-env
+```
+
+## 🔧 4. 如果 Git 拉取失败，手动修复（更安全的方法）
+
+### 先检查当前代码
+```bash
+cd /var/www/activities_management/backend/controllers
+head -50 giftController.js | grep -E "gifts|gift_items"
+```
+
+### 手动编辑文件（使用 nano 或 vi）
+```bash
+nano giftController.js
+```
+
+需要修改的地方：
+- 第 48 行：`FROM gifts` → `FROM gift_items`
+- 第 77 行：`FROM gifts` → `FROM gift_items`
+- 第 157 行：`FROM gifts` → `FROM gift_items`
+- 第 184 行：`FROM gifts` → `FROM gift_items`
+- 第 236 行：`FROM gifts` → `FROM gift_items`
+- 第 246 行：`DELETE FROM gifts` → `DELETE FROM gift_items`
+
+## ⚡ 5. 快速恢复服务
+```bash
+cd /var/www/activities_management
+pm2 restart all --update-env
+pm2 logs activities-backend --lines 20
+```
+

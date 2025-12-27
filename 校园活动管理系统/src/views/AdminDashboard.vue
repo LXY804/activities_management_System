@@ -212,10 +212,10 @@
               </li>
               <li v-else v-for="(user, idx) in filteredUsers" :key="user.id || idx">
                 <div class="user-info">
-                  <div class="user-avatar">{{ user.name.charAt(0) }}</div>
+                  <div class="user-avatar">{{ user.name ? user.name.charAt(0) : '?' }}</div>
                   <div>
-                    <h4>{{ user.name }}</h4>
-                    <p>{{ user.role }}</p>
+                    <h4>{{ user.name || '未知用户' }}</h4>
+                    <p>{{ user.role || '未知角色' }}</p>
                   </div>
                 </div>
                 <div class="user-meta">
@@ -1689,6 +1689,33 @@ const loadUserStats = async () => {
       organizers: 0,
       admins: 0
     }
+  }
+}
+
+// 删除用户
+const onDeleteUser = async (user) => {
+  if (!user || !user.id) {
+    showNotification('用户信息不完整，无法删除', 'warning')
+    return
+  }
+  
+  if (!confirm(`确定要删除用户 "${user.name || '未知用户'}" 吗？此操作不可恢复。`)) {
+    return
+  }
+  
+  deletingUserId.value = user.id
+  try {
+    await fetchDeleteUser(user.id)
+    showNotification('✓ 用户已删除', 'success')
+    // 重新加载用户列表
+    await loadUsers()
+    await loadUserStats()
+  } catch (e) {
+    console.error('删除用户失败:', e)
+    const errorMsg = e.response?.data?.message || e.message || '未知错误'
+    showNotification(`删除用户失败: ${errorMsg}`, 'warning')
+  } finally {
+    deletingUserId.value = null
   }
 }
 

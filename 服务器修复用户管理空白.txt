@@ -1,0 +1,53 @@
+# 修复用户管理空白问题
+
+## 🔍 1. 检查前端是否使用构建版本
+```bash
+# 检查是否有 dist 目录（构建后的文件）
+ls -la /var/www/activities_management/校园活动管理系统/dist/
+
+# 检查 nginx 配置，看前端是如何部署的
+cat /etc/nginx/sites-enabled/default | grep -A 10 "root\|location"
+```
+
+## 🔍 2. 检查用户列表 API 是否正常
+```bash
+# 测试 API（需要先获取管理员 token）
+# 先登录获取 token，然后测试
+curl -X GET "http://localhost:3000/api/users/list?page=1&pageSize=20" \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+## 🔍 3. 检查后端路由配置
+```bash
+cd /var/www/activities_management/backend
+cat routes/users.js | grep -A 5 "getUserList"
+```
+
+## 🔧 4. 如果使用构建版本，重新构建前端
+```bash
+cd /var/www/activities_management/校园活动管理系统
+npm install  # 确保依赖已安装
+npm run build
+```
+
+## 🔍 5. 检查浏览器控制台
+在浏览器中：
+1. 按 F12 打开开发者工具
+2. 切换到 Console 标签
+3. 点击"用户管理"
+4. 查看是否有错误信息
+
+## 🔍 6. 检查网络请求
+在浏览器中：
+1. 按 F12 打开开发者工具
+2. 切换到 Network 标签
+3. 点击"用户管理"
+4. 查看是否有 `/api/users/list` 请求
+5. 查看请求状态码和响应
+
+## 🔧 7. 临时调试：在服务器上直接查看 loadUsers 函数
+```bash
+grep -A 30 "const loadUsers" /var/www/activities_management/校园活动管理系统/src/views/AdminDashboard.vue
+```
+

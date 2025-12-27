@@ -1,0 +1,56 @@
+# 服务器诊断用户管理空白问题
+
+## 🔍 1. 检查浏览器控制台错误
+在服务器上打开浏览器，按 F12 查看控制台，看是否有：
+- 404 错误（API 请求失败）
+- 500 错误（服务器错误）
+- JavaScript 错误
+
+## 🔍 2. 检查 API 是否正常
+```bash
+# 测试用户列表 API（需要管理员 token）
+curl -X GET "http://localhost:3000/api/users/list?page=1&pageSize=20" \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+## 🔍 3. 检查后端路由
+```bash
+cd /var/www/activities_management/backend
+grep -n "getUserList\|/users/list" routes/users.js
+```
+
+## 🔍 4. 检查前端代码是否已部署
+```bash
+# 检查前端构建文件
+ls -la /var/www/activities_management/校园活动管理系统/dist/
+# 或者检查源码
+ls -la /var/www/activities_management/校园活动管理系统/src/views/AdminDashboard.vue
+```
+
+## 🔍 5. 查看后端日志
+```bash
+pm2 logs activities-backend --err --lines 50
+```
+
+## 🔧 6. 检查用户管理面板代码
+在服务器上查看 AdminDashboard.vue 的用户管理部分：
+```bash
+cd /var/www/activities_management/校园活动管理系统/src/views
+grep -A 80 "用户管理面板" AdminDashboard.vue | head -100
+```
+
+## 🚀 7. 如果前端代码未更新，重新构建
+```bash
+cd /var/www/activities_management/校园活动管理系统
+npm run build
+# 或者如果使用开发模式
+npm run dev
+```
+
+## 🔍 8. 检查 switchToUsers 函数
+```bash
+cd /var/www/activities_management/校园活动管理系统/src/views
+grep -A 15 "switchToUsers" AdminDashboard.vue
+```
+

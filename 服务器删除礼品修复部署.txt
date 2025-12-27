@@ -1,0 +1,54 @@
+# 服务器删除礼品功能修复部署
+
+## 🚀 部署步骤
+
+### 1. 拉取最新代码
+```bash
+cd /var/www/activities_management
+git stash  # 保存本地修改（如果有）
+git checkout main
+git pull origin main
+```
+
+### 2. 重启服务
+```bash
+pm2 restart all --update-env
+```
+
+### 3. 查看日志确认
+```bash
+pm2 logs activities-backend --lines 30
+```
+
+## 🔍 如果仍然失败，检查以下内容
+
+### 检查表名是否正确
+```bash
+mysql -u campus_user -p'Whut2025@' campus_activities -e "SHOW TABLES LIKE 'gift%';"
+```
+
+### 检查礼品表结构
+```bash
+mysql -u campus_user -p'Whut2025@' campus_activities -e "DESCRIBE gift_items;"
+```
+
+### 检查是否有订单关联
+```bash
+mysql -u campus_user -p'Whut2025@' campus_activities -e "SELECT gift_id, COUNT(*) as order_count FROM gift_orders GROUP BY gift_id;"
+```
+
+### 查看后端错误日志
+```bash
+pm2 logs activities-backend --err --lines 50
+```
+
+## ⚡ 一键部署命令（复制执行）
+```bash
+cd /var/www/activities_management && \
+git stash && \
+git checkout main && \
+git pull origin main && \
+pm2 restart all --update-env && \
+echo "✅ 部署完成，请刷新浏览器测试删除功能"
+```
+

@@ -266,12 +266,12 @@ exports.getUserList = async (req, res) => {
     }
     
     const list = rows.map(user => ({
-      id: user.userId,
-      name: user.username,
-      role: roleMap[user.role] || user.role,
+      id: user.id || user.get('id'),
+      name: user.name || user.get('name') || user.username || '未知用户',
+      role: roleMap[user.role] || user.role || '未知角色',
       joinDate: user.createdAt ? user.createdAt.toISOString().split('T')[0] : null,
-      email: user.email,
-      phone: user.phone,
+      email: user.email || null,
+      phone: user.phone || null,
       college: user.college?.collegeName || null
     }))
     

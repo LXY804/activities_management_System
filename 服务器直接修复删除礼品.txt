@@ -1,0 +1,45 @@
+# 服务器直接修复删除礼品功能
+
+## 方法1：强制拉取并重置（推荐）
+```bash
+cd /var/www/activities_management
+git fetch origin
+git reset --hard origin/main
+pm2 restart all --update-env
+```
+
+## 方法2：直接在服务器上修复文件（如果git pull失败）
+
+### 修复删除函数
+```bash
+cd /var/www/activities_management/backend/controllers
+sed -i "s/SELECT gift_id FROM gifts WHERE gift_id/SELECT gift_id, title FROM gift_items WHERE gift_id/g" giftController.js
+sed -i "s/DELETE FROM gifts WHERE gift_id/DELETE FROM gift_items WHERE gift_id/g" giftController.js
+```
+
+### 修复其他函数中的表名
+```bash
+cd /var/www/activities_management/backend/controllers
+sed -i "s/FROM gifts/FROM gift_items/g" giftController.js
+sed -i "s/UPDATE gifts/UPDATE gift_items/g" giftController.js
+sed -i "s/INSERT INTO gifts/INSERT INTO gift_items/g" giftController.js
+```
+
+### 修复字段名
+```bash
+cd /var/www/activities_management/backend/controllers
+sed -i "s/name,/title AS name,/g" giftController.js
+sed -i "s/image_url,/cover_image AS image_url,/g" giftController.js
+sed -i "s/points_required,/points_cost AS points_required,/g" giftController.js
+```
+
+### 验证修复
+```bash
+grep -n "gift_items\|FROM gifts" giftController.js | head -10
+```
+
+### 重启服务
+```bash
+pm2 restart all --update-env
+```
+

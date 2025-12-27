@@ -1,0 +1,58 @@
+# 在服务器上编辑 AdminDashboard.vue
+
+## 🔍 1. 找到文件位置
+```bash
+find /var/www/activities_management -name "AdminDashboard.vue" -type f
+```
+
+## 📍 2. 通常位置（前端源码）
+```bash
+/var/www/activities_management/校园活动管理系统/src/views/AdminDashboard.vue
+```
+
+## 👀 3. 查看文件内容
+```bash
+cd /var/www/activities_management/校园活动管理系统/src/views
+cat AdminDashboard.vue | head -100
+# 或者查看完整文件
+less AdminDashboard.vue
+```
+
+## ✏️ 4. 编辑文件（使用 nano，最简单）
+```bash
+cd /var/www/activities_management/校园活动管理系统/src/views
+nano AdminDashboard.vue
+```
+
+## ✏️ 5. 编辑文件（使用 vi/vim）
+```bash
+cd /var/www/activities_management/校园活动管理系统/src/views
+vi AdminDashboard.vue
+```
+
+## 📋 6. 查看文件行数和大小
+```bash
+cd /var/www/activities_management/校园活动管理系统/src/views
+wc -l AdminDashboard.vue
+ls -lh AdminDashboard.vue
+```
+
+## 🔄 7. 修改后需要重新构建前端（如果使用构建版本）
+```bash
+cd /var/www/activities_management/校园活动管理系统
+npm run build
+# 或者如果使用开发模式
+pm2 restart activities-frontend  # 如果有前端服务
+```
+
+## ⚡ 一键命令（查看文件）
+```bash
+cd /var/www/activities_management/校园活动管理系统/src/views && \
+echo "文件位置: $(pwd)/AdminDashboard.vue" && \
+echo "文件大小: $(ls -lh AdminDashboard.vue | awk '{print $5}')" && \
+echo "文件行数: $(wc -l < AdminDashboard.vue)" && \
+echo "" && \
+echo "=== 文件前50行 ===" && \
+head -50 AdminDashboard.vue
+```
+

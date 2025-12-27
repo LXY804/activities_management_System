@@ -1,0 +1,57 @@
+# 服务器创建操作日志表 - 一键执行
+
+## 🚀 方法 1：使用脚本（推荐）
+
+```bash
+cd /var/www/activities_management/backend
+node scripts/create_activity_logs_table.js
+```
+
+## 🔧 方法 2：直接执行 SQL
+
+```bash
+cd /var/www/activities_management/backend
+mysql -u campus_user -p'Whut2025@' campus_activities < database/create_activity_logs.sql
+```
+
+## ⚡ 方法 3：手动执行（如果上面方法不行）
+
+```bash
+mysql -u campus_user -p'Whut2025@' campus_activities << 'EOF'
+CREATE TABLE IF NOT EXISTS `activity_logs` (
+  `log_id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NULL DEFAULT NULL,
+  `username` varchar(100) NULL DEFAULT NULL,
+  `action` varchar(255) NOT NULL,
+  `method` varchar(10) NOT NULL,
+  `route` varchar(255) NOT NULL,
+  `status_code` int NOT NULL,
+  `success` tinyint NOT NULL DEFAULT 1,
+  `duration_ms` int NULL DEFAULT NULL,
+  `ip_address` varchar(64) NULL DEFAULT NULL,
+  `user_agent` varchar(255) NULL DEFAULT NULL,
+  `request_payload` text NULL,
+  `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`log_id`),
+  INDEX `idx_log_user`(`user_id`),
+  INDEX `idx_log_route`(`route`),
+  INDEX `idx_log_method`(`method`),
+  INDEX `idx_log_status`(`status_code`),
+  INDEX `idx_log_created_at`(`created_at`)
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+EOF
+```
+
+## ✅ 验证表是否创建成功
+
+```bash
+mysql -u campus_user -p'Whut2025@' campus_activities -e "SHOW TABLES LIKE 'activity_logs';"
+mysql -u campus_user -p'Whut2025@' campus_activities -e "DESCRIBE activity_logs;"
+```
+
+## 🔄 创建后重启服务
+
+```bash
+pm2 restart all --update-env
+```
+

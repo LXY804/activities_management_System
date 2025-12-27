@@ -1,0 +1,45 @@
+# 服务器恢复并正确修复
+
+## 🚨 问题：sed 命令把 __dirname 错误替换了
+
+## 🔄 1. 从 Git 恢复文件（最快最安全）
+```bash
+cd /var/www/activities_management
+git checkout HEAD -- backend/controllers/giftController.js
+pm2 restart all --update-env
+```
+
+## 🔧 2. 如果 Git 恢复失败，手动修复语法错误
+```bash
+cd /var/www/activities_management/backend/controllers
+# 修复 __dirname 错误
+sed -i 's/__dirtitle AS name/__dirname/g' giftController.js
+pm2 restart all --update-env
+```
+
+## ✅ 3. 验证服务启动
+```bash
+pm2 status
+pm2 logs activities-backend --lines 10
+```
+
+## 🎯 4. 正确修复删除功能（只修复删除函数，不影响其他代码）
+
+### 方法A：使用 Git 拉取最新代码（推荐）
+```bash
+cd /var/www/activities_management
+git fetch origin
+git reset --hard origin/main
+pm2 restart all --update-env
+```
+
+### 方法B：只修复删除函数的关键行
+```bash
+cd /var/www/activities_management/backend/controllers
+# 只修复删除函数中的表名（精确替换）
+sed -i '236s/FROM gifts WHERE gift_id/FROM gift_items WHERE gift_id/' giftController.js
+sed -i '241s/FROM gifts WHERE gift_id/FROM gift_items WHERE gift_id/' giftController.js
+sed -i '268s/DELETE FROM gifts/DELETE FROM gift_items/' giftController.js
+pm2 restart all --update-env
+```
+

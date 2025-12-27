@@ -1,0 +1,85 @@
+# 服务器修复用户管理和删除功能
+
+## 🔧 问题1：显示"未知用户"
+原因：后端数据映射错误，使用了 `user.userId` 而不是 `user.id`
+
+## 🔧 问题2：无法删除用户
+原因：前端缺少 `onDeleteUser` 函数
+
+## 🚀 修复方法1：从 Git 拉取最新代码（推荐）
+
+```bash
+cd /var/www/activities_management
+git fetch origin
+git reset --hard origin/main
+cd backend
+pm2 restart all --update-env
+cd ../校园活动管理系统
+npm run build
+```
+
+## 🔧 修复方法2：直接在服务器上修复
+
+### 修复后端数据映射
+```bash
+cd /var/www/activities_management/backend/controllers
+# 备份
+cp userController.js userController.js.bak
+
+# 修复数据映射
+sed -i "s/id: user\.userId,/id: user.id || user.get('id'),/g" userController.js
+sed -i "s/name: user\.username,/name: user.name || user.get('name') || user.username || '未知用户',/g" userController.js
+sed -i "s/role: roleMap\[user\.role\] || user\.role,/role: roleMap[user.role] || user.role || '未知角色',/g" userController.js
+
+# 验证修复
+grep -A 8 "const list = rows.map" userController.js | head -10
+
+# 重启后端
+pm2 restart all --update-env
+```
+
+### 修复前端删除函数
+```bash
+cd /var/www/activities_management/校园活动管理系统/src/views
+# 在 loadUserStats 函数后添加 onDeleteUser 函数
+# 使用 nano 或 vi 编辑文件
+nano AdminDashboard.vue
+```
+
+找到 `loadUserStats` 函数的结束位置（大约第 1693 行），在 `// 加载本月新增用户` 之前添加：
+
+```javascript
+// 删除用户
+const onDeleteUser = async (user) => {
+  if (!user || !user.id) {
+    showNotification('用户信息不完整，无法删除', 'warning')
+    return
+  }
+  
+  if (!confirm(`确定要删除用户 "${user.name || '未知用户'}" 吗？此操作不可恢复。`)) {
+    return
+  }
+  
+  deletingUserId.value = user.id
+  try {
+    await fetchDeleteUser(user.id)
+    showNotification('✓ 用户已删除', 'success')
+    // 重新加载用户列表
+    await loadUsers()
+    await loadUserStats()
+  } catch (e) {
+    console.error('删除用户失败:', e)
+    const errorMsg = e.response?.data?.message || e.message || '未知错误'
+    showNotification(`删除用户失败: ${errorMsg}`, 'warning')
+  } finally {
+    deletingUserId.value = null
+  }
+}
+```
+
+保存后重新构建：
+```bash
+cd /var/www/activities_management/校园活动管理系统
+npm run build
+```
+
