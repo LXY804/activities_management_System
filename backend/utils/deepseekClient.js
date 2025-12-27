@@ -3,10 +3,17 @@
 
 const OpenAI = require("openai");
 
-// 在 .env 或系统环境中配置 DEEPSEEK_API_KEY
+// 从环境变量读取 API Key
+const apiKey = process.env.DEEPSEEK_API_KEY;
+if (apiKey) {
+  console.log('[DeepSeek] 读取到的 API Key:', `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}`);
+} else {
+  console.error('⚠️  警告: DEEPSEEK_API_KEY 未配置，AI 功能将无法使用');
+}
+
 const openai = new OpenAI({
   baseURL: "https://api.deepseek.com",
-  apiKey: "sk-c65bd82df08b4f01882a85d34b255c00",
+  apiKey: apiKey || "", // 从环境变量读取，如果未配置则为空字符串
 });
 
 /**
