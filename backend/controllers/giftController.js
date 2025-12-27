@@ -232,8 +232,9 @@ exports.updateGift = async (req, res) => {
   })
 }
 
-// 管理员：删除礼品
+// 管理员：删除礼品（级联删除所有关联数据）
 exports.deleteGift = async (req, res) => {
+  const transaction = await sequelize.transaction()
   try {
     const { id } = req.params
 
@@ -241,41 +242,77 @@ exports.deleteGift = async (req, res) => {
     const checkSql = 'SELECT gift_id, title FROM gift_items WHERE gift_id = ?'
     const [gift] = await sequelize.query(checkSql, {
       replacements: [id],
-      type: QueryTypes.SELECT
+      type: QueryTypes.SELECT,
+      transaction
     })
 
     if (!gift) {
+      await transaction.rollback()
       return error(res, '礼品不存在', 404)
     }
 
-    // 检查是否有订单关联此礼品
+    console.log(`开始删除礼品 ${id} 的关联数据...`)
+
+    // 1. 先删除礼品反馈（关联订单）
+    await sequelize.query(`
+      DELETE FROM gift_feedback 
+      WHERE order_id IN (SELECT order_id FROM gift_orders WHERE gift_id = ?)
+    `, {
+      replacements: [id],
+      type: QueryTypes.DELETE,
+      transaction
+    })
+
+    // 2. 删除积分交易记录（关联订单）
+    await sequelize.query(`
+      DELETE FROM point_transactions 
+      WHERE order_id IN (SELECT order_id FROM gift_orders WHERE gift_id = ?)
+    `, {
+      replacements: [id],
+      type: QueryTypes.DELETE,
+      transaction
+    })
+
+    // 3. 删除礼品订单
     const orderCheckSql = 'SELECT COUNT(*) AS orderCount FROM gift_orders WHERE gift_id = ?'
     const [orderResult] = await sequelize.query(orderCheckSql, {
       replacements: [id],
-      type: QueryTypes.SELECT
+      type: QueryTypes.SELECT,
+      transaction
     })
 
     if (orderResult && orderResult.orderCount > 0) {
-      // 如果有订单，先删除相关订单（级联删除）
       await sequelize.query('DELETE FROM gift_orders WHERE gift_id = ?', {
         replacements: [id],
-        type: QueryTypes.DELETE
+        type: QueryTypes.DELETE,
+        transaction
       })
       console.log(`已删除 ${orderResult.orderCount} 个关联订单`)
     }
 
-    // 删除礼品
-    await sequelize.query('DELETE FROM gift_items WHERE gift_id = ?', {
+    // 4. 删除积分交易记录（直接关联礼品）
+    await sequelize.query('DELETE FROM point_transactions WHERE related_gift_id = ?', {
       replacements: [id],
-      type: QueryTypes.DELETE
+      type: QueryTypes.DELETE,
+      transaction
     })
 
+    // 5. 最后删除礼品
+    await sequelize.query('DELETE FROM gift_items WHERE gift_id = ?', {
+      replacements: [id],
+      type: QueryTypes.DELETE,
+      transaction
+    })
+
+    await transaction.commit()
+    console.log(`礼品 ${id} 及其关联数据已成功删除`)
     success(res, null, '删除成功')
   } catch (err) {
+    await transaction.rollback()
     console.error('删除礼品错误:', err)
     // 检查是否是外键约束错误
     if (err.message && err.message.includes('foreign key constraint')) {
-      return error(res, '该礼品存在关联订单，无法删除。请先处理相关订单。', 400)
+      return error(res, '该礼品存在关联数据，无法删除。请先处理相关数据。', 400)
     }
     error(res, '服务器错误', 500)
   }

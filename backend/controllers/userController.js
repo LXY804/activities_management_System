@@ -4,20 +4,130 @@ const sequelize = require('../config/database')
 const { success, error } = require('../utils/response')
 const path = require('path')
 
-// 管理员删除用户（物理删除，依赖触发器级联清理报名/评论）
+// 管理员删除用户（级联删除所有关联数据）
 exports.deleteUser = async (req, res) => {
+  const transaction = await sequelize.transaction()
   try {
     const { id } = req.params
-    if (!id) return error(res, '缺少用户ID', 400)
+    if (!id) {
+      await transaction.rollback()
+      return error(res, '缺少用户ID', 400)
+    }
 
-    const user = await User.findByPk(id)
-    if (!user) return error(res, '用户不存在', 404)
+    const user = await User.findByPk(id, { transaction })
+    if (!user) {
+      await transaction.rollback()
+      return error(res, '用户不存在', 404)
+    }
 
-    await user.destroy()
+    // 级联删除所有关联数据（按顺序删除，避免外键约束错误）
+    console.log(`开始删除用户 ${id} 的关联数据...`)
 
+    // 1. 删除用户活动报名
+    await sequelize.query('DELETE FROM user_activity_apply WHERE user_id = ?', {
+      replacements: [id],
+      type: QueryTypes.DELETE,
+      transaction
+    })
+
+    // 2. 删除活动评论
+    await sequelize.query('DELETE FROM activity_comments WHERE user_id = ?', {
+      replacements: [id],
+      type: QueryTypes.DELETE,
+      transaction
+    })
+
+    // 3. 删除礼品反馈
+    await sequelize.query('DELETE FROM gift_feedback WHERE user_id = ?', {
+      replacements: [id],
+      type: QueryTypes.DELETE,
+      transaction
+    })
+
+    // 4. 删除礼品订单
+    await sequelize.query('DELETE FROM gift_orders WHERE user_id = ?', {
+      replacements: [id],
+      type: QueryTypes.DELETE,
+      transaction
+    })
+
+    // 5. 删除积分交易记录
+    await sequelize.query('DELETE FROM point_transactions WHERE user_id = ?', {
+      replacements: [id],
+      type: QueryTypes.DELETE,
+      transaction
+    })
+
+    // 6. 删除用户日程
+    await sequelize.query('DELETE FROM user_schedules WHERE user_id = ?', {
+      replacements: [id],
+      type: QueryTypes.DELETE,
+      transaction
+    })
+
+    // 7. 删除组织者活动创建记录
+    await sequelize.query('DELETE FROM organizer_activity_creation WHERE organizer_id = ?', {
+      replacements: [id],
+      type: QueryTypes.DELETE,
+      transaction
+    })
+
+    // 8. 删除活动积分规则（如果用户是组织者）
+    await sequelize.query('DELETE FROM activity_point_rules WHERE organizer_id = ?', {
+      replacements: [id],
+      type: QueryTypes.DELETE,
+      transaction
+    })
+
+    // 9. 更新活动日志，将 user_id 设置为 NULL（而不是删除）
+    await sequelize.query('UPDATE activity_logs SET user_id = NULL WHERE user_id = ?', {
+      replacements: [id],
+      type: QueryTypes.UPDATE,
+      transaction
+    })
+
+    // 10. 更新公告，将 checked_by 设置为 NULL
+    await sequelize.query('UPDATE announcements SET checked_by = NULL WHERE checked_by = ?', {
+      replacements: [id],
+      type: QueryTypes.UPDATE,
+      transaction
+    })
+
+    // 11. 更新论坛帖子，将 checked_by 设置为 NULL
+    await sequelize.query('UPDATE forum_posts SET checked_by = NULL WHERE checked_by = ?', {
+      replacements: [id],
+      type: QueryTypes.UPDATE,
+      transaction
+    })
+
+    // 12. 更新系统配置，将 updated_by 设置为 NULL
+    await sequelize.query('UPDATE system_config SET updated_by = NULL WHERE updated_by = ?', {
+      replacements: [id],
+      type: QueryTypes.UPDATE,
+      transaction
+    })
+
+    // 注意：以下表的外键是 CASCADE 或 SET NULL，会自动处理：
+    // - forum_comments (CASCADE)
+    // - forum_favorites (CASCADE)
+    // - forum_posts (CASCADE)
+    // - announcement_confirmations (CASCADE)
+
+    // 13. 最后删除用户
+    await user.destroy({ transaction })
+
+    await transaction.commit()
+    console.log(`用户 ${id} 及其关联数据已成功删除`)
     success(res, null, '删除成功')
   } catch (err) {
+    await transaction.rollback()
     console.error('删除用户失败:', err)
+    
+    // 检查是否是外键约束错误
+    if (err.message && err.message.includes('foreign key constraint')) {
+      return error(res, '该用户存在关联数据，无法删除。请先处理相关数据。', 400)
+    }
+    
     error(res, '服务器错误', 500)
   }
 }

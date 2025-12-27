@@ -1,0 +1,52 @@
+# 修复删除用户功能 - 最终方案
+
+## ✅ 代码已存在，问题可能是：
+
+1. **前端构建版本未更新** - dist 目录中的文件是旧的
+2. **浏览器缓存** - 浏览器使用了旧的 JavaScript 文件
+3. **后端 API 问题** - 需要检查后端日志
+
+## 🔧 修复步骤
+
+### 1. 重新构建前端（必须）
+```bash
+cd /var/www/activities_management/校园活动管理系统
+npm run build
+```
+
+### 2. 清除浏览器缓存
+- 按 Ctrl+Shift+R 或 Ctrl+F5 强制刷新
+- 或者清除浏览器缓存后重新访问
+
+### 3. 检查后端日志（如果删除仍然失败）
+```bash
+pm2 logs activities-backend --err --lines 30
+```
+
+### 4. 测试删除 API（需要管理员 token）
+```bash
+# 先获取管理员 token，然后测试
+curl -X DELETE "http://localhost:3000/api/users/1" \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+## 🔍 诊断步骤
+
+### 在浏览器中：
+1. 按 F12 打开开发者工具
+2. 切换到 Console 标签
+3. 点击"删除"按钮
+4. 查看是否有错误信息
+5. 切换到 Network 标签
+6. 查看是否有 DELETE 请求到 `/api/users/{id}`
+7. 查看请求状态码和响应内容
+
+## ⚡ 一键修复命令
+```bash
+cd /var/www/activities_management/校园活动管理系统 && \
+echo "=== 重新构建前端 ===" && \
+npm run build && \
+echo "✅ 构建完成！请清除浏览器缓存（Ctrl+Shift+R）后刷新页面"
+```
+
