@@ -263,23 +263,36 @@
       try {
         const userId = getUserId()
         console.log('[前端] 发送消息，userId:', userId, 'text:', text)
+        
+        // 使用更长的超时时间（AI 聊天可能需要较长时间）
         const data = await request.post('/chat/ask', {
           sessionId: getSessionId(),
           userMessage: text,
-          userId: userId, // 传递用户ID，用于个性化推荐
+          userId: userId, // 传递用户ID，用于个性化推荐（null 也可以，后端会处理）
+        }, {
+          timeout: 60000 // 60 秒超时
         })
+        
         const reply = data?.reply || '机器人没有返回内容'
         console.log('[前端] 收到回复，长度:', reply?.length || 0)
         messages.value.push({ from: 'bot', text: reply })
       } catch (e) {
         console.error('[前端] 请求错误:', e)
         console.error('[前端] 错误详情:', e.response?.data || e.message)
+        console.error('[前端] 错误堆栈:', e.stack)
+        
         // 显示更友好的错误提示
         let errorMsg = '出错了，请稍后再试。'
-        if (e.message && e.message.includes('网络')) {
+        if (e.code === 'ECONNABORTED' || e.message?.includes('timeout')) {
+          errorMsg = '请求超时，AI 正在思考中，请稍后再试。'
+        } else if (e.message && e.message.includes('网络')) {
           errorMsg = '网络连接失败，请检查网络后重试。'
         } else if (e.message && e.message.includes('401')) {
           errorMsg = '登录已过期，请重新登录。'
+        } else if (e.response?.data?.message) {
+          errorMsg = e.response.data.message
+        } else if (e.message) {
+          errorMsg = e.message
         }
         messages.value.push({ from: 'bot', text: errorMsg })
       } finally {

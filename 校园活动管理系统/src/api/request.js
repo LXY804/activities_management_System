@@ -2,7 +2,7 @@ import axios from 'axios'
 
 const request = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
-  timeout: 10000
+  timeout: 60000 // 增加到 60 秒，因为 AI 聊天可能需要较长时间
 })
 
 request.interceptors.request.use(
